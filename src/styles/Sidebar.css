@@ -1,0 +1,132 @@
+/* ===== Sidebar ===== */
+.sidebar {
+  width: 240px;
+  height: 100vh;
+  /* height: calc(100vh - 65px); */
+  position: fixed;
+  /* top: 65px; */
+  left: 0;
+  color: #ffffff;
+  background: linear-gradient(180deg, #36d1dc, #5b86e5);
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 150, 255, 0.3);
+  transition: width 0.3s ease;
+  padding: 20px 12px;
+  overflow: hidden;
+  z-index: 1000;
+  /* border-radius:0 25px 25px 0; */
+}
+
+/* Collapsed */
+.sidebar.close {
+  width: 80px;
+}
+
+/* Toggle Button */
+.toggle-btn {
+  font-size: 22px;
+  color: #fff;
+  cursor: pointer;
+  text-align: center;
+  margin-bottom: 20px;
+  padding: 10px;
+  border-radius: 10px;
+  transition: 0.3s;
+}
+
+.toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Menu */
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin-top: 10px;
+}
+
+/* Nav Links */
+.sidebar .nav-link {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  margin: 6px 0;
+  border-radius: 12px;
+  color: #cfd8dc !important;
+  font-size: 15px;
+  transition: all 0.25s ease;
+}
+
+/* Icon */
+.sidebar .nav-link i {
+  font-size: 18px;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Text */
+.menu-text {
+  white-space: nowrap;
+}
+
+/* Hover */
+.sidebar .nav-link:hover {
+  /* background: rgba(255, 255, 255, 0.1);
+   */
+   background: rgba(255, 255, 255, 0.25);
+  color: #fff !important;
+}
+
+/* Active */
+.sidebar .nav-link.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff !important;
+  font-weight: 500;
+}
+
+/* Collapsed Adjustments */
+.sidebar.close .nav-link {
+  justify-content: center;
+}
+
+.sidebar.close .menu-text {
+  display: none;
+}
+
+/* ===== Main Content ===== */
+.main-content {
+  min-height: 100vh;
+  padding: 20px;
+  margin-left: 240px;   /* ✅ ADD THIS */
+  transition: margin-left 0.3s ease;
+  background: linear-gradient(135deg, #ffffff, #f8fafc);
+}
+
+/* Adjust when collapsed */
+.sidebar.close ~ .main-content {
+  margin-left: 80px;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 992px) {
+  .sidebar {
+    left: -240px;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  .main-content,
+  .navbar-custom {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+/* When sidebar collapsed */
+.sidebar.close ~ .navbar-custom {
+  margin-left: 80px;
+  width: calc(100% - 80px);
+}
