@@ -1,5 +1,16 @@
-export const  BASE_URL="https://0tv8np19-8081.inc1.devtunnels.ms" ;
-export const ENDPOINTS={
-    LOGIN: `${BASE_URL}/api/auth/login`,
-    ASSET_TABLE:`${BASE_URL}/api/assets`
-}
+import axios from "axios";
+
+const API = axios.create({
+  baseURL: import.meta.env.VITE_BASE_URL, 
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// ✅ Endpoints (NO BASE_URL here)
+export const ENDPOINTS = {
+  LOGIN: "/api/auth/login",
+  ASSET_TABLE: "/api/assets",
+};
+
+export default API;
