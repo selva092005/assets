@@ -1,0 +1,278 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+/* ─── Root tokens ─────────────────────────────────────────────────── */
+:root {
+  /* --bg:           #0f1117; */
+  /* --surface:      #171b24; */
+  --surface-2: #1e3a5f;
+  --border:       #2a3045;
+  --border-hover: #3d4d6e;
+  --text-primary:  #e8ecf4;
+  --text-secondary:#7a8499;
+  --text-muted:    #4a5568;
+  --text-head:white;
+  --accent:        #4c7aff;
+  --accent-dim:    rgba(76, 122, 255, 0.12);
+  --green:         #22c55e;
+  --green-dim:     rgba(34, 197, 94, 0.12);
+  --yellow:        #f59e0b;
+  --yellow-dim:    rgba(245, 158, 11, 0.12);
+  --red:           #ef4444;
+  --red-dim:       rgba(239, 68, 68, 0.12);
+  --radius:        6px;
+  --mono:          'IBM Plex Mono', monospace;
+  --sans:          'IBM Plex Sans', sans-serif;
+  --transition:    160ms ease;
+}
+
+/* ─── Wrapper ────────────────────────────────────────────────────── */
+.ass {
+    margin-top: 80px;
+  font-family: var(--sans);
+  background: var(--bg);
+  min-height: 100vh;
+  padding: 2rem 2.5rem;
+  color: var(--text-primary);
+}
+
+/* ─── Toolbar ────────────────────────────────────────────────────── */
+.ass .d-flex.gap-3.mb-3 {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+/* Search input */
+.ass .form-control {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  padding: 0.55rem 1rem;
+  flex: 1;
+  min-width: 200px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  outline: none;
+}
+.ass .form-control::placeholder {
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+.ass .form-control:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+  /* background: var(--surface-2); */
+}
+
+/* Selects */
+.ass .form-select {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  padding: 0.55rem 2.2rem 0.55rem 0.9rem;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234a5568' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  cursor: pointer;
+  transition: border-color var(--transition);
+  outline: none;
+  white-space: nowrap;
+}
+.ass .form-select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+/* Add Asset button */
+.ass .btn.btn-dark {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: var(--accent);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  padding: 0.55rem 1.25rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+.ass .btn.btn-dark:hover {
+  background: #6b93ff;
+  box-shadow: 0 0 18px rgba(76, 122, 255, 0.35);
+  transform: translateY(-1px);
+}
+.ass .btn.btn-dark:active {
+  transform: translateY(0);
+}
+
+/* ─── Count label ───────────────────────────────────────────────── */
+.ass .text-muted {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text-muted) !important;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 0.75rem;
+}
+
+/* ─── Table wrapper ─────────────────────────────────────────────── */
+.ass .table-responsive {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+/* ─── Table base ────────────────────────────────────────────────── */
+.ass .table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+/* ─── Header ────────────────────────────────────────────────────── */
+.ass .table-light th,
+.ass thead th {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-head);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  padding: 0.85rem 1rem;
+  white-space: nowrap;
+}
+
+/* ─── Body rows ─────────────────────────────────────────────────── */
+.ass tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition);
+}
+.ass tbody tr:last-child {
+  border-bottom: none;
+}
+.ass .table-hover tbody tr:hover {
+  background: var(--surface-2);
+}
+
+.ass td {
+  font-family: var(--sans);
+  font-size: 0.83rem;
+  color: var(--text-primary);
+  padding: 0.85rem 1rem;
+  vertical-align: middle;
+}
+
+/* ID column — monospace */
+.ass td:first-child {
+  font-family: var(--mono);
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+
+/* ─── Status badges ─────────────────────────────────────────────── */
+.ass .badge {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 0.3em 0.65em;
+  display: inline-block;
+}
+
+/* Active */
+.ass .badge.bg-success {
+  background: var(--green-dim) !important;
+  color: var(--green);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+/* In Maintenance */
+.ass .badge.bg-warning {
+  background: var(--yellow-dim) !important;
+  color: var(--yellow);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+/* Retired */
+.ass .badge.bg-danger {
+  background: var(--red-dim) !important;
+  color: var(--red);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+/* ─── Condition classes ─────────────────────────────────────────── */
+.ass .text-success {
+  color: var(--green) !important;
+  font-weight: 500;
+}
+.ass .text-warning {
+  color: var(--yellow) !important;
+  font-weight: 500;
+}
+.ass .text-danger {
+  color: var(--red) !important;
+  font-weight: 500;
+}
+
+/* ─── Action buttons ────────────────────────────────────────────── */
+.ass .btn-sm {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  border-radius: 4px;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.ass .btn-outline-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+.ass .btn-outline-secondary:hover {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.ass .btn-outline-danger {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+}
+.ass .btn-outline-danger:hover {
+  background: var(--red-dim);
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────── */
+.ass .table-responsive::-webkit-scrollbar {
+  height: 5px;
+}
+.ass .table-responsive::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+.ass .table-responsive::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 99px;
+}

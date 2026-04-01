@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Alkatra:wght@400..700&display=swap');
+
+
+.navbar-custom {
+  height: 65px;
+  background: linear-gradient(90deg, #36d1dc, #5b86e5);
+  padding: 12px 20px;
+  margin-left: 240px;
+  width: calc(100% - 240px);
+  transition: all 0.3s ease;
+  border-radius: 0 0 10px 10px;
+}
+
+/* Brand */
+.navbar-custom .navbar-brand {
+  color: #ffffff;
+  font-family: "Alkatra", system-ui;
+  font-optical-sizing: auto;
+  font-size:x-large;
+  font-style: normal;
+
+}
+
+/* Links */
+.navbar-custom .nav-link {
+  color: #e0f7ff;
+  margin-left: 10px;
+  transition: 0.3s;
+}
+
+/* Hover */
+.navbar-custom .nav-link:hover {
+  color: #ffffff;
+}
+
+/* Active */
+.navbar-custom .nav-link.active {
+  color: #ffffff;
+  font-weight: 500;
+}
+
+/* Fix toggler icon color */
+.navbar-custom .navbar-toggler {
+  border: none;
+}
+
+.navbar-custom .navbar-toggler-icon {
+  filter: invert(1);
+}
+/* Navbar alignment with sidebar */
+@media (max-width: 992px) {
+  .navbar-custom {
+    margin-left: 0;
+    width: 100%;
+  }
+}
