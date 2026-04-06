@@ -8,13 +8,13 @@ const Navbar = () => {
 
   useEffect(() => {
     // ✅ check login status from localStorage
-    const status = localStorage.getItem("isLoggedIn");
-    setIsLoggedIn(status === "true");
+    const token = localStorage.getItem("token");
+setIsLoggedIn(!!token);
   }, []);
 
   const handleLogout = () => {
     // ✅ remove login status
-    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("token");
 
     setIsLoggedIn(false);
     navigate("/");
@@ -30,9 +30,10 @@ const Navbar = () => {
 
       <div className="ms-auto">
         {isLoggedIn ? (
-          <button onClick={handleLogout} className="btn btn-danger fw-semibold px-3">
-            Logout
-          </button>
+          <button onClick={handleLogout} className="logout-btn gradient">
+  <i className="bi bi-box-arrow-right"></i>
+  Logout
+</button>
         ) : (
           <Link to="/" className="btn btn-light fw-semibold px-3">
             Login

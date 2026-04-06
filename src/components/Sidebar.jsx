@@ -23,7 +23,7 @@ const Sidebar = () => {
         </li> */}
 
         <li className="nav-item">
-          <NavLink to="/home" className="nav-link">
+          <NavLink to="/home" end className="nav-link">
             <i className="bi bi-speedometer2"></i>
             <span className="menu-text">Dashboard</span>
           </NavLink>

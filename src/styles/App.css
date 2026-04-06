@@ -54,3 +54,20 @@
     width: 100%;
   }
 }
+.logout-btn.gradient {
+  background: linear-gradient(135deg, #ff4d4f, #ff7a45);
+  color: #fff;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: 0.3s;
+}
+
+.logout-btn.gradient:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(255, 77, 79, 0.4);
+}
