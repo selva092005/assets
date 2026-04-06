@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import "../../styles/Assets.css";
 import { getAssets } from "../../service/assets_service";
+import { getAssetTypes } from "../../service/assets_service";
 import { FaEye, FaEdit, FaTrash } from "react-icons/fa";
 import {
   addAsset,
@@ -14,6 +15,9 @@ const Assets = () => {
   const [showModal, setShowModal] = useState(false);
   const [viewModal, setViewModal] = useState(false);
   const [viewData, setViewData] = useState(null);
+  const [types, setTypes] = useState([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(false);
 
   // ✅ UPDATED STATE (FULL Swagger match)
   const [newAsset, setNewAsset] = useState({
@@ -34,18 +38,54 @@ const Assets = () => {
 
   useEffect(() => {
     fetchAssets();
+    fetchTypes();
   }, []);
 
-  const fetchAssets = async () => {
-    try {
-      const data = await getAssets();
-      console.log("API Response:", data);
-      setAssets(data.data.content || []);
-    } catch (error) {
-      console.log("Error fetching assets", error);
-      setAssets([]);
-    }
-  };
+  // const fetchAssets = async () => {
+
+  //   try {
+  //     const data = await getAssets();
+  //     console.log("API Response:", data);
+  //     setAssets(data.data.content || []);
+  //   } catch (error) {
+  //     console.log("Error fetching assets", error);
+  //     setAssets([]);
+  //   }
+  // };
+
+const fetchAssets = async (keyword = "") => {
+  try {
+    setLoading(true);
+    const data = await getAssets({
+      keyword: keyword,  // can be empty
+      page: 0,
+      size: 10,
+    });
+
+    console.log("API Response:", data);
+
+    setAssets(data.data.content || []);
+  } catch (error) {
+    console.log("Error fetching assets", error);
+    setAssets([]);
+  } finally{
+    setLoading(false);
+  }
+};
+
+  const fetchTypes = async () => {
+  try {
+    const res = await getAssetTypes();
+    console.log("TYPES:", res);
+
+    setTypes(res.data || []);
+  } catch (error) {
+    console.log("Error fetching types", error);
+  }
+};
+
+
+
 
   const handleChange = (e) => {
     setNewAsset({
@@ -134,18 +174,43 @@ const handleView = async (item) => {
     <div className="ass">
       {/* Filters */}
       <div className="d-flex gap-3 mb-3 flex-wrap">
-        <input
-          className="form-control"
-          placeholder="Search by name, ID, serial..."
-        />
+<input
+  className="form-control"
+  placeholder="Search by name, ID, serial..."
+  value={search}
+  onChange={(e) => setSearch(e.target.value)}
+/>
+<div className="btn-group-custom">
+  <button
+    className="btn-icon search"
+    onClick={() => fetchAssets(search)}
+    title="Search"
+  >
+    <i className="bi bi-search"></i>
+  </button>
+
+  <button
+    className="btn-icon reset"
+    onClick={() => {
+      setSearch("");
+      fetchAssets("");
+    }}
+    title="Reset"
+  >
+    <i className="bi bi-arrow-clockwise"></i>
+  </button>
+</div>
 
         <select className="form-select w-auto">
-          <option>All Categories</option>
-        </select>
+  <option value="">All Categories</option>
 
-        <select className="form-select w-auto">
-          <option>All Statuses</option>
-        </select>
+  {types.map((type) => (
+    <option key={type.typeId} value={type.typeId}>
+      {type.typeName}
+    </option>
+  ))}
+</select>
+
 
         <button
           className="btn btn-dark"
@@ -193,79 +258,85 @@ const handleView = async (item) => {
             </tr>
           </thead>
 
-          <tbody>
-            {Array.isArray(assets) && assets.length > 0 ? (
-              assets.map((item, index) => (
-                <tr key={index}>
-                  <td>{item.assetId || item.id}</td>
-                  <td>{item.assetName || item.name}</td>
-                  <td>{item.brand || item.brandName}</td>
+<tbody>
+  {loading ? (
+    <tr>
+      <td colSpan="8" className="text-center">
+        ⏳ Loading assets...
+      </td>
+    </tr>
+  ) : Array.isArray(assets) && assets.length > 0 ? (
+    assets.map((item, index) => (
+      <tr key={index}>
+        <td>{item.assetId || item.id}</td>
+        <td>{item.assetName || item.name}</td>
+        <td>{item.brand || item.brandName}</td>
 
-                  <td>
-                    <span
-                      className={`badge ${
-                        item.status === "AVAILABLE"
-                          ? "bg-success"
-                          : item.status === "ASSIGNED"
-                          ? "bg-warning text-dark"
-                          : "bg-danger"
-                      }`}
-                    >
-                      {item.status}
-                    </span>
-                  </td>
+        <td>
+          <span
+            className={`badge ${
+              item.status === "AVAILABLE"
+                ? "bg-success"
+                : item.status === "ASSIGNED"
+                ? "bg-warning text-dark"
+                : "bg-danger"
+            }`}
+          >
+            {item.status}
+          </span>
+        </td>
 
-                  <td>{item.locationName || item.location}</td>
-                  <td>₹{item.cost || item.price}</td>
+        <td>{item.locationName || item.location}</td>
+        <td>₹{item.cost || item.price}</td>
 
-                  <td
-                    className={
-                      item.assetCondition === "GOOD"
-                        ? "text-success"
-                        : item.assetCondition === "FAIR"
-                        ? "text-warning"
-                        : "text-danger"
-                    }
-                  >
-                    {item.assetCondition}
-                  </td>
+        <td
+          className={
+            item.assetCondition === "GOOD"
+              ? "text-success"
+              : item.assetCondition === "FAIR"
+              ? "text-warning"
+              : "text-danger"
+          }
+        >
+          {item.assetCondition}
+        </td>
 
-                  <td className="text-center">
-                    <div className="action-group">
-                      <button
-                        className="action-btn view"
-                        onClick={() => handleView(item)}
-                      >
-                        <FaEye />
-                      </button>
+        <td className="text-center">
+          <div className="action-group">
+            <button
+              className="action-btn view"
+              onClick={() => handleView(item)}
+            >
+              <FaEye />
+            </button>
 
-                      <button
-                        className="action-btn edit"
-                        onClick={() => handleEdit(item)}
-                      >
-                        <FaEdit />
-                      </button>
+            <button
+              className="action-btn edit"
+              onClick={() => handleEdit(item)}
+            >
+              <FaEdit />
+            </button>
 
-                      <button
-                        className="action-btn delete"
-                        onClick={() =>
-                          handleDelete(item.assetId || item.id)
-                        }
-                      >
-                        <FaTrash />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="8" className="text-center">
-                  No assets found
-                </td>
-              </tr>
-            )}
-          </tbody>
+            <button
+              className="action-btn delete"
+              onClick={() =>
+                handleDelete(item.assetId || item.id)
+              }
+            >
+              <FaTrash />
+            </button>
+          </div>
+        </td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td colSpan="8" className="text-center">
+        No assets found
+      </td>
+    </tr>
+  )}
+</tbody>
         </table>
       </div>
 

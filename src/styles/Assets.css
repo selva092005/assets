@@ -445,3 +445,41 @@
   background: #bbb;
   border-radius: 10px;
 }
+
+.btn-group-custom {
+  display: flex;
+  gap: 6px;
+}
+
+.btn-icon {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.btn-icon.search {
+  background-color: #4CAF50;
+  color: white;
+}
+
+.btn-icon.search:hover {
+  background-color: #43a047;
+  transform: scale(1.05);
+}
+
+.btn-icon.reset {
+  background-color: #f1f3f5;
+  color: #333;
+}
+
+.btn-icon.reset:hover {
+  background-color: #e0e0e0;
+  transform: scale(1.05);
+}

@@ -1,8 +1,20 @@
 import API from "../config/api";
 
-export const getAssets = async () => {
+// export const getAssets = async () => {
+//   try {
+//     const res = await API.get("/api/assets");
+//     return res.data;
+//   } catch (err) {
+//     console.error("Get Assets Error:", err);
+//     throw err;
+//   }
+// };
+export const getAssets = async (params = {}) => {
   try {
-    const res = await API.get("/api/assets");
+    const res = await API.get("/api/assets", {
+      params, // ✅ THIS ENABLES SEARCH
+    });
+
     return res.data;
   } catch (err) {
     console.error("Get Assets Error:", err);
@@ -37,5 +49,10 @@ export const updateAsset = async (id, data) => {
 // ✅ DELETE
 export const deleteAsset = async (id) => {
   const res = await API.delete(`/api/assets/${id}`);
+  return res.data;
+};
+
+export const getAssetTypes = async () => {
+  const res = await API.get("/api/asset-types");
   return res.data;
 };
