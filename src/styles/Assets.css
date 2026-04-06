@@ -126,16 +126,19 @@
 }
 
 /* ─── Table wrapper ─────────────────────────────────────────────── */
+/* ─── Table wrapper (FIXED) ─────────────────────────────────────── */
 .ass .table-responsive {
   border: 1px solid var(--border);
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;   /* ✅ FIX: enable horizontal scroll */
+  overflow-y: hidden; /* optional */
   background: var(--surface);
 }
 
-/* ─── Table base ────────────────────────────────────────────────── */
+/* ─── Table base (ADD THIS LINE) ───────────────────────────────── */
 .ass .table {
   width: 100%;
+  min-width: 900px; /* ✅ FIX: prevents content cut */
   border-collapse: collapse;
   margin: 0;
   font-size: 0.82rem;
@@ -275,4 +278,170 @@
 .ass .table-responsive::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 99px;
+}
+/* ===== ACTION BUTTONS ===== */
+.action-group {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.action-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn svg {
+  font-size: 14px;
+}
+
+/* Colors */
+.action-btn.view {
+  color: #3b82f6;
+}
+.action-btn.view:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.action-btn.edit {
+  color: #f59e0b;
+}
+.action-btn.edit:hover {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.action-btn.delete {
+  color: #ef4444;
+}
+.action-btn.delete:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .ass {
+    padding: 1rem;
+  }
+
+  .ass .table {
+    font-size: 0.75rem;
+  }
+
+  .action-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  .action-btn svg {
+    font-size: 12px;
+  }
+}
+.table-responsive {
+  overflow-x: auto;
+  width: 100%;
+}
+
+/* Improve scrollbar look */
+.table-responsive::-webkit-scrollbar {
+  height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 10px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* BACKDROP */
+.modal-backdrop-custom {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+/* SMALL SQUARE MODAL */
+.modal-box {
+    overflow-y: auto;
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none; 
+  background: #fff;
+  color: #000;
+  border-radius: 12px;
+
+  width: 450px;        /* 🔥 small width */
+  max-width: 90%;
+
+  max-height: 75vh;    /* 🔥 fixed height */
+  overflow-y: auto;    /* 🔥 scroll enabled */
+
+  padding: 18px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+
+  /* 🔥 GRID LAYOUT (2 columns) */
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* TITLE FULL WIDTH */
+.modal-box h5 {
+  grid-column: span 2;
+  font-size: 16px;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+/* INPUTS */
+.modal-box input,
+.modal-box select {
+  height: 36px;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+/* FULL WIDTH ELEMENTS */
+.modal-box input[name="notes"] {
+  grid-column: span 2;
+}
+
+/* BUTTON AREA */
+.modal-box .d-flex {
+  grid-column: span 2;
+  margin-top: 10px;
+}
+
+.modal-box .btn {
+  padding: 5px 12px;
+  font-size: 13px;
+}
+
+/* SCROLLBAR */
+.modal-box::-webkit-scrollbar {
+  /* width: 4px;
+   */
+   display: none;
+}
+
+.modal-box::-webkit-scrollbar-thumb {
+  background: #bbb;
+  border-radius: 10px;
 }

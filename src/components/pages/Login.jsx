@@ -10,36 +10,63 @@ function Login() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
-    e.preventDefault(); // 🚀 prevents page reload
+  // const handleLogin = async (e) => {
+  //   e.preventDefault(); // 🚀 prevents page reload
 
-    // ✅ validation
-    if (!email || !password) {
-      setError("Please enter email and password");
-      return;
+  //   // ✅ validation
+  //   if (!email || !password) {
+  //     setError("Please enter email and password");
+  //     return;
+  //   }
+
+  //   try {
+  //     const res = await login(email, password);
+
+  //     console.log("Login Response:", res);
+
+  //     if (res.success && res.data) {
+  //       setError(""); // clear error
+  //       navigate("/home");
+  //     } else {
+  //       setError(res.message || "Invalid credentials");
+  //     }
+
+  //   } catch (err) {
+  //     console.log("Login Failed", err);
+
+  //     setError(
+  //       err.response?.data?.message || "Something went wrong"
+  //     );
+  //   }
+  // };
+const handleLogin = async (e) => {
+  e.preventDefault();
+
+  if (!email || !password) {
+    setError("Please enter email and password");
+    return;
+  }
+
+  try {
+    await login(email, password);
+
+    console.log("Token:", localStorage.getItem("token"));
+
+    if (localStorage.getItem("token")) {
+      setError("");
+      navigate("/home/assets"); // ✅ correct route
+    } else {
+      setError("Login failed - token missing");
     }
 
-    try {
-      const res = await login(email, password);
+  } catch (err) {
+    console.log("Login Failed", err);
 
-      console.log("Login Response:", res);
-
-      if (res.success && res.data) {
-        setError(""); // clear error
-        navigate("/home");
-      } else {
-        setError(res.message || "Invalid credentials");
-      }
-
-    } catch (err) {
-      console.log("Login Failed", err);
-
-      setError(
-        err.response?.data?.message || "Something went wrong"
-      );
-    }
-  };
-
+    setError(
+      err.response?.data?.message || "Something went wrong"
+    );
+  }
+};
   return (
 <div className="main-container">
   <div className="image-container">
