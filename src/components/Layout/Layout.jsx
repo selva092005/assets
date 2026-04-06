@@ -1,15 +1,23 @@
 import Sidebar from "../Sidebar";
 import Navbar from "../Navbar";
 import { Outlet } from "react-router-dom";
+import { useState } from "react";
+// import "../styles/Sidebar.css";
 
 const Layout = () => {
-  return (
-    <div>
-      <Sidebar />
-      <Navbar />
+  const [isOpen, setIsOpen] = useState(true);
 
-      <div className="main-content">
-        <Outlet />
+  return (
+    <div className="layout">
+      <Sidebar isOpen={isOpen} setIsOpen={setIsOpen} />
+
+      {/* MAIN WRAPPER */}
+      <div className={`main ${isOpen ? "open" : "close"}`}>
+        <Navbar toggleSidebar={() => setIsOpen(!isOpen)} />
+
+        <div className="main-content">
+          <Outlet />
+        </div>
       </div>
     </div>
   );

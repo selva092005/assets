@@ -1,73 +1,74 @@
-@import url('https://fonts.googleapis.com/css2?family=Alkatra:wght@400..700&display=swap');
-
-
+/* ===== Navbar ===== */
 .navbar-custom {
   height: 65px;
   background: linear-gradient(90deg, #36d1dc, #5b86e5);
-  padding: 12px 20px;
-  margin-left: 240px;
-  width: calc(100% - 240px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  color: white;
   transition: all 0.3s ease;
-  border-radius: 0 0 10px 10px;
 }
 
-/* Brand */
-.navbar-custom .navbar-brand {
-  color: #ffffff;
-  font-family: "Alkatra", system-ui;
-  font-optical-sizing: auto;
-  font-size:x-large;
-  font-style: normal;
-
+/* Title */
+.navbar-custom h2 {
+  margin: 0;
 }
 
-/* Links */
-.navbar-custom .nav-link {
-  color: #e0f7ff;
-  margin-left: 10px;
-  transition: 0.3s;
-}
-
-/* Hover */
-.navbar-custom .nav-link:hover {
-  color: #ffffff;
-}
-
-/* Active */
-.navbar-custom .nav-link.active {
-  color: #ffffff;
-  font-weight: 500;
-}
-
-/* Fix toggler icon color */
-.navbar-custom .navbar-toggler {
+/* Toggle button */
+.menu-btn {
+  font-size: 22px;
+  background: none;
   border: none;
+  color: white;
+  cursor: pointer;
 }
 
-.navbar-custom .navbar-toggler-icon {
-  filter: invert(1);
+/* Logout */
+.logout-btn {
+  background: #ff5c5c;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
 }
-/* Navbar alignment with sidebar */
+
+/* Mobile */
 @media (max-width: 992px) {
   .navbar-custom {
-    margin-left: 0;
     width: 100%;
   }
 }
-.logout-btn.gradient {
-  background: linear-gradient(135deg, #ff4d4f, #ff7a45);
-  color: #fff;
-  border: none;
-  padding: 8px 18px;
-  border-radius: 10px;
-  font-weight: 600;
+
+.layout {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: 0.3s;
 }
 
-.logout-btn.gradient:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(255, 77, 79, 0.4);
+/* Main wrapper */
+.main {
+  flex: 1;
+  transition: all 0.3s ease;
+}
+
+/* Desktop spacing */
+.main.open {
+  margin-left: 240px;
+}
+
+.main.close {
+  margin-left: 80px;
+}
+
+/* Mobile fix */
+@media (max-width: 992px) {
+  .main.open,
+  .main.close {
+    margin-left: 0;
+  }
+}
+
+/* Content */
+.main-content {
+  padding: 20px;
 }
