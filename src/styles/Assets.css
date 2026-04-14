@@ -475,11 +475,13 @@
 }
 
 .btn-icon.reset {
-  background-color: #f1f3f5;
+  background-color: #e0e0e0;
+  
   color: #333;
 }
 
 .btn-icon.reset:hover {
-  background-color: #e0e0e0;
+  background: #c0bfc3;
+  border-color: #a89de0;
   transform: scale(1.05);
 }
