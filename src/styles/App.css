@@ -132,11 +132,15 @@
 }
 
 .nav-getstarted-btn {
-  background: #6c47ff;
+  /* background: #6c47ff; */
+    background: #ede9fe;
+  color: #7c3aed;
+  font-weight: 600;
+  text-shadow: 0 0 8px rgba(124, 58, 237, 0.3);
   border: none;
   padding: 9px 22px;
   border-radius: 999px;
-  color: #ffffff;
+  /* color: #ffffff; */
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -147,8 +151,10 @@
 }
 
 .nav-getstarted-btn:hover {
-  background: #5535e0;
-  color: #fff;
+  /* background: #5535e0; */
+  transition: 0.1s;
+  color: black;
+  margin-top: 3px;
 }
 
 /* Mobile */
@@ -264,4 +270,128 @@
   padding: 32px 48px;
   margin-top: 70px;
   min-height: calc(100vh - 70px);
-background: linear-gradient(to right, #f8f9fa, #e9ecef);}
+background: linear-gradient(to right, #f8f9fa, #e9ecef);
+
+/* Card container */
+.view-card {
+  width: 480px;
+  border-radius: 16px;
+  padding: 20px;
+
+  /* Glass effect */
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+
+  border: 1px solid rgba(255, 215, 0, 0.5);
+
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* Title */
+.view-card h5 {
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+/* Each row */
+.view-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 8px 12px;
+  margin-bottom: 8px;
+
+  border-radius: 10px;
+
+  /* soft glass inner */
+  background: rgba(255, 255, 255, 0.05);
+
+  transition: all 0.2s ease;
+}
+
+/* Hover effect */
+.view-row:hover {
+  background: rgba(255, 215, 0, 0.08);
+  transform: translateX(4px);
+}
+
+/* Label */
+.view-row strong {
+  font-size: 13px;
+  color: #aaa;
+  text-transform: capitalize;
+}
+
+/* Value */
+.view-row span {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+}
+
+}
+
+
+
+
+/* Modal Card */
+.white-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 25px;
+  width: 400px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  
+  /* Animation */
+  animation: scaleFadeIn 0.4s ease;
+  transform-origin: center;
+}
+
+/* Title */
+.modal-title {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+/* Detail Rows */
+.detail-row {
+  padding: 8px 10px;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.detail-row:hover {
+  background: #f5f7ff;
+  transform: translateX(5px);
+}
+
+/* Close Button */
+.close-btn {
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  padding: 8px 20px;
+  transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Animation Keyframes */
+@keyframes scaleFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

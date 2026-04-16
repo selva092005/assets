@@ -383,21 +383,27 @@ const handleView = async (item) => {
       {/* VIEW MODAL */}
       {viewModal && viewData && (
         <div className="modal-backdrop-custom">
-          <div className="modal-box">
-            <h5>Asset Details</h5>
+          <div className="modal-box square-card">
+  <h5 className="modal-title">Asset Details</h5>
 
-            {Object.entries(viewData).map(([key, value]) => (
-              <div key={key} className="mb-2">
-                <strong>{key}:</strong> {String(value)}
-              </div>
-            ))}
+  <div className="details-container">
+    {Object.entries(viewData).map(([key, value]) => (
+      <div key={key} className="detail-item">
+        <span className="label">{key}</span>
+        <span className="value">{String(value)}</span>
+      </div>
+    ))}
+  </div>
 
-            <div className="d-flex justify-content-end mt-3">
-              <button className="btn btn-secondary" onClick={() => setViewModal(false)}>
-                Close
-              </button>
-            </div>
-          </div>
+  <div className="d-flex justify-content-center mt-3">
+    <button
+      className="btn close-btn"
+      onClick={() => setViewModal(false)}
+    >
+      Close
+    </button>
+  </div>
+</div>
         </div>
       )}
     </div>
