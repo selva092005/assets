@@ -18,6 +18,8 @@ const Assets = () => {
   const [types, setTypes] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
+  const [totalPages, setTotalPages] = useState(0);
+  const [page, setPage] = useState(0);
 
   // ✅ UPDATED STATE (FULL Swagger match)
   const [newAsset, setNewAsset] = useState({
@@ -36,53 +38,56 @@ const Assets = () => {
     locationId: "",
   });
 
-  useEffect(() => {
-    fetchAssets();
-    fetchTypes();
-  }, []);
+useEffect(() => {
+  fetchAssets(search, page);
+  fetchTypes(); // ✅ ADD THIS LINE
+}, [page]);
 
-  // const fetchAssets = async () => {
-
-  //   try {
-  //     const data = await getAssets();
-  //     console.log("API Response:", data);
-  //     setAssets(data.data.content || []);
-  //   } catch (error) {
-  //     console.log("Error fetching assets", error);
-  //     setAssets([]);
-  //   }
-  // };
-
-const fetchAssets = async (keyword = "") => {
-  try {
-    setLoading(true);
-    const data = await getAssets({
-      keyword: keyword,  // can be empty
-      page: 0,
-      size: 10,
-    });
-
-    console.log("API Response:", data);
-
-    setAssets(data.data.content || []);
-  } catch (error) {
-    console.log("Error fetching assets", error);
-    setAssets([]);
-  } finally{
-    setLoading(false);
-  }
-};
-
-  const fetchTypes = async () => {
+const fetchTypes = async () => {
   try {
     const res = await getAssetTypes();
     console.log("TYPES:", res);
 
-    setTypes(res.data || []);
+    // ✅ THIS IS THE IMPORTANT LINE
+    setTypes(res.data.data || []);
   } catch (error) {
     console.log("Error fetching types", error);
   }
 };
+
+const fetchAssets = async (keyword = "", page = 0) => {
+  try {
+    setLoading(true);
+const data = await getAssets({
+  name: keyword,   // ✅ match backend
+  page: page,
+  // size: 5          // optional but recommended
+});
+
+    console.log("API Response:", data);
+
+    // ✅ FIX HERE
+    setAssets(data.data.content || []);
+    setTotalPages(data.data.totalPages || 0);
+
+  } catch (error) {
+    console.log("Error fetching assets", error);
+    setAssets([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
+//   const fetchTypes = async () => {
+//   try {
+//     const res = await getAssetTypes();
+//     console.log("TYPES:", res);
+
+//     setTypes(res.data || []);
+//   } catch (error) {
+//     console.log("Error fetching types", error);
+//   }
+// };
 
 
 
@@ -154,13 +159,12 @@ const fetchAssets = async (keyword = "") => {
   // ✅ VIEW
 const handleView = async (item) => {
   try {
-    const id = item.id ?? item.assetId;
+    const id = item.assetId; // ✅ FIXED
 
     const res = await getAssetById(id);
 
     console.log("VIEW API:", res);
 
-    // ✅ extract ONLY actual asset
     const asset = res.data;
 
     setViewData(asset);
@@ -183,7 +187,10 @@ const handleView = async (item) => {
 <div className="btn-group-custom">
   <button
     className="btn-icon search"
-    onClick={() => fetchAssets(search)}
+    onClick={() => {
+  setPage(0); // reset page
+  fetchAssets(search, 0);
+}}
     title="Search"
   >
     <i className="bi bi-search"></i>
@@ -192,9 +199,10 @@ const handleView = async (item) => {
   <button
     className="btn-icon reset"
     onClick={() => {
-      setSearch("");
-      fetchAssets("");
-    }}
+  setSearch("");
+  setPage(0);
+  fetchAssets("", 0);
+}}
     title="Reset"
   >
     <i className="bi bi-arrow-clockwise"></i>
@@ -339,6 +347,45 @@ const handleView = async (item) => {
 </tbody>
         </table>
       </div>
+
+      {/* ✅ PAGINATION */}
+<div className="d-flex justify-content-between align-items-center mt-3">
+
+  <span className="text-muted">
+    Page {page + 1} of {totalPages}
+  </span>
+
+  <div>
+    <button
+      className="btn btn-outline-secondary me-2"
+      disabled={page === 0}
+      onClick={() => setPage(page - 1)}
+    >
+      Prev
+    </button>
+
+    {[...Array(totalPages)].map((_, i) => (
+      <button
+        key={i}
+        onClick={() => setPage(i)}
+        className={`btn me-1 ${
+          page === i ? "btn-primary" : "btn-outline-primary"
+        }`}
+      >
+        {i + 1}
+      </button>
+    ))}
+
+    <button
+      className="btn btn-outline-secondary ms-2"
+      disabled={page === totalPages - 1}
+      onClick={() => setPage(page + 1)}
+    >
+      Next
+    </button>
+  </div>
+
+</div>
 
       {/* ✅ MODAL */}
       {showModal && (

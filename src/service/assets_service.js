@@ -10,16 +10,10 @@ import API from "../config/api";
 //   }
 // };
 export const getAssets = async (params = {}) => {
-  try {
-    const res = await API.get("/api/assets", {
-      params, // ✅ THIS ENABLES SEARCH
-    });
-
-    return res.data;
-  } catch (err) {
-    console.error("Get Assets Error:", err);
-    throw err;
-  }
+  const res = await API.get("/api/assets/search", {
+    params,
+  });
+  return res.data;
 };
 
 

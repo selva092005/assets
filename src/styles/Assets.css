@@ -27,7 +27,7 @@
 
 /* ─── Wrapper ────────────────────────────────────────────────────── */
 .ass {
-    margin-top: 80px;
+    margin-top: 60px;
   font-family: var(--sans);
   background: var(--bg);
   min-height: 100vh;
