@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import "../../styles/Login.css";
 import { useNavigate } from "react-router-dom";
-import { login } from "../../service/login";
+import { login, getTokenFromCookie } from "../../service/login";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 function Login() {
@@ -19,7 +19,7 @@ function Login() {
     }
     try {
       await login(email, password);
-      if (localStorage.getItem("token")) {
+      if (getTokenFromCookie()) {
         navigate("/home/assets");
       } else {
         setError("Login failed");

@@ -1,41 +1,28 @@
 import API from "../config/api";
 
 export const login = async (email, password) => {
-  try {
-    const response = await API.post("/api/auth/login", {
-      email,
-      password,
-    });
+  const response = await API.post("/api/auth/login", { email, password });
 
-    console.log("FULL LOGIN RESPONSE:", response);
-    console.log("LOGIN DATA:", response.data);
+  const token =
+    response.data?.token ||
+    response.data?.accessToken ||
+    response.data?.data?.token ||
+    response.headers["authorization"]?.replace("Bearer ", "");
 
-    // ✅ Flexible token extraction
-    let token =
-      response.data?.token ||
-      response.data?.accessToken ||
-      response.data?.data?.token;
+  if (!token) throw new Error("Token not found in response");
 
-    // 🔥 EXTRA FIX (sometimes token is inside headers)
-    if (!token) {
-      token = response.headers["authorization"]?.replace("Bearer ", "");
-    }
+  document.cookie = `token=${token.trim()}; path=/; SameSite=Strict`;
 
-    if (!token) {
-      throw new Error("❌ Token not found in response");
-    }
+  return response.data;
+};
 
-    // ✅ Save clean token
-    localStorage.setItem("token", token.trim());
+export const getTokenFromCookie = () => {
+  return document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("token="))
+    ?.split("=")[1];
+};
 
-    // ✅ Save user
-    localStorage.setItem("user", JSON.stringify(response.data));
-
-    console.log("✅ Saved Token:", token);
-
-    return response.data;
-  } catch (error) {
-    console.error("Login API Error:", error);
-    throw error;
-  }
+export const logout = () => {
+  document.cookie = "token=; path=/; max-age=0";
 };

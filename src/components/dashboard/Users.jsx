@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-import {
-  getAssets, getAssetTypes, addAsset, deleteAsset, updateAsset, getAssetById,
-} from "../../service/assets_service";
+import { getUsers, getUserById, addUser, updateUser, deleteUser } from "../../service/users_service";
 import { FaEye, FaEdit, FaTrash, FaSearch, FaSyncAlt, FaPlus, FaFilter, FaFileExport } from "react-icons/fa";
 import {
   Box, Typography, Button, IconButton, TextField, Select, MenuItem,
@@ -10,35 +8,24 @@ import {
   InputAdornment, Tooltip,
 } from "@mui/material";
 
-const STATUS_COLORS = {
-  AVAILABLE: { bg: "#e8f5e9", color: "#2e7d32" },
-  ASSIGNED:  { bg: "#fff3e0", color: "#e65100" },
-  DAMAGED:   { bg: "#ede7f6", color: "#6a1b9a" },
-};
-const CONDITION_COLORS = {
-  GOOD: { bg: "#e3f2fd", color: "#1565c0" },
-  FAIR: { bg: "#fffde7", color: "#f57f17" },
-  POOR: { bg: "#fce4ec", color: "#ad1457" },
+const ROLE_COLORS = {
+  ADMIN: { bg: "#ede7f6", color: "#6a1b9a" },
+  USER:  { bg: "#e3f2fd", color: "#1565c0" },
 };
 
 function Pill({ label, map }) {
-  const s = map[label] || { bg: "#f5f5f5", color: "#555" };
+  const s = map[String(label).toUpperCase()] || { bg: "#f5f5f5", color: "#555" };
   return (
     <Chip label={label} size="small"
       sx={{ background: s.bg, color: s.color, fontWeight: 600, fontSize: 12, borderRadius: "20px", height: 24 }} />
   );
 }
 
-const EMPTY = {
-  assetId: null, assetName: "", serialNumber: "", brand: "", model: "",
-  purchaseDate: "", warrantyExpiry: "", cost: "", status: "AVAILABLE",
-  assetCondition: "GOOD", notes: "", typeId: "", locationId: "",
-};
+const EMPTY = { userId: null, userName: "", userEmail: "", userPassword: "", userRole: "USER" };
 const PAGE_SIZE = 10;
 
-export default function Assets() {
-  const [assets, setAssets]         = useState([]);
-  const [types, setTypes]           = useState([]);
+export default function Users() {
+  const [users, setUsers]           = useState([]);
   const [search, setSearch]         = useState("");
   const [loading, setLoading]       = useState(false);
   const [totalPages, setTotalPages] = useState(0);
@@ -47,26 +34,18 @@ export default function Assets() {
   const [viewModal, setViewModal]   = useState(false);
   const [viewData, setViewData]     = useState(null);
   const [form, setForm]             = useState(EMPTY);
-  const [filterType, setFilterType] = useState("");
+  const [filterRole, setFilterRole] = useState("");
   const [showCount, setShowCount]   = useState(PAGE_SIZE);
 
-  useEffect(() => { fetchAssets(search, page); fetchTypes(); }, [page]);
+  useEffect(() => { fetchUsers(search, page); }, [page]);
 
-  const fetchTypes = async () => {
-    try {
-      const res = await getAssetTypes();
-      const data = res?.data?.data || res?.data || [];
-      setTypes(data.map(t => ({ typeId: t.typeId || t.type_id, typeName: t.typeName || t.type_name })));
-    } catch (e) { console.log(e); }
-  };
-
-  const fetchAssets = async (keyword = "", pg = 0) => {
+  const fetchUsers = async (keyword = "", pg = 0) => {
     try {
       setLoading(true);
-      const data = await getAssets({ name: keyword || undefined, page: pg });
-      setAssets(data.data.content || []);
-      setTotalPages(data.data.totalPages || 0);
-    } catch (e) { console.log(e); setAssets([]); }
+      const data = await getUsers({ name: keyword || undefined, page: pg, size: 10 });
+      setUsers(data.data?.content || data.content || []);
+      setTotalPages(data.data?.totalPages || data.totalPages || 0);
+    } catch (e) { console.log(e); setUsers([]); }
     finally { setLoading(false); }
   };
 
@@ -74,43 +53,36 @@ export default function Assets() {
 
   const handleSave = async () => {
     try {
-      if (form.assetId) await updateAsset(form.assetId, { ...form, id: form.assetId });
-      else await addAsset(form);
-      fetchAssets(search, page);
+      const payload = { userName: form.userName, userEmail: form.userEmail, userPassword: form.userPassword, userRole: form.userRole };
+      if (form.userId) await updateUser(form.userId, payload);
+      else await addUser(payload);
+      fetchUsers(search, page);
       setShowModal(false);
-    } catch (e) { alert(e.response?.data?.message || "Failed to save asset"); }
+    } catch (e) { alert(e.response?.data?.message || "Failed to save user"); }
   };
 
   const handleEdit = item => {
-    setForm({
-      assetId: item.assetId, assetName: item.assetName || "",
-      serialNumber: item.serialNumber || "", brand: item.brand || "",
-      model: item.model || "", purchaseDate: item.purchaseDate || "",
-      warrantyExpiry: item.warrantyExpiry || "", cost: item.cost || "",
-      status: item.status, assetCondition: item.assetCondition,
-      notes: item.notes || "", typeId: item.assetType?.typeId || "",
-      locationId: "",
-    });
+    setForm({ userId: item.userId || item.id, userName: item.userName || "", userEmail: item.userEmail || "", userPassword: "", userRole: item.userRole || "USER" });
     setShowModal(true);
   };
 
   const handleDelete = async id => {
-    if (!window.confirm("Delete this asset?")) return;
-    try { await deleteAsset(id); fetchAssets(search, page); }
+    if (!window.confirm("Delete this user?")) return;
+    try { await deleteUser(id); fetchUsers(search, page); }
     catch (e) { console.log(e); }
   };
 
   const handleView = async item => {
     try {
-      const res = await getAssetById(item.assetId);
-      setViewData(res.data);
+      const res = await getUserById(item.userId || item.id);
+      setViewData(res.data || res);
       setViewModal(true);
     } catch (e) { console.log(e); }
   };
 
-  const filtered = filterType
-    ? assets.filter(a => String(a.assetType?.typeId) === String(filterType))
-    : assets;
+  const filtered = filterRole
+    ? users.filter(u => String(u.userRole).toUpperCase() === filterRole)
+    : users;
 
   const pageNums = [...Array(totalPages)].map((_, i) => i);
 
@@ -121,11 +93,10 @@ export default function Assets() {
 
       {/* Header row */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2.5, flexWrap: "wrap", gap: 1.25 }}>
-        <Typography sx={{ fontWeight: 700, fontSize: 22, color: "#1a1a2e" }}>Asset</Typography>
+        <Typography sx={{ fontWeight: 700, fontSize: 22, color: "#1a1a2e" }}>Users</Typography>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap" }}>
-          {/* Showing dropdown */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, fontSize: 13, color: "#555" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
             <Typography sx={{ fontSize: 13, color: "#555" }}>Showing</Typography>
             <Select value={showCount} onChange={e => setShowCount(Number(e.target.value))} size="small"
               sx={{ fontSize: 13, borderRadius: "6px", height: 30, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e0e0e0" } }}>
@@ -133,13 +104,12 @@ export default function Assets() {
             </Select>
           </Box>
 
-          {/* Filter by type */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, border: "1px solid #e0e0e0", borderRadius: "8px", px: 1.5, py: "5px", background: "#fff", fontSize: 13, color: "#555" }}>
             <FaFilter size={12} />
-            <Select value={filterType} onChange={e => setFilterType(e.target.value)} displayEmpty size="small"
+            <Select value={filterRole} onChange={e => setFilterRole(e.target.value)} displayEmpty size="small"
               sx={{ fontSize: 13, border: "none", "& .MuiOutlinedInput-notchedOutline": { border: "none" }, height: 24, "& .MuiSelect-select": { p: 0, fontSize: 13, color: "#555" } }}>
-              <MenuItem value="" sx={{ fontSize: 13 }}>All Types</MenuItem>
-              {types.map(t => <MenuItem key={t.typeId} value={t.typeId} sx={{ fontSize: 13 }}>{t.typeName}</MenuItem>)}
+              <MenuItem value="" sx={{ fontSize: 13 }}>All Roles</MenuItem>
+              {["ADMIN", "USER"].map(r => <MenuItem key={r} value={r} sx={{ fontSize: 13 }}>{r}</MenuItem>)}
             </Select>
           </Box>
 
@@ -151,26 +121,26 @@ export default function Assets() {
           <Button variant="contained" startIcon={<FaPlus size={11} />}
             onClick={() => { setForm(EMPTY); setShowModal(true); }}
             sx={{ textTransform: "none", fontSize: 13, fontWeight: 600, borderRadius: "8px", py: "8px", px: 2, background: "#1976d2", boxShadow: "none", "&:hover": { background: "#1565c0", boxShadow: "none" } }}>
-            Add New Asset
+            Add New User
           </Button>
         </Box>
       </Box>
 
       {/* Search bar */}
       <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-        <TextField placeholder="Search by name, serial, brand..." value={search}
+        <TextField placeholder="Search by name, email..." value={search}
           onChange={e => setSearch(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && (setPage(0), fetchAssets(search, 0))}
+          onKeyDown={e => e.key === "Enter" && (setPage(0), fetchUsers(search, 0))}
           size="small" sx={{ flex: 1, maxWidth: 380, ...inputSx }}
           InputProps={{ startAdornment: <InputAdornment position="start"><FaSearch style={{ color: "#aaa", fontSize: 13 }} /></InputAdornment> }} />
         <Tooltip title="Search">
-          <IconButton onClick={() => { setPage(0); fetchAssets(search, 0); }}
+          <IconButton onClick={() => { setPage(0); fetchUsers(search, 0); }}
             sx={{ width: 34, height: 34, border: "1px solid #e0e0e0", borderRadius: "8px", background: "#fff" }}>
             <FaSearch size={13} color="#1976d2" />
           </IconButton>
         </Tooltip>
         <Tooltip title="Reset">
-          <IconButton onClick={() => { setSearch(""); setPage(0); fetchAssets("", 0); }}
+          <IconButton onClick={() => { setSearch(""); setFilterRole(""); setPage(0); fetchUsers("", 0); }}
             sx={{ width: 34, height: 34, border: "1px solid #e0e0e0", borderRadius: "8px", background: "#fff" }}>
             <FaSyncAlt size={13} color="#757575" />
           </IconButton>
@@ -180,43 +150,40 @@ export default function Assets() {
       {/* Table card */}
       <Paper elevation={0} sx={{ borderRadius: "14px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)", overflow: "hidden" }}>
         <Box sx={{ overflowX: "auto" }}>
-          <Table sx={{ minWidth: 900, fontSize: 13 }}>
+          <Table sx={{ minWidth: 600, fontSize: 13 }}>
             <TableHead>
               <TableRow sx={{ background: "#f8f9fc" }}>
-                {["Asset Name ↕", "Asset ID ↕", "Value ↕", "Brand ↕", "Type ↕", "Status ↕", "Condition ↕", "Actions ↕"].map(h => (
+                {["User Name ↕", "User ID ↕", "Email ↕", "Role ↕", "Actions ↕"].map(h => (
                   <TableCell key={h} sx={{ py: "12px", px: 2, fontSize: 12, fontWeight: 600, color: "#888", whiteSpace: "nowrap", borderBottom: "1px solid #f0f0f0" }}>{h}</TableCell>
                 ))}
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={8} sx={{ textAlign: "center", py: 5, color: "#aaa" }}>Loading...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} sx={{ textAlign: "center", py: 5, color: "#aaa" }}>Loading...</TableCell></TableRow>
               ) : filtered.slice(0, showCount).length > 0 ? filtered.slice(0, showCount).map((item, i) => (
                 <TableRow key={i} sx={{ borderBottom: "1px solid #f0f0f0", "&:hover": { background: "#fafbff" } }}>
                   <TableCell sx={{ py: "12px", px: 2, color: "#333" }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
                       <Avatar sx={{ width: 32, height: 32, background: "#e8eaf6", color: "#3949ab", fontWeight: 700, fontSize: 13 }}>
-                        {(item.assetName || "A")[0].toUpperCase()}
+                        {(item.userName || "U")[0].toUpperCase()}
                       </Avatar>
-                      <Typography sx={{ fontWeight: 500, fontSize: 13 }}>{item.assetName}</Typography>
+                      <Typography sx={{ fontWeight: 500, fontSize: 13 }}>{item.userName}</Typography>
                     </Box>
                   </TableCell>
-                  <TableCell sx={{ py: "12px", px: 2, color: "#888", fontFamily: "monospace", fontSize: 13 }}>#{item.assetId}</TableCell>
-                  <TableCell sx={{ py: "12px", px: 2, color: "#333", fontSize: 13 }}>₹{item.cost || "—"}</TableCell>
-                  <TableCell sx={{ py: "12px", px: 2, color: "#333", fontSize: 13 }}>{item.brand || "—"}</TableCell>
-                  <TableCell sx={{ py: "12px", px: 2, color: "#333", fontSize: 13 }}>{item.assetType?.typeName || "—"}</TableCell>
-                  <TableCell sx={{ py: "12px", px: 2 }}><Pill label={item.status} map={STATUS_COLORS} /></TableCell>
-                  <TableCell sx={{ py: "12px", px: 2 }}><Pill label={item.assetCondition} map={CONDITION_COLORS} /></TableCell>
+                  <TableCell sx={{ py: "12px", px: 2, color: "#888", fontFamily: "monospace", fontSize: 13 }}>#{item.userId || item.id}</TableCell>
+                  <TableCell sx={{ py: "12px", px: 2, color: "#333", fontSize: 13 }}>{item.userEmail || "—"}</TableCell>
+                  <TableCell sx={{ py: "12px", px: 2 }}><Pill label={item.userRole} map={ROLE_COLORS} /></TableCell>
                   <TableCell sx={{ py: "12px", px: 2, textAlign: "center" }}>
                     <Box sx={{ display: "flex", justifyContent: "center", gap: 0.75 }}>
                       <ActionBtn title="View" color="#1976d2" hoverBg="#e3f2fd" onClick={() => handleView(item)}><FaEye size={13} /></ActionBtn>
                       <ActionBtn title="Edit" color="#f59e0b" hoverBg="#fffbeb" onClick={() => handleEdit(item)}><FaEdit size={13} /></ActionBtn>
-                      <ActionBtn title="Delete" color="#ef4444" hoverBg="#fef2f2" onClick={() => handleDelete(item.assetId)}><FaTrash size={13} /></ActionBtn>
+                      <ActionBtn title="Delete" color="#ef4444" hoverBg="#fef2f2" onClick={() => handleDelete(item.userId || item.id)}><FaTrash size={13} /></ActionBtn>
                     </Box>
                   </TableCell>
                 </TableRow>
               )) : (
-                <TableRow><TableCell colSpan={8} sx={{ textAlign: "center", py: 5, color: "#aaa" }}>No assets found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} sx={{ textAlign: "center", py: 5, color: "#aaa" }}>No users found</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -240,45 +207,24 @@ export default function Assets() {
       <Dialog open={showModal} onClose={() => setShowModal(false)} maxWidth="xs" fullWidth
         PaperProps={{ sx: { borderRadius: "14px", p: 1 } }}>
         <DialogTitle sx={{ fontWeight: 700, fontSize: 16, pb: 1 }}>
-          {form.assetId ? "Edit Asset" : "Add New Asset"}
+          {form.userId ? "Edit User" : "Add New User"}
         </DialogTitle>
         <DialogContent sx={{ pt: "8px !important" }}>
           <Grid container spacing={1.25}>
-            {[["assetName","Asset Name"],["serialNumber","Serial Number"],["brand","Brand"],["model","Model"]].map(([n,l]) => (
-              <Grid item xs={6} key={n}>
-                <TextField name={n} placeholder={l} value={form[n]} onChange={handleChange} size="small" fullWidth sx={inputSx} />
-              </Grid>
-            ))}
             <Grid item xs={6}>
-              <TextField name="purchaseDate" type="date" value={form.purchaseDate} onChange={handleChange} size="small" fullWidth sx={inputSx} />
+              <TextField name="userName" placeholder="Username" value={form.userName} onChange={handleChange} size="small" fullWidth sx={inputSx} />
             </Grid>
             <Grid item xs={6}>
-              <TextField name="warrantyExpiry" type="date" value={form.warrantyExpiry} onChange={handleChange} size="small" fullWidth sx={inputSx} />
+              <TextField name="userEmail" placeholder="Email" type="email" value={form.userEmail} onChange={handleChange} size="small" fullWidth sx={inputSx} />
             </Grid>
             <Grid item xs={6}>
-              <TextField name="cost" type="number" placeholder="Cost" value={form.cost} onChange={handleChange} size="small" fullWidth sx={inputSx} />
+              <TextField name="userPassword" placeholder="Password" type="password" value={form.userPassword} onChange={handleChange} size="small" fullWidth sx={inputSx} />
             </Grid>
             <Grid item xs={6}>
-              <TextField name="locationId" type="number" placeholder="Location ID" value={form.locationId} onChange={handleChange} size="small" fullWidth sx={inputSx} />
-            </Grid>
-            <Grid item xs={6}>
-              <Select name="status" value={form.status} onChange={handleChange} size="small" fullWidth sx={{ borderRadius: "8px", fontSize: 13, height: 36, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e0e0e0" } }}>
-                {["AVAILABLE","ASSIGNED","DAMAGED"].map(s => <MenuItem key={s} value={s} sx={{ fontSize: 13 }}>{s}</MenuItem>)}
+              <Select name="userRole" value={form.userRole} onChange={handleChange} size="small" fullWidth
+                sx={{ borderRadius: "8px", fontSize: 13, height: 36, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e0e0e0" } }}>
+                {["ADMIN", "USER"].map(r => <MenuItem key={r} value={r} sx={{ fontSize: 13 }}>{r}</MenuItem>)}
               </Select>
-            </Grid>
-            <Grid item xs={6}>
-              <Select name="assetCondition" value={form.assetCondition} onChange={handleChange} size="small" fullWidth sx={{ borderRadius: "8px", fontSize: 13, height: 36, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e0e0e0" } }}>
-                {["GOOD","FAIR","POOR"].map(c => <MenuItem key={c} value={c} sx={{ fontSize: 13 }}>{c}</MenuItem>)}
-              </Select>
-            </Grid>
-            <Grid item xs={6}>
-              <Select name="typeId" value={form.typeId} onChange={handleChange} displayEmpty size="small" fullWidth sx={{ borderRadius: "8px", fontSize: 13, height: 36, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e0e0e0" } }}>
-                <MenuItem value="" sx={{ fontSize: 13 }}>Select Type</MenuItem>
-                {types.map(t => <MenuItem key={t.typeId} value={t.typeId} sx={{ fontSize: 13 }}>{t.typeName}</MenuItem>)}
-              </Select>
-            </Grid>
-            <Grid item xs={12}>
-              <TextField name="notes" placeholder="Notes" value={form.notes} onChange={handleChange} size="small" fullWidth sx={inputSx} />
             </Grid>
           </Grid>
         </DialogContent>
@@ -287,18 +233,18 @@ export default function Assets() {
             sx={{ textTransform: "none", fontSize: 13, borderColor: "#e0e0e0", color: "#555", borderRadius: "8px" }}>Cancel</Button>
           <Button onClick={handleSave} variant="contained"
             sx={{ textTransform: "none", fontSize: 13, fontWeight: 600, borderRadius: "8px", background: "#1976d2", boxShadow: "none", "&:hover": { background: "#1565c0", boxShadow: "none" } }}>
-            {form.assetId ? "Update" : "Save"}
+            {form.userId ? "Update" : "Save"}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* View Modal */}
-      <Dialog open={viewModal} onClose={() => setViewModal(false)} maxWidth="sm" fullWidth
+      <Dialog open={viewModal} onClose={() => setViewModal(false)} maxWidth="xs" fullWidth
         PaperProps={{ sx: { borderRadius: "14px", p: 1 } }}>
-        <DialogTitle sx={{ fontWeight: 700, fontSize: 16, pb: 1 }}>Asset Details</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: 16, pb: 1 }}>User Details</DialogTitle>
         <DialogContent sx={{ pt: "8px !important" }}>
-          <Grid container spacing={1} sx={{ maxHeight: "60vh", overflowY: "auto" }}>
-            {viewData && Object.entries(viewData).map(([k, v]) => (
+          <Grid container spacing={1}>
+            {viewData && [["ID", viewData.userId || viewData.id], ["Username", viewData.userName], ["Email", viewData.userEmail], ["Role", viewData.userRole]].map(([k, v]) => (
               <Grid item xs={6} key={k}>
                 <Box sx={{ background: "#f5f6fa", borderRadius: "8px", p: "8px 12px", border: "1px solid #e8e8e8" }}>
                   <Typography sx={{ fontSize: 10, color: "#999", textTransform: "uppercase", letterSpacing: "0.06em", mb: 0.25 }}>{k}</Typography>

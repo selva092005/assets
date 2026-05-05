@@ -1,113 +1,172 @@
-import "../../styles/Dashboard.css";
+import React, { useEffect, useState } from "react";
+import {
+  Grid, Card, CardContent, Typography,
+  Table, TableHead, TableRow, TableCell, TableBody, Button
+} from "@mui/material";
+import { getAssets } from "../../service/assets_service";
+import { Container } from "@mui/material";
+
 const Dashboard = () => {
+  const [assets, setAssets] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAssets();
+  }, []);
+
+  const fetchAssets = async () => {
+    try {
+      const res = await getAssets();
+
+      console.log("API RESPONSE:", res);
+
+      // ✅ handle all possible formats safely
+      const data = res?.data?.content || res?.data || [];
+
+      setAssets(Array.isArray(data) ? data : []);
+
+    } catch (err) {
+      console.error("Dashboard Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ SAFE FIELD ACCESS (adjust if needed after console check)
+  const getName = (a) => a.name || a.assetName || a.title || "No Name";
+  const getAssigned = (a) =>
+    a.assignedTo || a.assigned_user || a.userName || "Not Assigned";
+
+  // ✅ STATUS FIX (based on your API: AVAILABLE)
+  const totalAssets = assets.length;
+
+  const activeAssets = assets.filter(
+    (a) => a.status === "AVAILABLE" || a.status === "ACTIVE"
+  ).length;
+
+  const inactiveAssets = assets.filter(
+    (a) => a.status === "INACTIVE"
+  ).length;
+
+  const maintenanceAssets = assets.filter(
+    (a) => a.status === "MAINTENANCE"
+  ).length;
+
+  const unassignedAssets = assets.filter(
+    (a) => !a.assignedTo && !a.assigned_user
+  ).length;
+
+  if (loading) return <p>Loading Dashboard...</p>;
+
   return (
-    <div className="dashboard">
+    <Container maxWidth="xl" sx={{ mt: 4 }}>
+          <Grid container spacing={3}>
 
-      {/* Top Header */}
-      <div className="dashboard-header d-flex justify-content-between align-items-center">
-        <h4>Dashboard</h4>
-      </div>
+      {/* ✅ KPI CARDS */}
+      {[
+        { title: "Total Assets", value: totalAssets },
+        { title: "Active", value: activeAssets },
+        { title: "Inactive", value: inactiveAssets },
+        { title: "Maintenance", value: maintenanceAssets },
+      ].map((card, i) => (
+        <Grid item xs={12} sm={6} md={3} key={i}>
+          <Card sx={{ borderRadius: 3 }}>
+            <CardContent>
+              <Typography variant="h6">{card.title}</Typography>
+              <Typography variant="h4">{card.value}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      ))}
 
-      {/* Cards */}
-      <div className="row mt-3">
-        <div className="col-md-3">
-          <div className="card stat-card">
-            <h6>Total Asset Value</h6>
-            <h3>₹7,59,500</h3>
-            <p>10 total assets</p>
-          </div>
-        </div>
+      {/* ✅ QUICK ACTIONS */}
+      <Grid item xs={12}>
+        <Card sx={{ borderRadius: 3 }}>
+          <CardContent>
+            <Typography variant="h6">Quick Actions</Typography>
+            <Button variant="contained" sx={{ m: 1 }}>Add Asset</Button>
+            <Button variant="contained" sx={{ m: 1 }}>Assign Asset</Button>
+            <Button variant="contained" sx={{ m: 1 }}>Maintenance</Button>
+          </CardContent>
+        </Card>
+      </Grid>
 
-        <div className="col-md-3">
-          <div className="card stat-card green">
-            <h6>Active Assets</h6>
-            <h3>8</h3>
-            <p>80% of total</p>
-          </div>
-        </div>
+      {/* ✅ ALERTS */}
+      <Grid item xs={12} md={6}>
+        <Card sx={{ borderRadius: 3 }}>
+          <CardContent>
+            <Typography variant="h6">Alerts</Typography>
+            <Typography>Unassigned Assets: {unassignedAssets}</Typography>
+            <Typography>Maintenance Assets: {maintenanceAssets}</Typography>
+          </CardContent>
+        </Card>
+      </Grid>
 
-        <div className="col-md-3">
-          <div className="card stat-card yellow">
-            <h6>In Maintenance</h6>
-            <h3>1</h3>
-            <p>Needs attention</p>
-          </div>
-        </div>
+      {/* ✅ USER SUMMARY */}
+      <Grid item xs={12} md={6}>
+        <Card sx={{ borderRadius: 3 }}>
+          <CardContent>
+            <Typography variant="h6">User Summary</Typography>
+            <Typography>
+              Total Users: {
+                [...new Set(
+                  assets.map(a => getAssigned(a)).filter(u => u !== "Not Assigned")
+                )].length
+              }
+            </Typography>
+          </CardContent>
+        </Card>
+      </Grid>
 
-        <div className="col-md-3">
-          <div className="card stat-card red">
-            <h6>Retired</h6>
-            <h3>1</h3>
-            <p>Decommissioned</p>
-          </div>
-        </div>
-      </div>
+      {/* ✅ RECENT ACTIVITY */}
+      <Grid item xs={12}>
+        <Card sx={{ borderRadius: 3 }}>
+          <CardContent>
+            <Typography variant="h6">Recent Activity</Typography>
 
-      {/* Content */}
-      <div className="row mt-4">
-        
-        {/* Recent Assets */}
-        <div className="col-md-8">
-          <div className="card p-3">
-            <h6>Recent Assets</h6>
-
-            {[
-              { name: "MacBook Pro 16", price: "₹2,20,000", status: "Active" },
-              { name: "Dell Monitor 27", price: "₹32,000", status: "Active" },
-              { name: "Standing Desk", price: "₹45,000", status: "Maintenance" }
-            ].map((item, i) => (
-              <div key={i} className="asset-item d-flex justify-content-between">
-                <span>{item.name}</span>
-                <div>
-                  <span className="me-3">{item.price}</span>
-                  <span className={`badge ${item.status === "Active" ? "bg-success" : "bg-warning"}`}>
-                    {item.status}
-                  </span>
-                </div>
-              </div>
+            {assets.slice(0, 5).map((a) => (
+              <Typography key={a.id}>
+                {getName(a)} → {a.status}
+              </Typography>
             ))}
 
-            <button className="btn btn-dark mt-3">View All Assets →</button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+      </Grid>
 
-        {/* Right Side */}
-        <div className="col-md-4">
-          <div className="card p-3 mb-3">
-            <h6>Category Breakdown</h6>
-            <p>IT Equipment</p>
-            <div className="progress mb-2">
-              <div className="progress-bar bg-dark" style={{ width: "70%" }}></div>
-            </div>
+      {/* ✅ TABLE */}
+      <Grid item xs={12}>
+        <Card sx={{ borderRadius: 3 }}>
+          <CardContent>
+            <Typography variant="h6">Asset Overview</Typography>
 
-            <p>Office Furniture</p>
-            <div className="progress">
-              <div className="progress-bar bg-warning" style={{ width: "50%" }}></div>
-            </div>
-          </div>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Assigned To</TableCell>
+                </TableRow>
+              </TableHead>
 
-          <div className="card p-3">
-            <h6>Status Overview</h6>
+              <TableBody>
+                {assets.slice(0, 10).map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell>{getName(a)}</TableCell>
+                    <TableCell>{a.status}</TableCell>
+                    <TableCell>{getAssigned(a)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
 
-            <p>Active</p>
-            <div className="progress mb-2">
-              <div className="progress-bar bg-success" style={{ width: "80%" }}></div>
-            </div>
+          </CardContent>
+        </Card>
+      </Grid>
 
-            <p>Maintenance</p>
-            <div className="progress mb-2">
-              <div className="progress-bar bg-warning" style={{ width: "20%" }}></div>
-            </div>
+    </Grid>
+    </Container>
 
-            <p>Retired</p>
-            <div className="progress">
-              <div className="progress-bar bg-danger" style={{ width: "10%" }}></div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
   );
 };
 

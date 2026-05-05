@@ -5,17 +5,16 @@ const API = axios.create({
   baseURL: import.meta.env.VITE_BASE_URL,
 });
 
-// ✅ AUTO ATTACH TOKEN
+const getTokenFromCookie = () =>
+  document.cookie
+    .split("; ")
+    .find((row) => row.startsWith("token="))
+    ?.split("=")[1];
+
 API.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
-
-    console.log("TOKEN:", token); // 🔍 debug
-
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
+    const token = getTokenFromCookie();
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
   (error) => Promise.reject(error)
