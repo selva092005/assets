@@ -1,6 +1,8 @@
 /* ===== Navbar — Fly.io style ===== */
 
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Poppins:wght@500&display=swap');.navbar-custom {
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@600;700&family=Playfair+Display:wght@700;800&display=swap');
+
+.navbar-custom {
   position: fixed;
   top: 0;
   left: 0;

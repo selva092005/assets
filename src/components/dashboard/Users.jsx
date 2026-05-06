@@ -9,15 +9,24 @@ import {
 } from "@mui/material";
 
 const ROLE_COLORS = {
-  ADMIN: { bg: "#ede7f6", color: "#6a1b9a" },
-  USER:  { bg: "#e3f2fd", color: "#1565c0" },
+  ADMIN: { bg: "linear-gradient(135deg, #dbeafe, #e0f2fe)", border: "#3b82f6", color: "#1e3a8a" },
+  USER:  { bg: "linear-gradient(135deg, #f8fafc, #e0e7ff)", border: "#818cf8", color: "#3730a3" },
 };
 
 function Pill({ label, map }) {
-  const s = map[String(label).toUpperCase()] || { bg: "#f5f5f5", color: "#555" };
+  const s = map[String(label).toUpperCase()] || { bg: "#f5f5f5", border: "#e5e7eb", color: "#555" };
   return (
     <Chip label={label} size="small"
-      sx={{ background: s.bg, color: s.color, fontWeight: 600, fontSize: 12, borderRadius: "20px", height: 24 }} />
+      sx={{
+        background: s.bg,
+        border: `1px solid ${s.border}`,
+        boxShadow: "inset 0 1px 0 rgba(255, 255, 255, 0.9)",
+        color: s.color,
+        fontWeight: 700,
+        fontSize: 12,
+        borderRadius: "8px",
+        height: 24,
+      }} />
   );
 }
 
