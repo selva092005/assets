@@ -13,12 +13,12 @@ import {
 const STATUS_COLORS = {
   AVAILABLE: { bg: "#e8f5e9", color: "#2e7d32" },
   ASSIGNED:  { bg: "#fff3e0", color: "#e65100" },
-  DAMAGED:   { bg: "#ede7f6", color: "#6a1b9a" },
+  DAMAGED:   { bg: "#ffebee", color: "#c62828" },
 };
 const CONDITION_COLORS = {
   GOOD: { bg: "#e3f2fd", color: "#1565c0" },
   FAIR: { bg: "#fffde7", color: "#f57f17" },
-  POOR: { bg: "#fce4ec", color: "#ad1457" },
+  POOR: { bg: "#ffebee", color: "#c62828" },
 };
 
 function Pill({ label, map }) {
@@ -32,9 +32,39 @@ function Pill({ label, map }) {
 const EMPTY = {
   assetId: null, assetName: "", serialNumber: "", brand: "", model: "",
   purchaseDate: "", warrantyExpiry: "", cost: "", status: "AVAILABLE",
-  assetCondition: "GOOD", notes: "", typeId: "", locationId: "",
+  assetCondition: "GOOD", notes: "", typeId: "", locationName: "",  // ✅ added locationName
 };
+
 const PAGE_SIZE = 10;
+
+// ✅ FIX: res is already the array (res.data was returned from service)
+const getAssetTypeList = (res) => {
+  const list = Array.isArray(res)
+    ? res
+    : res?.content || res?.data?.content || res?.data || [];
+
+  return list
+    .map(t => ({
+      typeId: t.typeId ?? t.type_id ?? t.id,
+      typeName: t.typeName ?? t.type_name ?? t.name,
+    }))
+    .filter(t => t.typeId != null && t.typeName);
+};
+
+const buildAssetPayload = form => ({
+  assetName: form.assetName,
+  serialNumber: form.serialNumber,
+  brand: form.brand,
+  model: form.model,
+  purchaseDate: form.purchaseDate || null,
+  warrantyExpiry: form.warrantyExpiry || null,
+  cost: form.cost === "" ? null : Number(form.cost),
+  status: form.status,
+  assetCondition: form.assetCondition,
+  notes: form.notes,
+  typeId: form.typeId === "" ? null : Number(form.typeId),
+  locationName: form.locationName || null,   // ✅ added
+});
 
 export default function Assets() {
   const [assets, setAssets]         = useState([]);
@@ -52,21 +82,27 @@ export default function Assets() {
 
   useEffect(() => { fetchAssets(search, page); fetchTypes(); }, [page]);
 
-  const fetchTypes = async () => {
-    try {
-      const res = await getAssetTypes();
-      const data = res?.data?.data || res?.data || [];
-      setTypes(data.map(t => ({ typeId: t.typeId || t.type_id, typeName: t.typeName || t.type_name })));
-    } catch (e) { console.log(e); }
-  };
+const fetchTypes = async () => {
+  try {
+    const res = await getAssetTypes();
+
+    console.log("TYPE RESPONSE:", res);
+
+    setTypes(res || []);
+
+  } catch (e) {
+    console.error("fetchTypes error:", e);
+    setTypes([]);
+  }
+};
 
   const fetchAssets = async (keyword = "", pg = 0) => {
     try {
       setLoading(true);
       const data = await getAssets({ name: keyword || undefined, page: pg });
-      setAssets(data.data.content || []);
-      setTotalPages(data.data.totalPages || 0);
-    } catch (e) { console.log(e); setAssets([]); }
+      setAssets(data.data?.content || data.content || []);
+      setTotalPages(data.data?.totalPages || data.totalPages || 0);
+    } catch (e) { console.error(e); setAssets([]); }
     finally { setLoading(false); }
   };
 
@@ -74,47 +110,71 @@ export default function Assets() {
 
   const handleSave = async () => {
     try {
-      if (form.assetId) await updateAsset(form.assetId, { ...form, id: form.assetId });
-      else await addAsset(form);
+      const payload = buildAssetPayload(form);
+      if (form.assetId) await updateAsset(form.assetId, payload);
+      else await addAsset(payload);
       fetchAssets(search, page);
       setShowModal(false);
     } catch (e) { alert(e.response?.data?.message || "Failed to save asset"); }
   };
 
-  const handleEdit = item => {
-    setForm({
-      assetId: item.assetId, assetName: item.assetName || "",
-      serialNumber: item.serialNumber || "", brand: item.brand || "",
-      model: item.model || "", purchaseDate: item.purchaseDate || "",
-      warrantyExpiry: item.warrantyExpiry || "", cost: item.cost || "",
-      status: item.status, assetCondition: item.assetCondition,
-      notes: item.notes || "", typeId: item.assetType?.typeId || "",
-      locationId: "",
-    });
-    setShowModal(true);
-  };
+  // ✅ FIX: AssetResponseDTO only sends typeName (no typeId), so resolve typeId by matching typeName in loaded types
+const handleEdit = (item) => {
+  // The API response has typeName but no typeId — look it up from the loaded types list
+  const resolvedTypeId = String(
+    types.find(t => t.typeName === (item.typeName || item.assetType?.typeName))?.typeId ?? ""
+  );
+
+  setForm({
+    assetId: item.assetId,
+    assetName: item.assetName || "",
+    serialNumber: item.serialNumber || "",
+    brand: item.brand || "",
+    model: item.model || "",
+    purchaseDate: item.purchaseDate || "",
+    warrantyExpiry: item.warrantyExpiry || "",
+    cost: item.cost || "",
+    status: item.status || "AVAILABLE",
+    assetCondition: item.assetCondition || "GOOD",
+    notes: item.notes || "",
+    locationName: item.locationName || "",
+    typeId: resolvedTypeId,   // ✅ resolved from typeName → typeId
+  });
+
+  setShowModal(true);
+};
 
   const handleDelete = async id => {
     if (!window.confirm("Delete this asset?")) return;
     try { await deleteAsset(id); fetchAssets(search, page); }
-    catch (e) { console.log(e); }
+    catch (e) { console.error(e); }
   };
 
   const handleView = async item => {
     try {
       const res = await getAssetById(item.assetId);
-      setViewData(res.data);
+      setViewData(res.data ?? res);
       setViewModal(true);
-    } catch (e) { console.log(e); }
+    } catch (e) { console.error(e); }
   };
 
   const filtered = filterType
-    ? assets.filter(a => String(a.assetType?.typeId) === String(filterType))
+    ? assets.filter(a =>
+        String(a.assetType?.typeId) === String(filterType) ||
+        String(types.find(t => t.typeName === a.typeName)?.typeId) === String(filterType)
+      )
     : assets;
 
   const pageNums = [...Array(totalPages)].map((_, i) => i);
 
-  const inputSx = { "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13, height: 36 }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e0e0e0" } };
+  const inputSx = {
+    "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13, height: 36 },
+    "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e0e0e0" }
+  };
+  const selectSx = {
+    borderRadius: "8px", fontSize: 13, height: 36,
+    "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e0e0e0" }
+  };
 
   return (
     <Box sx={{ mt: "60px", p: "2rem 2.5rem", background: "#f4f6fb", minHeight: "100vh", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
@@ -124,7 +184,6 @@ export default function Assets() {
         <Typography sx={{ fontWeight: 700, fontSize: 22, color: "#1a1a2e" }}>Asset</Typography>
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, flexWrap: "wrap" }}>
-          {/* Showing dropdown */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, fontSize: 13, color: "#555" }}>
             <Typography sx={{ fontSize: 13, color: "#555" }}>Showing</Typography>
             <Select value={showCount} onChange={e => setShowCount(Number(e.target.value))} size="small"
@@ -133,8 +192,7 @@ export default function Assets() {
             </Select>
           </Box>
 
-          {/* Filter by type */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, border: "1px solid #e0e0e0", borderRadius: "8px", px: 1.5, py: "5px", background: "#fff", fontSize: 13, color: "#555" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, border: "1px solid #e0e0e0", borderRadius: "8px", px: 1.5, py: "5px", background: "#fff" }}>
             <FaFilter size={12} />
             <Select value={filterType} onChange={e => setFilterType(e.target.value)} displayEmpty size="small"
               sx={{ fontSize: 13, border: "none", "& .MuiOutlinedInput-notchedOutline": { border: "none" }, height: 24, "& .MuiSelect-select": { p: 0, fontSize: 13, color: "#555" } }}>
@@ -144,7 +202,7 @@ export default function Assets() {
           </Box>
 
           <Button variant="outlined" startIcon={<FaFileExport size={12} />}
-            sx={{ textTransform: "none", fontSize: 13, borderColor: "#e0e0e0", color: "#555", borderRadius: "8px", py: "7px", px: 1.75, "&:hover": { borderColor: "#bbb", background: "#fafafa" } }}>
+            sx={{ textTransform: "none", fontSize: 13, borderColor: "#e0e0e0", color: "#555", borderRadius: "8px", py: "7px", px: 1.75 }}>
             Export
           </Button>
 
@@ -177,23 +235,23 @@ export default function Assets() {
         </Tooltip>
       </Box>
 
-      {/* Table card */}
+      {/* Table */}
       <Paper elevation={0} sx={{ borderRadius: "14px", boxShadow: "0 2px 12px rgba(0,0,0,0.07)", overflow: "hidden" }}>
         <Box sx={{ overflowX: "auto" }}>
           <Table sx={{ minWidth: 900, fontSize: 13 }}>
             <TableHead>
               <TableRow sx={{ background: "#f8f9fc" }}>
-                {["Asset Name ↕", "Asset ID ↕", "Value ↕", "Brand ↕", "Type ↕", "Status ↕", "Condition ↕", "Actions ↕"].map(h => (
+                {["Asset Name ↕", "Asset ID ↕", "Value ↕", "Brand ↕", "Type ↕", "Location ↕", "Status ↕", "Condition ↕", "Actions ↕"].map(h => (
                   <TableCell key={h} sx={{ py: "12px", px: 2, fontSize: 12, fontWeight: 600, color: "#888", whiteSpace: "nowrap", borderBottom: "1px solid #f0f0f0" }}>{h}</TableCell>
                 ))}
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={8} sx={{ textAlign: "center", py: 5, color: "#aaa" }}>Loading...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} sx={{ textAlign: "center", py: 5, color: "#aaa" }}>Loading...</TableCell></TableRow>
               ) : filtered.slice(0, showCount).length > 0 ? filtered.slice(0, showCount).map((item, i) => (
                 <TableRow key={i} sx={{ borderBottom: "1px solid #f0f0f0", "&:hover": { background: "#fafbff" } }}>
-                  <TableCell sx={{ py: "12px", px: 2, color: "#333" }}>
+                  <TableCell sx={{ py: "12px", px: 2 }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
                       <Avatar sx={{ width: 32, height: 32, background: "#e8eaf6", color: "#3949ab", fontWeight: 700, fontSize: 13 }}>
                         {(item.assetName || "A")[0].toUpperCase()}
@@ -204,7 +262,10 @@ export default function Assets() {
                   <TableCell sx={{ py: "12px", px: 2, color: "#888", fontFamily: "monospace", fontSize: 13 }}>#{item.assetId}</TableCell>
                   <TableCell sx={{ py: "12px", px: 2, color: "#333", fontSize: 13 }}>₹{item.cost || "—"}</TableCell>
                   <TableCell sx={{ py: "12px", px: 2, color: "#333", fontSize: 13 }}>{item.brand || "—"}</TableCell>
-                  <TableCell sx={{ py: "12px", px: 2, color: "#333", fontSize: 13 }}>{item.assetType?.typeName || "—"}</TableCell>
+                  {/* support both flat typeName and nested assetType.typeName */}
+                  <TableCell sx={{ py: "12px", px: 2, color: "#333", fontSize: 13 }}>{item.typeName || item.assetType?.typeName || "—"}</TableCell>
+                  {/* ✅ NEW: Location column */}
+                  <TableCell sx={{ py: "12px", px: 2, color: "#555", fontSize: 13 }}>{item.locationName || "—"}</TableCell>
                   <TableCell sx={{ py: "12px", px: 2 }}><Pill label={item.status} map={STATUS_COLORS} /></TableCell>
                   <TableCell sx={{ py: "12px", px: 2 }}><Pill label={item.assetCondition} map={CONDITION_COLORS} /></TableCell>
                   <TableCell sx={{ py: "12px", px: 2, textAlign: "center" }}>
@@ -216,7 +277,7 @@ export default function Assets() {
                   </TableCell>
                 </TableRow>
               )) : (
-                <TableRow><TableCell colSpan={8} sx={{ textAlign: "center", py: 5, color: "#aaa" }}>No assets found</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} sx={{ textAlign: "center", py: 5, color: "#aaa" }}>No assets found</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -227,9 +288,7 @@ export default function Assets() {
           <Button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} sx={pageBtnSx(false)}>‹ Previous</Button>
           <Box sx={{ display: "flex", gap: 0.5 }}>
             {pageNums.map(i => (
-              <Button key={i} onClick={() => setPage(i)} sx={pageBtnSx(page === i)}>
-                {String(i + 1).padStart(2, "0")}
-              </Button>
+              <Button key={i} onClick={() => setPage(i)} sx={pageBtnSx(page === i)}>{String(i + 1).padStart(2, "0")}</Button>
             ))}
           </Box>
           <Button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1} sx={pageBtnSx(false)}>Next ›</Button>
@@ -259,23 +318,42 @@ export default function Assets() {
               <TextField name="cost" type="number" placeholder="Cost" value={form.cost} onChange={handleChange} size="small" fullWidth sx={inputSx} />
             </Grid>
             <Grid item xs={6}>
-              <TextField name="locationId" type="number" placeholder="Location ID" value={form.locationId} onChange={handleChange} size="small" fullWidth sx={inputSx} />
-            </Grid>
-            <Grid item xs={6}>
-              <Select name="status" value={form.status} onChange={handleChange} size="small" fullWidth sx={{ borderRadius: "8px", fontSize: 13, height: 36, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e0e0e0" } }}>
+              <Select name="status" value={form.status} onChange={handleChange} size="small" fullWidth sx={selectSx}>
                 {["AVAILABLE","ASSIGNED","DAMAGED"].map(s => <MenuItem key={s} value={s} sx={{ fontSize: 13 }}>{s}</MenuItem>)}
               </Select>
             </Grid>
             <Grid item xs={6}>
-              <Select name="assetCondition" value={form.assetCondition} onChange={handleChange} size="small" fullWidth sx={{ borderRadius: "8px", fontSize: 13, height: 36, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e0e0e0" } }}>
+              <Select name="assetCondition" value={form.assetCondition} onChange={handleChange} size="small" fullWidth sx={selectSx}>
                 {["GOOD","FAIR","POOR"].map(c => <MenuItem key={c} value={c} sx={{ fontSize: 13 }}>{c}</MenuItem>)}
               </Select>
             </Grid>
+            {/* ✅ Type dropdown — shows typeName, stores typeId */}
             <Grid item xs={6}>
-              <Select name="typeId" value={form.typeId} onChange={handleChange} displayEmpty size="small" fullWidth sx={{ borderRadius: "8px", fontSize: 13, height: 36, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e0e0e0" } }}>
-                <MenuItem value="" sx={{ fontSize: 13 }}>Select Type</MenuItem>
-                {types.map(t => <MenuItem key={t.typeId} value={t.typeId} sx={{ fontSize: 13 }}>{t.typeName}</MenuItem>)}
-              </Select>
+              <Select
+  name="typeId"
+  value={form.typeId}
+  onChange={handleChange}
+  displayEmpty
+  size="small"
+  fullWidth
+>
+  <MenuItem value="" disabled>
+    Select Type
+  </MenuItem>
+
+  {types.map((t) => (
+    <MenuItem
+      key={t.typeId}
+      value={String(t.typeId)}
+    >
+      {t.typeName}
+    </MenuItem>
+  ))}
+</Select>
+            </Grid>
+            {/* ✅ Location Name field */}
+            <Grid item xs={6}>
+              <TextField name="locationName" placeholder="Location Name" value={form.locationName} onChange={handleChange} size="small" fullWidth sx={inputSx} />
             </Grid>
             <Grid item xs={12}>
               <TextField name="notes" placeholder="Notes" value={form.notes} onChange={handleChange} size="small" fullWidth sx={inputSx} />

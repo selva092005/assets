@@ -4,6 +4,11 @@ import Dashboard from "./components/dashboard/Dashboard";
 import Login from "./components/pages/Login";
 import Assets from "./components/dashboard/Assets";
 import Users from "./components/dashboard/Users";
+import { getTokenFromCookie } from "./service/login";
+
+function ProtectedRoute({ children }) {
+  return getTokenFromCookie() ? children : <Navigate to="/" replace />;
+}
 
 function App() {
   return (
@@ -12,7 +17,7 @@ function App() {
       <Route path="/" element={<Login />} />
 
       {/* Layout with Sidebar + Navbar */}
-      <Route path="/home" element={<Layout />}>
+      <Route path="/home" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="assets" element={<Assets />} />
         {/* <Route path="assets" element={<h1>Assets</h1>} /> */}

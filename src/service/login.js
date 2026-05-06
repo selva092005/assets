@@ -11,7 +11,7 @@ export const login = async (email, password) => {
 
   if (!token) throw new Error("Token not found in response");
 
-  document.cookie = `token=${token.trim()}; path=/; SameSite=Strict`;
+  document.cookie = `token=${token.trim()}; path=/; SameSite=Strict; max-age=86400`;
 
   return response.data;
 };
@@ -24,5 +24,5 @@ export const getTokenFromCookie = () => {
 };
 
 export const logout = () => {
-  document.cookie = "token=; path=/; max-age=0";
+  document.cookie = "token=; path=/; max-age=0; SameSite=Strict";
 };

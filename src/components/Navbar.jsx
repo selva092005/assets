@@ -2,6 +2,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import "../styles/App.css";
 import { useState, useEffect } from "react";
 import amsLogo from "../assets/ams_no_bg.png";
+import { getTokenFromCookie, logout } from "../service/login";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -9,12 +10,11 @@ const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    setIsLoggedIn(!!token);
+    setIsLoggedIn(!!getTokenFromCookie());
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    logout();
     setIsLoggedIn(false);
     navigate("/");
   };
