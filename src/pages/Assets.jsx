@@ -18,11 +18,12 @@ import TablePagination from "../components/common/TablePagination";
 import AssetTable      from "../components/assets/AssetTable";
 import AssetForm       from "../components/assets/AssetForm";
 import AssetView       from "../components/assets/AssetView";
+import AssetQR         from "../components/assets/AssetQR";
 
 const EMPTY = {
   assetId: null, assetName: "", serialNumber: "", brand: "", model: "",
   purchaseDate: "", warrantyExpiry: "", cost: "", status: "AVAILABLE",
-  assetCondition: "GOOD", notes: "", typeId: "", locationName: "",
+  assetCondition: "GOOD", notes: "", typeId: "", locationName: "", companyName: "",
 };
 
 const getAssetTypeList = (res) => {
@@ -47,6 +48,8 @@ export default function AssetsPage() {
   const [showModal, setShowModal] = useState(false);
   const [viewModal, setViewModal] = useState(false);
   const [viewData,  setViewData]  = useState(null);
+  const [qrModal,   setQrModal]   = useState(false);
+  const [qrAsset,   setQrAsset]   = useState(null);
 
   // Re-fetch whenever page, search, filterType, or showCount changes
   useEffect(() => {
@@ -99,6 +102,7 @@ export default function AssetsPage() {
       notes:          form.notes,
       typeId:         form.typeId === ""  ? null : Number(form.typeId),
       locationName:   form.locationName   || null,
+      companyName:    form.companyName    || null,
     };
     try {
       if (form.assetId) await updateAsset(form.assetId, payload);
@@ -127,6 +131,7 @@ export default function AssetsPage() {
       assetCondition: item.assetCondition || "GOOD",
       notes:          item.notes          || "",
       locationName:   item.locationName   || "",
+      companyName:    item.companyName    || "",
       typeId:         resolvedTypeId,
     });
     setShowModal(true);
@@ -143,6 +148,14 @@ export default function AssetsPage() {
       const res = await getAssetById(item.assetId);
       setViewData(res.data ?? res);
       setViewModal(true);
+    } catch (e) { console.error(e); }
+  };
+
+  const handleQR = async (item) => {
+    try {
+      const res = await getAssetById(item.assetId);
+      setQrAsset(res.data ?? res);
+      setQrModal(true);
     } catch (e) { console.error(e); }
   };
 
@@ -215,7 +228,7 @@ export default function AssetsPage() {
       <TableCard>
         {loading
           ? <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
-          : <AssetTable assets={assets} loading={false} onView={handleView} onEdit={handleEdit} onDelete={handleDelete} />
+          : <AssetTable assets={assets} loading={false} onView={handleView} onEdit={handleEdit} onDelete={handleDelete} onQR={handleQR} />
         }
         <TablePagination page={page} totalPages={totalPages} onPageChange={(pg) => dispatch(setAssetPage(pg))} />
       </TableCard>
@@ -229,6 +242,7 @@ export default function AssetsPage() {
         onClose={() => setShowModal(false)}
       />
       <AssetView open={viewModal} data={viewData} onClose={() => setViewModal(false)} />
+      <AssetQR   open={qrModal}   asset={qrAsset} onClose={() => setQrModal(false)} />
     </Box>
   );
 }

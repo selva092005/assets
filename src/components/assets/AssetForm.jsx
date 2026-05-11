@@ -50,6 +50,9 @@ export default function AssetForm({ open, form, types, onChange, onSave, onClose
           <Grid item xs={6}>
             <TextField name="locationName" placeholder="Location Name" value={form.locationName} onChange={onChange} size="small" fullWidth sx={inputSx} />
           </Grid>
+          <Grid item xs={6}>
+            <TextField name="companyName" placeholder="Company Name" value={form.companyName} onChange={onChange} size="small" fullWidth sx={inputSx} />
+          </Grid>
           <Grid item xs={12}>
             <TextField name="notes" placeholder="Notes" value={form.notes} onChange={onChange} size="small" fullWidth sx={inputSx} />
           </Grid>
