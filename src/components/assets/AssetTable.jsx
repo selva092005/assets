@@ -4,9 +4,9 @@ import { COLORS, STATUS_COLORS, CONDITION_COLORS } from "../../theme/tokens";
 import StatusPill from "../common/StatusPill";
 import ActionBtn  from "../common/ActionBtn";
 
-const HEADERS = ["Asset Name ↕", "Asset ID ↕", "Value ↕", "Brand ↕", "Type ↕", "Location ↕", "Status ↕", "Condition ↕", "Actions ↕"];
+const HEADERS = ["Asset Name ↕", "Asset Code ↕", "Asset ID ↕", "Value ↕", "Type ↕", "Location ↕", "Status ↕", "Condition ↕", "Actions ↕"];
 
-export default function AssetTable({ assets, loading, onView, onEdit, onDelete, onQR }) {
+export default function AssetTable({ assets, loading, canWrite = true, onView, onEdit, onDelete, onQR }) {
   return (
     <Table sx={{ minWidth: 900, fontSize: 13 }}>
       <TableHead>
@@ -32,9 +32,9 @@ export default function AssetTable({ assets, loading, onView, onEdit, onDelete, 
                 <Typography sx={{ fontWeight: 500, fontSize: 13 }}>{item.assetName}</Typography>
               </Box>
             </TableCell>
+            <TableCell sx={{ py: "12px", px: 2, color: COLORS.textFaint, fontFamily: "monospace", fontSize: 13, fontWeight: 600 }}>{item.assetCode || "—"}</TableCell>
             <TableCell sx={{ py: "12px", px: 2, color: COLORS.textFaint, fontFamily: "monospace", fontSize: 13 }}>#{item.assetId}</TableCell>
             <TableCell sx={{ py: "12px", px: 2, color: "#333", fontSize: 13 }}>₹{item.cost || "—"}</TableCell>
-            <TableCell sx={{ py: "12px", px: 2, color: "#333", fontSize: 13 }}>{item.brand || "—"}</TableCell>
             <TableCell sx={{ py: "12px", px: 2, color: "#333", fontSize: 13 }}>{item.typeName || item.assetType?.typeName || "—"}</TableCell>
             <TableCell sx={{ py: "12px", px: 2, color: COLORS.textMuted, fontSize: 13 }}>{item.locationName || "—"}</TableCell>
             <TableCell sx={{ py: "12px", px: 2 }}><StatusPill label={item.status} map={STATUS_COLORS} /></TableCell>
@@ -43,8 +43,8 @@ export default function AssetTable({ assets, loading, onView, onEdit, onDelete, 
               <Box sx={{ display: "flex", justifyContent: "center", gap: 0.75 }}>
                 <ActionBtn title="View"   color="#1976d2" hoverBg="#e3f2fd" onClick={() => onView(item)}><FaEye     size={13} /></ActionBtn>
                 <ActionBtn title="QR Code" color="#7c3aed" hoverBg="#ede9fe" onClick={() => onQR(item)}><FaQrcode  size={13} /></ActionBtn>
-                <ActionBtn title="Edit"   color="#f59e0b" hoverBg="#fffbeb" onClick={() => onEdit(item)}><FaEdit    size={13} /></ActionBtn>
-                <ActionBtn title="Delete" color="#ef4444" hoverBg="#fef2f2" onClick={() => onDelete(item.assetId)}><FaTrash  size={13} /></ActionBtn>
+                {canWrite && <ActionBtn title="Edit"   color="#f59e0b" hoverBg="#fffbeb" onClick={() => onEdit(item)}><FaEdit    size={13} /></ActionBtn>}
+                {canWrite && <ActionBtn title="Delete" color="#ef4444" hoverBg="#fef2f2" onClick={() => onDelete(item.assetId)}><FaTrash  size={13} /></ActionBtn>}
               </Box>
             </TableCell>
           </TableRow>

@@ -1,7 +1,8 @@
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Grid, Box, Typography,
+  Button, Grid, Box, Typography, Divider,
 } from "@mui/material";
+import { FaTimes, FaInfoCircle } from "react-icons/fa";
 
 /**
  * ViewModal – renders a grid of key / value pairs from any data object
@@ -22,20 +23,79 @@ export default function ViewModal({ open, title = "Details", data, fields, onClo
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="sm"
+      maxWidth="md"
       fullWidth
-      PaperProps={{ sx: { borderRadius: "14px", p: 1 } }}
+      PaperProps={{ sx: { borderRadius: "16px", boxShadow: "0 8px 32px rgba(0,0,0,0.12)" } }}
     >
-      <DialogTitle sx={{ fontWeight: 700, fontSize: 16, pb: 1 }}>{title}</DialogTitle>
-      <DialogContent sx={{ pt: "8px !important" }}>
-        <Grid container spacing={1} sx={{ maxHeight: "60vh", overflowY: "auto" }}>
-          {entries.map(([k, v]) => (
+      <DialogTitle sx={{ 
+        display: "flex", 
+        justifyContent: "space-between", 
+        alignItems: "center",
+        borderBottom: "1px solid #f0f0f0",
+        pb: 2,
+        pt: 2.5,
+        px: 3,
+      }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box sx={{ 
+            width: 40, 
+            height: 40, 
+            borderRadius: "10px", 
+            background: "linear-gradient(135deg, #1976d2 0%, #1565c0 100%)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "white"
+          }}>
+            <FaInfoCircle size={18} />
+          </Box>
+          <Box>
+            <Typography sx={{ fontWeight: 700, fontSize: 20, color: "#212121" }}>
+              {title}
+            </Typography>
+            <Typography sx={{ fontSize: 13, color: "#757575", mt: 0.25 }}>
+              View complete information
+            </Typography>
+          </Box>
+        </Box>
+        <Box onClick={onClose} sx={{ cursor: "pointer", color: "#9e9e9e", "&:hover": { color: "#424242" } }}>
+          <FaTimes size={18} />
+        </Box>
+      </DialogTitle>
+
+      <DialogContent sx={{ pt: 3, pb: 2, px: 3 }}>
+        <Grid container spacing={2} sx={{ maxHeight: "65vh", overflowY: "auto", pr: 1 }}>
+          {entries.map(([k, v], idx) => (
             <Grid item xs={6} key={k}>
-              <Box sx={{ background: "#f5f6fa", borderRadius: "8px", p: "8px 12px", border: "1px solid #e8e8e8" }}>
-                <Typography sx={{ fontSize: 10, color: "#999", textTransform: "uppercase", letterSpacing: "0.06em", mb: 0.25 }}>
-                  {k}
+              <Box sx={{ 
+                background: "linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%)", 
+                borderRadius: "10px", 
+                p: "14px 16px", 
+                border: "1px solid #e8e8e8",
+                transition: "all 0.2s ease",
+                "&:hover": {
+                  borderColor: "#1976d2",
+                  boxShadow: "0 2px 8px rgba(25, 118, 210, 0.1)",
+                  transform: "translateY(-1px)"
+                }
+              }}>
+                <Typography sx={{ 
+                  fontSize: 11, 
+                  color: "#1976d2", 
+                  textTransform: "uppercase", 
+                  letterSpacing: "0.08em", 
+                  fontWeight: 600,
+                  mb: 0.75 
+                }}>
+                  {k.replace(/([A-Z])/g, ' $1').trim()}
                 </Typography>
-                <Typography sx={{ fontSize: 13, fontWeight: 500, wordBreak: "break-word" }}>
+                <Typography sx={{ 
+                  fontSize: 14, 
+                  fontWeight: 500, 
+                  color: "#212121",
+                  wordBreak: "break-word",
+                  lineHeight: 1.5
+                }}>
                   {String(v ?? "—")}
                 </Typography>
               </Box>
@@ -43,11 +103,25 @@ export default function ViewModal({ open, title = "Details", data, fields, onClo
           ))}
         </Grid>
       </DialogContent>
-      <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
+
+      <DialogActions sx={{ borderTop: "1px solid #f0f0f0", px: 3, py: 2.5, justifyContent: "center" }}>
         <Button
           onClick={onClose}
-          variant="outlined"
-          sx={{ textTransform: "none", fontSize: 13, borderColor: "#e0e0e0", color: "#555", borderRadius: "8px" }}
+          variant="contained"
+          sx={{ 
+            textTransform: "none", 
+            fontSize: 14, 
+            fontWeight: 600,
+            borderRadius: "8px",
+            px: 4,
+            py: 1,
+            background: "linear-gradient(135deg, #1976d2 0%, #1565c0 100%)",
+            boxShadow: "0 4px 12px rgba(25, 118, 210, 0.3)",
+            "&:hover": {
+              background: "linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)",
+              boxShadow: "0 6px 16px rgba(25, 118, 210, 0.4)"
+            }
+          }}
         >
           Close
         </Button>

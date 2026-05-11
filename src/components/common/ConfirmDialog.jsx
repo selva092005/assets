@@ -11,13 +11,16 @@ export default function ConfirmDialog({
   message  = "Are you sure?",
   onConfirm,
   onCancel,
+  onClose,
   confirmLabel = "Confirm",
   cancelLabel  = "Cancel",
 }) {
+  const handleCancel = onCancel || onClose;
+  
   return (
     <Dialog
       open={open}
-      onClose={onCancel}
+      onClose={handleCancel}
       PaperProps={{ sx: { borderRadius: "14px", p: 1, maxWidth: 380 } }}
     >
       <DialogTitle sx={{ fontWeight: 700, fontSize: 16, pb: 1 }}>{title}</DialogTitle>
@@ -26,7 +29,7 @@ export default function ConfirmDialog({
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
         <Button
-          onClick={onCancel}
+          onClick={handleCancel}
           variant="outlined"
           sx={{ textTransform: "none", fontSize: 13, borderColor: "#e0e0e0", color: "#555", borderRadius: "8px" }}
         >
@@ -35,7 +38,7 @@ export default function ConfirmDialog({
         <Button
           onClick={onConfirm}
           variant="contained"
-          sx={{ textTransform: "none", fontSize: 13, fontWeight: 600, borderRadius: "8px", background: "#1976d2", boxShadow: "none", "&:hover": { background: "#1565c0" } }}
+          sx={{ textTransform: "none", fontSize: 13, fontWeight: 600, borderRadius: "8px", background: "#ef4444", boxShadow: "none", "&:hover": { background: "#dc2626" } }}
         >
           {confirmLabel}
         </Button>

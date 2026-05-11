@@ -11,6 +11,13 @@ function ProtectedRoute({ children }) {
   return isLoggedIn ? children : <Navigate to="/" replace />;
 }
 
+function RoleProtectedRoute({ children, allowedRoles }) {
+  const { isLoggedIn, userRole } = useSelector((s) => s.auth);
+  if (!isLoggedIn) return <Navigate to="/" replace />;
+  if (!allowedRoles.includes(userRole)) return <Navigate to="/home" replace />;
+  return children;
+}
+
 export default function AppRoutes() {
   return (
     <Routes>
@@ -19,7 +26,7 @@ export default function AppRoutes() {
       <Route path="/home" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index          element={<Dashboard />} />
         <Route path="assets"  element={<Assets />} />
-        <Route path="users"   element={<Users />} />
+        <Route path="users"   element={<RoleProtectedRoute allowedRoles={["manager"]}><Users /></RoleProtectedRoute>} />
         <Route path="reports" element={<h1>Reports</h1>} />
       </Route>
 

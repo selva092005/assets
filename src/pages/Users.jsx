@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Navigate } from "react-router-dom";
 import { Box, Button, Select, MenuItem, CircularProgress } from "@mui/material";
 import { FaFilter, FaFileExport, FaPlus } from "react-icons/fa";
+import toast from "react-hot-toast";
 import {
   fetchUsers,
   setUserPage, setUserSearch, setUserFilter, resetUserFilters,
@@ -16,6 +18,7 @@ import TablePagination from "../components/common/TablePagination";
 import UserTable       from "../components/users/UserTable";
 import UserForm        from "../components/users/UserForm";
 import UserView        from "../components/users/UserView";
+import ConfirmDialog   from "../components/common/ConfirmDialog";
 
 const EMPTY = { userId: null, userName: "", userEmail: "", userPassword: "", userRole: "USER" };
 
@@ -23,17 +26,24 @@ export default function UsersPage() {
   const dispatch = useDispatch();
   const { items: users, totalPages, page, search, filterRole, loading } =
     useSelector((s) => s.users);
+  const { userRole } = useSelector((s) => s.auth);
 
-  const [showCount, setShowCount] = useState(10);
-  const [form,      setForm]      = useState(EMPTY);
-  const [showModal, setShowModal] = useState(false);
-  const [viewModal, setViewModal] = useState(false);
-  const [viewData,  setViewData]  = useState(null);
+  const [showCount,    setShowCount]    = useState(10);
+  const [form,         setForm]         = useState(EMPTY);
+  const [showModal,    setShowModal]    = useState(false);
+  const [viewModal,    setViewModal]    = useState(false);
+  const [viewData,     setViewData]     = useState(null);
+  const [confirmOpen,  setConfirmOpen]  = useState(false);
+  const [deleteId,     setDeleteId]     = useState(null);
 
   // Re-fetch whenever page, showCount, or filterRole changes
   useEffect(() => {
-    dispatch(fetchUsers({ keyword: search, page, size: showCount, role: filterRole || undefined }));
-  }, [page, showCount, filterRole]);
+    if (userRole === "manager") {
+      dispatch(fetchUsers({ keyword: search, page, size: showCount, role: filterRole || undefined }));
+    }
+  }, [page, showCount, filterRole, dispatch, search, userRole]);
+
+  if (userRole !== "manager") return <Navigate to="/home" replace />;
 
   const reload = () =>
     dispatch(fetchUsers({ keyword: search, page, size: showCount, role: filterRole || undefined }));
@@ -68,12 +78,17 @@ export default function UsersPage() {
         userPassword: form.userPassword,
         userRole:     form.userRole,
       };
-      if (form.userId) await updateUser(form.userId, payload);
-      else             await addUser(payload);
+      if (form.userId) {
+        await updateUser(form.userId, payload);
+        toast.success("User updated successfully");
+      } else {
+        await addUser(payload);
+        toast.success("User created successfully");
+      }
       reload();
       setShowModal(false);
     } catch (e) {
-      alert(e.response?.data?.message || "Failed to save user");
+      toast.error(e.response?.data?.message || "Failed to save user");
     }
   };
 
@@ -88,10 +103,22 @@ export default function UsersPage() {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this user?")) return;
-    try { await deleteUser(id); reload(); }
-    catch (e) { console.error(e); }
+  const handleDelete = (id) => {
+    setDeleteId(id);
+    setConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await deleteUser(deleteId);
+      toast.success("User deleted successfully");
+      reload();
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Failed to delete user");
+    } finally {
+      setConfirmOpen(false);
+      setDeleteId(null);
+    }
   };
 
   const handleView = async (item) => {
@@ -99,7 +126,10 @@ export default function UsersPage() {
       const res = await getUserById(item.userId || item.id);
       setViewData(res.data || res);
       setViewModal(true);
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      toast.error("Failed to load user details");
+      console.error(e); 
+    }
   };
 
   return (
@@ -184,6 +214,14 @@ export default function UsersPage() {
         onClose={() => setShowModal(false)}
       />
       <UserView open={viewModal} data={viewData} onClose={() => setViewModal(false)} />
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Delete User"
+        message="Are you sure you want to delete this user? This action cannot be undone."
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmOpen(false)}
+        confirmLabel="Delete"
+      />
     </Box>
   );
 }

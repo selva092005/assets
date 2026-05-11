@@ -5,7 +5,7 @@ export const fetchUsers = createAsyncThunk(
   "users/fetchUsers",
   async ({ keyword = "", page = 0, size = 10, role } = {}, { rejectWithValue }) => {
     try {
-      const params = { name: keyword || undefined, page, size };
+      const params = { username: keyword || undefined, page, size };
       if (role) params.role = role;
 
       const data = await getUsers(params);

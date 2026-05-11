@@ -3,10 +3,9 @@ import { getAssets } from "../../services/assets_service";
 
 export const fetchAssets = createAsyncThunk(
   "assets/fetchAssets",
-  async ({ keyword = "", page = 0, size = 10, typeId } = {}, { rejectWithValue }) => {
+  async ({ keyword = "", page = 0, size = 10, type } = {}, { rejectWithValue }) => {
     try {
-      const params = { name: keyword || undefined, page, size };
-      if (typeId) params.typeId = typeId;
+      const params = { name: keyword || undefined, type: type || undefined, page, size };
 
       const data = await getAssets(params);
       return {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Box, Button, Select, MenuItem, CircularProgress } from "@mui/material";
 import { FaFilter, FaFileExport, FaPlus } from "react-icons/fa";
+import toast from "react-hot-toast";
 import {
   fetchAssets,
   setAssetPage, setAssetSearch, setAssetFilter, resetAssetFilters,
@@ -19,6 +20,7 @@ import AssetTable      from "../components/assets/AssetTable";
 import AssetForm       from "../components/assets/AssetForm";
 import AssetView       from "../components/assets/AssetView";
 import AssetQR         from "../components/assets/AssetQR";
+import ConfirmDialog   from "../components/common/ConfirmDialog";
 
 const EMPTY = {
   assetId: null, assetName: "", serialNumber: "", brand: "", model: "",
@@ -41,20 +43,26 @@ export default function AssetsPage() {
   const dispatch = useDispatch();
   const { items: assets, totalPages, page, search, filterType, loading } =
     useSelector((s) => s.assets);
+  const { userRole } = useSelector((s) => s.auth);
 
-  const [types,     setTypes]     = useState([]);
-  const [showCount, setShowCount] = useState(10);
-  const [form,      setForm]      = useState(EMPTY);
-  const [showModal, setShowModal] = useState(false);
-  const [viewModal, setViewModal] = useState(false);
-  const [viewData,  setViewData]  = useState(null);
-  const [qrModal,   setQrModal]   = useState(false);
-  const [qrAsset,   setQrAsset]   = useState(null);
+  const [types,        setTypes]        = useState([]);
+  const [showCount,    setShowCount]    = useState(10);
+  const [form,         setForm]         = useState(EMPTY);
+  const [showModal,    setShowModal]    = useState(false);
+  const [viewModal,    setViewModal]    = useState(false);
+  const [viewData,     setViewData]     = useState(null);
+  const [qrModal,      setQrModal]      = useState(false);
+  const [qrAsset,      setQrAsset]      = useState(null);
+  const [confirmOpen,  setConfirmOpen]  = useState(false);
+  const [deleteId,     setDeleteId]     = useState(null);
+
+  const canWrite = userRole !== "user";
 
   // Re-fetch whenever page, search, filterType, or showCount changes
   useEffect(() => {
-    dispatch(fetchAssets({ keyword: search, page, size: showCount, typeId: filterType || undefined }));
-  }, [page, showCount, filterType]);
+    const typeName = filterType ? types.find(t => String(t.typeId) === String(filterType))?.typeName : undefined;
+    dispatch(fetchAssets({ keyword: search, page, size: showCount, type: typeName }));
+  }, [page, showCount, filterType, dispatch, search, types]);
 
   // Load asset types once
   useEffect(() => {
@@ -63,12 +71,15 @@ export default function AssetsPage() {
       .catch(() => setTypes([]));
   }, []);
 
-  const reload = () =>
-    dispatch(fetchAssets({ keyword: search, page, size: showCount, typeId: filterType || undefined }));
+  const reload = () => {
+    const typeName = filterType ? types.find(t => String(t.typeId) === String(filterType))?.typeName : undefined;
+    dispatch(fetchAssets({ keyword: search, page, size: showCount, type: typeName }));
+  };
 
   const handleSearch = () => {
     dispatch(setAssetPage(0));
-    dispatch(fetchAssets({ keyword: search, page: 0, size: showCount, typeId: filterType || undefined }));
+    const typeName = filterType ? types.find(t => String(t.typeId) === String(filterType))?.typeName : undefined;
+    dispatch(fetchAssets({ keyword: search, page: 0, size: showCount, type: typeName }));
   };
 
   const handleReset = () => {
@@ -105,12 +116,17 @@ export default function AssetsPage() {
       companyName:    form.companyName    || null,
     };
     try {
-      if (form.assetId) await updateAsset(form.assetId, payload);
-      else              await addAsset(payload);
+      if (form.assetId) {
+        await updateAsset(form.assetId, payload);
+        toast.success("Asset updated successfully");
+      } else {
+        await addAsset(payload);
+        toast.success("Asset created successfully");
+      }
       reload();
       setShowModal(false);
     } catch (e) {
-      alert(e.response?.data?.message || "Failed to save asset");
+      toast.error(e.response?.data?.message || "Failed to save asset");
     }
   };
 
@@ -137,10 +153,22 @@ export default function AssetsPage() {
     setShowModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this asset?")) return;
-    try { await deleteAsset(id); reload(); }
-    catch (e) { console.error(e); }
+  const handleDelete = (id) => {
+    setDeleteId(id);
+    setConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await deleteAsset(deleteId, "admin");
+      toast.success("Asset deleted successfully");
+      reload();
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Failed to delete asset");
+    } finally {
+      setConfirmOpen(false);
+      setDeleteId(null);
+    }
   };
 
   const handleView = async (item) => {
@@ -148,7 +176,10 @@ export default function AssetsPage() {
       const res = await getAssetById(item.assetId);
       setViewData(res.data ?? res);
       setViewModal(true);
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      toast.error("Failed to load asset details");
+      console.error(e); 
+    }
   };
 
   const handleQR = async (item) => {
@@ -156,7 +187,10 @@ export default function AssetsPage() {
       const res = await getAssetById(item.assetId);
       setQrAsset(res.data ?? res);
       setQrModal(true);
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+      toast.error("Failed to generate QR code");
+      console.error(e); 
+    }
   };
 
   return (
@@ -209,6 +243,7 @@ export default function AssetsPage() {
               variant="contained"
               startIcon={<FaPlus size={11} />}
               onClick={() => { setForm(EMPTY); setShowModal(true); }}
+              disabled={!canWrite}
               sx={{ textTransform: "none", fontSize: 13, fontWeight: 600, borderRadius: "8px", py: "8px", px: 2, background: COLORS.primary, boxShadow: "none", "&:hover": { background: COLORS.primaryDark, boxShadow: "none" } }}
             >
               Add New Asset
@@ -228,7 +263,7 @@ export default function AssetsPage() {
       <TableCard>
         {loading
           ? <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
-          : <AssetTable assets={assets} loading={false} onView={handleView} onEdit={handleEdit} onDelete={handleDelete} onQR={handleQR} />
+          : <AssetTable assets={assets} loading={false} canWrite={canWrite} onView={handleView} onEdit={handleEdit} onDelete={handleDelete} onQR={handleQR} />
         }
         <TablePagination page={page} totalPages={totalPages} onPageChange={(pg) => dispatch(setAssetPage(pg))} />
       </TableCard>
@@ -243,6 +278,14 @@ export default function AssetsPage() {
       />
       <AssetView open={viewModal} data={viewData} onClose={() => setViewModal(false)} />
       <AssetQR   open={qrModal}   asset={qrAsset} onClose={() => setQrModal(false)} />
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Delete Asset"
+        message="Are you sure you want to delete this asset? This action cannot be undone."
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmOpen(false)}
+        confirmLabel="Delete"
+      />
     </Box>
   );
 }

@@ -1,27 +1,34 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import toast from "react-hot-toast";
 import { loginThunk } from "../store/slices/authSlice";
 import "../styles/Login.css";
 
 export default function Login() {
   const dispatch    = useDispatch();
   const navigate    = useNavigate();
-  const { loading, error: storeError } = useSelector((s) => s.auth);
+  const { isLoggedIn, loading, error: storeError } = useSelector((s) => s.auth);
 
   const [email,        setEmail]        = useState("");
   const [password,     setPassword]     = useState("");
   const [localError,   setLocalError]   = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  if (isLoggedIn) return <Navigate to="/home" replace />;
+
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!email || !password) { setLocalError("Please enter email and password"); return; }
     setLocalError("");
     const result = await dispatch(loginThunk(email, password));
-    // loginThunk sets credentials in Redux; navigate on success
-    if (result?.success) navigate("/home/assets");
+    if (result?.success) {
+      toast.success("Welcome back!");
+      navigate("/home");
+    } else {
+      toast.error(storeError || "Login failed");
+    }
   };
 
   const error = localError || storeError || "";

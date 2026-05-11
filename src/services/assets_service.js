@@ -1,7 +1,15 @@
 import API from "../config/api";
 
 export const getAssets = async (params = {}) => {
-  const res = await API.get("/api/assets/search", { params });
+  const { name, type, page, size } = params;
+  const res = await API.get("/api/assets/search", { 
+    params: { 
+      name: name || undefined, 
+      type: type || undefined, 
+      page, 
+      size 
+    } 
+  });
   return res.data;
 };
 
@@ -16,12 +24,12 @@ export const getAssetById = async (id) => {
 };
 
 export const updateAsset = async (id, data) => {
-  const res = await API.put(`/api/assets/${id}`, { ...data, id });
+  const res = await API.put(`/api/assets/${id}`, data);
   return res.data;
 };
 
-export const deleteAsset = async (id) => {
-  const res = await API.delete(`/api/assets/${id}`);
+export const deleteAsset = async (id, adminName = "admin") => {
+  const res = await API.delete(`/api/assets/${id}`, { params: { adminName } });
   return res.data;
 };
 

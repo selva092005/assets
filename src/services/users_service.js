@@ -1,7 +1,15 @@
 import API from "../config/api";
 
 export const getUsers = async (params = {}) => {
-  const res = await API.get("/api/users/search/page", { params });
+  const { username, role, page, size } = params;
+  const res = await API.get("/api/users/search/page", { 
+    params: { 
+      username: username || undefined, 
+      role: role || undefined, 
+      page, 
+      size 
+    } 
+  });
   return res.data;
 };
 

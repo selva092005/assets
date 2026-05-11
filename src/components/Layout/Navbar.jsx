@@ -21,6 +21,13 @@ const navItems = [
 ];
 
 const roleBadgeStyles = {
+  manager: {
+    bg:     "linear-gradient(135deg, #052e16 0%, #15803d 50%, #4ade80 100%)",
+    border: "rgba(74,222,128,0.82)",
+    color:  "#ffffff",
+    iconBg: "rgba(255,255,255,0.18)",
+    shadow: "0 14px 32px rgba(21,128,61,0.22), 0 8px 22px rgba(74,222,128,0.24)",
+  },
   admin: {
     bg:     "linear-gradient(135deg, #172554 0%, #1e40af 48%, #60a5fa 100%)",
     border: "rgba(147,197,253,0.82)",
@@ -57,9 +64,17 @@ const Navbar = () => {
   const isActivePath = (item) =>
     item.end ? location.pathname === item.path : location.pathname.startsWith(item.path);
 
+  const isManager = userRole === "manager";
   const isAdmin   = userRole === "admin";
-  const RoleIcon  = isAdmin ? AdminPanelSettingsIcon : AccountCircleIcon;
-  const roleStyle = isAdmin ? roleBadgeStyles.admin : roleBadgeStyles.user;
+  const isUser    = userRole === "user";
+  const RoleIcon  = isManager ? AdminPanelSettingsIcon : isAdmin ? AdminPanelSettingsIcon : AccountCircleIcon;
+  const roleStyle = isManager ? roleBadgeStyles.manager : isAdmin ? roleBadgeStyles.admin : roleBadgeStyles.user;
+  const roleLabel = isManager ? "Manager" : isAdmin ? "Admin" : "User";
+
+  const visibleNavItems = navItems.filter(item => {
+    if (item.path === "/home/users") return isManager;
+    return true;
+  });
 
   return (
     <>
@@ -100,7 +115,7 @@ const Navbar = () => {
 
           {/* Desktop nav pill */}
           <Box sx={{ animation: "pillGlow 5s ease-in-out infinite", background: "linear-gradient(135deg,rgba(239,246,255,0.96),rgba(219,234,254,0.92),rgba(255,255,255,0.96))", backgroundSize: "220% 220%", border: "1px solid #dbeafe", borderRadius: 999, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.85), 0 8px 22px rgba(37,99,235,0.10)", display: { xs: "none", md: "flex" }, gap: 0.5, p: 0.5, "@keyframes pillGlow": { "0%,100%": { backgroundPosition: "0% 50%" }, "50%": { backgroundPosition: "100% 50%" } } }}>
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const active = isActivePath(item);
               return (
                 <Button key={item.path} component={Link} to={item.path}
@@ -122,12 +137,12 @@ const Navbar = () => {
             {isLoggedIn ? (
               <>
                 {/* Role badge */}
-                <Box sx={{ alignItems: "center", background: roleStyle.bg, border: `1px solid ${roleStyle.border}`, borderRadius: 999, boxShadow: roleStyle.shadow, color: roleStyle.color, display: "flex", gap: 0.75, minHeight: 38, pl: 0.65, pr: 1.55, transition: "transform 160ms ease", "&:hover": { transform: "translateY(-1px)" } }} title={isAdmin ? "Admin logged in" : "User logged in"}>
+                <Box sx={{ alignItems: "center", background: roleStyle.bg, border: `1px solid ${roleStyle.border}`, borderRadius: 999, boxShadow: roleStyle.shadow, color: roleStyle.color, display: "flex", gap: 0.75, minHeight: 38, pl: 0.65, pr: 1.55, transition: "transform 160ms ease", "&:hover": { transform: "translateY(-1px)" } }} title={`${roleLabel} logged in`}>
                   <Box sx={{ alignItems: "center", bgcolor: roleStyle.iconBg, borderRadius: "50%", display: "inline-flex", height: 27, justifyContent: "center", width: 27 }}>
                     <RoleIcon fontSize="small" />
                   </Box>
                   <Typography component="span" sx={{ display: { xs: "none", sm: "inline" }, fontSize: 13, fontWeight: 800, lineHeight: 1 }}>
-                    {isAdmin ? "Admin" : "User"}
+                    {roleLabel}
                   </Typography>
                 </Box>
 
@@ -150,7 +165,7 @@ const Navbar = () => {
       {menuOpen && (
         <Box sx={{ animation: "mobileMenuReveal 260ms cubic-bezier(.2,.8,.2,1) both", bgcolor: "#ffffff", borderBottom: "1px solid #e5e7eb", boxShadow: "0 18px 36px rgba(15,23,42,0.14)", display: { xs: "block", md: "none" }, left: 0, position: "fixed", right: 0, top: 70, zIndex: (t) => t.zIndex.appBar - 1, "@keyframes mobileMenuReveal": { "0%": { clipPath: "inset(0 0 100% 0)", opacity: 0, transform: "translateY(-10px)" }, "70%": { clipPath: "inset(0 0 0 0)", opacity: 1 }, "100%": { opacity: 1, transform: "translateY(0)" } } }}>
           <List sx={{ p: 2 }}>
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const active = isActivePath(item);
               return (
                 <ListItemButton key={item.path} component={Link} to={item.path} onClick={() => setMenuOpen(false)}

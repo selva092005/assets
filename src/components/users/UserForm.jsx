@@ -20,9 +20,16 @@ export default function UserForm({ open, form, onChange, onSave, onClose }) {
           <Grid item xs={6}>
             <TextField name="userEmail"    placeholder="Email"    type="email" value={form.userEmail} onChange={onChange} size="small" fullWidth sx={inputSx} />
           </Grid>
-          <Grid item xs={6}>
-            <TextField name="userPassword" placeholder="Password" type="password" value={form.userPassword} onChange={onChange} size="small" fullWidth sx={inputSx} />
-          </Grid>
+          {!form.userId && (
+            <Grid item xs={6}>
+              <TextField name="userPassword" placeholder="Password" type="password" value={form.userPassword} onChange={onChange} size="small" fullWidth sx={inputSx} />
+            </Grid>
+          )}
+          {form.userId && (
+            <Grid item xs={6}>
+              <TextField name="userPassword" placeholder="Leave blank to keep current" type="password" value={form.userPassword} onChange={onChange} size="small" fullWidth sx={inputSx} />
+            </Grid>
+          )}
           <Grid item xs={6}>
             <Select name="userRole" value={form.userRole} onChange={onChange} size="small" fullWidth
               sx={{ borderRadius: "8px", fontSize: 13, height: 36, "& .MuiOutlinedInput-notchedOutline": { borderColor: "#e0e0e0" } }}>

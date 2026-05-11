@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 import {
   Box, Typography, Grid, Paper, Avatar, Chip,
   Table, TableHead, TableBody, TableRow, TableCell, CircularProgress,
@@ -10,22 +11,24 @@ import { COLORS, STATUS_COLORS, CONDITION_COLORS, chipSx } from "../theme/tokens
 import StatCard from "../components/common/StatCard";
 
 export default function Dashboard() {
+  const { userRole } = useSelector((s) => s.auth);
   const [assets,    setAssets]    = useState([]);
   const [userCount, setUserCount] = useState(0);
   const [loading,   setLoading]   = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      getAssets({ page: 0, size: 100 }),
-      getUsers({ page: 0, size: 1 }),
-    ])
-      .then(([aRes, uRes]) => {
+    const promises = [getAssets({ page: 0, size: 100 })];
+    if (userRole !== "user") promises.push(getUsers({ page: 0, size: 1 }));
+
+    Promise.all(promises)
+      .then((results) => {
+        const [aRes, uRes] = results;
         setAssets(aRes?.data?.content || aRes?.content || []);
-        setUserCount(uRes?.data?.totalElements || uRes?.totalElements || 0);
+        if (uRes) setUserCount(uRes?.data?.totalElements || uRes?.totalElements || 0);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [userRole]);
 
   const total     = assets.length;
   const available = assets.filter((a) => a.status === "AVAILABLE").length;
@@ -55,7 +58,7 @@ export default function Dashboard() {
           { label: "Available",    value: available, icon: <FaCheckCircle size={18} />,       iconBg: "#e8f5e9", iconColor: "#2e7d32" },
           { label: "Assigned",     value: assigned,  icon: <FaTools size={18} />,             iconBg: "#fff3e0", iconColor: "#e65100" },
           { label: "Damaged",      value: damaged,   icon: <FaExclamationTriangle size={18} />, iconBg: "#ffebee", iconColor: "#c62828" },
-          { label: "Total Users",  value: userCount, icon: <FaUsers size={18} />,             iconBg: "#e3f2fd", iconColor: "#1565c0" },
+          ...(userRole !== "user" ? [{ label: "Total Users",  value: userCount, icon: <FaUsers size={18} />, iconBg: "#e3f2fd", iconColor: "#1565c0" }] : []),
         ].map((c) => (
           <Grid item xs={12} sm={6} md={4} lg key={c.label}>
             <StatCard {...c} />
