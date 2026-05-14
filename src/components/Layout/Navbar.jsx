@@ -21,13 +21,16 @@ const navItems = [
 ];
 
 const roleBadgeStyles = {
-  manager: {
-    bg:     "linear-gradient(135deg, #052e16 0%, #15803d 50%, #4ade80 100%)",
-    border: "rgba(74,222,128,0.82)",
-    color:  "#ffffff",
-    iconBg: "rgba(255,255,255,0.18)",
-    shadow: "0 14px 32px rgba(21,128,61,0.22), 0 8px 22px rgba(74,222,128,0.24)",
-  },
+manager: {
+  bg:     "linear-gradient(135deg, #0f172a 0%, #1e3a8a 48%, #38bdf8 100%)",
+  border: "rgba(125,211,252,0.82)",
+  color:  "#f8fafc",
+  iconBg: "rgba(255,255,255,0.16)",
+  shadow: `
+    0 10px 30px rgba(30,58,138,0.28),
+    0 6px 18px rgba(56,189,248,0.22)
+  `,
+},
   admin: {
     bg:     "linear-gradient(135deg, #172554 0%, #1e40af 48%, #60a5fa 100%)",
     border: "rgba(147,197,253,0.82)",

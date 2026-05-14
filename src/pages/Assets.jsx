@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import { Box, Button, Select, MenuItem, CircularProgress } from "@mui/material";
 import { FaFilter, FaFileExport, FaPlus } from "react-icons/fa";
 import toast from "react-hot-toast";
@@ -8,8 +9,9 @@ import {
   setAssetPage, setAssetSearch, setAssetFilter, resetAssetFilters,
 } from "../store/slices/assetSlice";
 import {
-  getAssetTypes, addAsset, updateAsset, deleteAsset, getAssetById,
+  getAssetTypes, deleteAsset, getAssetById,
 } from "../services/assets_service";
+import { moveAsset } from "../services/location_history_service";
 import { COLORS } from "../theme/tokens";
 
 import PageHeader      from "../components/common/PageHeader";
@@ -17,27 +19,11 @@ import SearchBar       from "../components/common/SearchBar";
 import TableCard       from "../components/common/TableCard";
 import TablePagination from "../components/common/TablePagination";
 import AssetTable      from "../components/assets/AssetTable";
-import AssetForm       from "../components/assets/AssetForm";
 import AssetView       from "../components/assets/AssetView";
-import AssetQR         from "../components/assets/AssetQR";
+import AssetQR                from "../components/assets/AssetQR";
+import MoveAssetModal         from "../components/assets/MoveAssetModal";
+import LocationHistoryModal   from "../components/assets/LocationHistoryModal";
 import ConfirmDialog   from "../components/common/ConfirmDialog";
-
-const EMPTY = {
-  assetId: null, assetName: "", serialNumber: "", brand: "", model: "",
-  purchaseDate: "", warrantyExpiry: "", cost: "", status: "AVAILABLE",
-  assetCondition: "GOOD", notes: "", typeId: "", locationName: "", companyName: "",
-};
-
-const getAssetTypeList = (res) => {
-  const list = Array.isArray(res)       ? res
-             : Array.isArray(res?.data) ? res.data
-             : res?.data?.content       ? res.data.content
-             : res?.content             ? res.content
-             : [];
-  return list
-    .map((t) => ({ typeId: t.typeId ?? t.type_id ?? t.id, typeName: t.typeName ?? t.type_name ?? t.name }))
-    .filter((t) => t.typeId != null && t.typeName);
-};
 
 export default function AssetsPage() {
   const dispatch = useDispatch();
@@ -47,15 +33,18 @@ export default function AssetsPage() {
 
   const [types,        setTypes]        = useState([]);
   const [showCount,    setShowCount]    = useState(10);
-  const [form,         setForm]         = useState(EMPTY);
-  const [showModal,    setShowModal]    = useState(false);
   const [viewModal,    setViewModal]    = useState(false);
   const [viewData,     setViewData]     = useState(null);
   const [qrModal,      setQrModal]      = useState(false);
   const [qrAsset,      setQrAsset]      = useState(null);
   const [confirmOpen,  setConfirmOpen]  = useState(false);
   const [deleteId,     setDeleteId]     = useState(null);
+  const [moveModal,    setMoveModal]    = useState(false);
+  const [moveAssetData,setMoveAssetData]= useState(null);
+  const [historyModal, setHistoryModal] = useState(false);
+  const [historyAsset, setHistoryAsset] = useState(null);
 
+  const navigate = useNavigate();
   const canWrite = userRole !== "user";
 
   // Re-fetch whenever page, search, filterType, or showCount changes
@@ -99,59 +88,7 @@ export default function AssetsPage() {
     // useEffect above will trigger the fetch on showCount change
   };
 
-  const handleSave = async () => {
-    const payload = {
-      assetName:      form.assetName,
-      serialNumber:   form.serialNumber,
-      brand:          form.brand,
-      model:          form.model,
-      purchaseDate:   form.purchaseDate   || null,
-      warrantyExpiry: form.warrantyExpiry || null,
-      cost:           form.cost === ""    ? null : Number(form.cost),
-      status:         form.status,
-      assetCondition: form.assetCondition,
-      notes:          form.notes,
-      typeId:         form.typeId === ""  ? null : Number(form.typeId),
-      locationName:   form.locationName   || null,
-      companyName:    form.companyName    || null,
-    };
-    try {
-      if (form.assetId) {
-        await updateAsset(form.assetId, payload);
-        toast.success("Asset updated successfully");
-      } else {
-        await addAsset(payload);
-        toast.success("Asset created successfully");
-      }
-      reload();
-      setShowModal(false);
-    } catch (e) {
-      toast.error(e.response?.data?.message || "Failed to save asset");
-    }
-  };
-
-  const handleEdit = (item) => {
-    const resolvedTypeId = String(
-      types.find((t) => t.typeName === (item.typeName || item.assetType?.typeName))?.typeId ?? ""
-    );
-    setForm({
-      assetId:        item.assetId,
-      assetName:      item.assetName      || "",
-      serialNumber:   item.serialNumber   || "",
-      brand:          item.brand          || "",
-      model:          item.model          || "",
-      purchaseDate:   item.purchaseDate   || "",
-      warrantyExpiry: item.warrantyExpiry || "",
-      cost:           item.cost           || "",
-      status:         item.status         || "AVAILABLE",
-      assetCondition: item.assetCondition || "GOOD",
-      notes:          item.notes          || "",
-      locationName:   item.locationName   || "",
-      companyName:    item.companyName    || "",
-      typeId:         resolvedTypeId,
-    });
-    setShowModal(true);
-  };
+  const handleEdit = (item) => navigate(`/home/assets/edit/${item.assetId}`);
 
   const handleDelete = (id) => {
     setDeleteId(id);
@@ -190,6 +127,32 @@ export default function AssetsPage() {
     } catch (e) { 
       toast.error("Failed to generate QR code");
       console.error(e); 
+    }
+  };
+
+  const handleMove = (item) => {
+    setMoveAssetData(item);
+    setMoveModal(true);
+  };
+
+  const handleHistory = (item) => {
+    setHistoryAsset(item);
+    setHistoryModal(true);
+  };
+
+  const confirmMove = async ({ newLocation, reason }) => {
+    try {
+      await moveAsset({
+        assetId:     moveAssetData.assetId,
+        newLocation,
+        movedBy:     "Admin",
+        reason,
+      });
+      toast.success("Asset moved successfully");
+      reload();
+      setMoveModal(false);
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Failed to move asset");
     }
   };
 
@@ -242,7 +205,7 @@ export default function AssetsPage() {
             <Button
               variant="contained"
               startIcon={<FaPlus size={11} />}
-              onClick={() => { setForm(EMPTY); setShowModal(true); }}
+              onClick={() => navigate("/home/assets/new")}
               disabled={!canWrite}
               sx={{ textTransform: "none", fontSize: 13, fontWeight: 600, borderRadius: "8px", py: "8px", px: 2, background: COLORS.primary, boxShadow: "none", "&:hover": { background: COLORS.primaryDark, boxShadow: "none" } }}
             >
@@ -263,21 +226,25 @@ export default function AssetsPage() {
       <TableCard>
         {loading
           ? <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
-          : <AssetTable assets={assets} loading={false} canWrite={canWrite} onView={handleView} onEdit={handleEdit} onDelete={handleDelete} onQR={handleQR} />
+          : <AssetTable assets={assets} loading={false} canWrite={canWrite} onView={handleView} onEdit={handleEdit} onDelete={handleDelete} onQR={handleQR} onHistory={handleHistory} />
         }
         <TablePagination page={page} totalPages={totalPages} onPageChange={(pg) => dispatch(setAssetPage(pg))} />
       </TableCard>
 
-      <AssetForm
-        open={showModal}
-        form={form}
-        types={types}
-        onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })}
-        onSave={handleSave}
-        onClose={() => setShowModal(false)}
-      />
       <AssetView open={viewModal} data={viewData} onClose={() => setViewModal(false)} />
       <AssetQR   open={qrModal}   asset={qrAsset} onClose={() => setQrModal(false)} />
+      <MoveAssetModal
+        open={moveModal}
+        asset={moveAssetData}
+        locations={[]}
+        onMove={confirmMove}
+        onClose={() => setMoveModal(false)}
+      />
+      <LocationHistoryModal
+        open={historyModal}
+        asset={historyAsset}
+        onClose={() => setHistoryModal(false)}
+      />
       <ConfirmDialog
         open={confirmOpen}
         title="Delete Asset"

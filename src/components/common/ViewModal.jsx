@@ -1,128 +1,163 @@
 import {
   Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Grid, Box, Typography, Divider,
+  Button, Box, Typography,
 } from "@mui/material";
-import { FaTimes, FaInfoCircle } from "react-icons/fa";
+import { FaTimes } from "react-icons/fa";
+import { COLORS, outlinedBtnSx } from "../../theme/tokens";
 
 /**
- * ViewModal – renders a grid of key / value pairs from any data object
- * @param {boolean} open
- * @param {string}  title
- * @param {object}  data    – flat object to display
- * @param {Array}   fields  – optional [ [label, key] ] to control which fields show
- * @param {Function} onClose
+ * ViewModal – compact drawer-style detail dialog.
+ *
+ * Props:
+ *   open      {boolean}
+ *   title     {string}          – dialog heading
+ *   subtitle  {string}          – small line under title (e.g. asset code)
+ *   icon      {ReactNode}       – icon shown in the header avatar box
+ *   iconBg    {string}          – avatar box background color
+ *   iconColor {string}          – icon color
+ *   badge     {ReactNode}       – optional pill/chip rendered next to the title
+ *   data      {object}          – the record to display
+ *   fields    {[label, key][]}  – ordered [display label, data key] pairs;
+ *                                  values that are null/undefined/"" are skipped
+ *   header    {ReactNode}       – slot rendered between the title bar and field rows
+ *                                  (used by AssetView for image + status strip)
+ *   onClose   {() => void}
  */
-export default function ViewModal({ open, title = "Details", data, fields, onClose }) {
-  const entries = fields
-    ? fields.map(([label, key]) => [label, data?.[key]])
-    : data
-      ? Object.entries(data)
-      : [];
+export default function ViewModal({
+  open,
+  title     = "Details",
+  subtitle,
+  icon,
+  iconBg    = COLORS.primaryLight,
+  iconColor = COLORS.primary,
+  badge,
+  data,
+  fields,
+  header,
+  onClose,
+}) {
+  const rows = (
+    fields
+      ? fields.map(([label, key]) => [label, data?.[key]])
+      : data ? Object.entries(data) : []
+  ).filter(([, v]) => v != null && v !== "");
 
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="md"
+      maxWidth="sm"
       fullWidth
-      PaperProps={{ sx: { borderRadius: "16px", boxShadow: "0 8px 32px rgba(0,0,0,0.12)" } }}
+      disableRestoreFocus
+      TransitionComponent={({ children, in: inProp }) => (
+        <Box sx={{
+          "& > *": inProp ? {
+            animation: "modalPop .38s cubic-bezier(.34,1.56,.64,1) both",
+            "@keyframes modalPop": {
+              from: { opacity: 0, transform: "scale(0.9) translateY(20px)" },
+              to:   { opacity: 1, transform: "scale(1) translateY(0)" },
+            },
+          } : { opacity: 0 },
+        }}>{children}</Box>
+      )}
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: "14px",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.10)",
+            overflow: "hidden",
+            p: 0,
+          },
+        },
+      }}
     >
-      <DialogTitle sx={{ 
-        display: "flex", 
-        justifyContent: "space-between", 
-        alignItems: "center",
-        borderBottom: "1px solid #f0f0f0",
-        pb: 2,
-        pt: 2.5,
-        px: 3,
-      }}>
+      {/* ── Title bar ── */}
+      <DialogTitle
+        sx={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          px: 2.5, py: 2,
+          borderBottom: `1px solid ${COLORS.borderLight}`,
+          background: COLORS.surface,
+        }}
+      >
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box sx={{ 
-            width: 40, 
-            height: 40, 
-            borderRadius: "10px", 
-            background: "linear-gradient(135deg, #1976d2 0%, #1565c0 100%)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "white"
-          }}>
-            <FaInfoCircle size={18} />
-          </Box>
+          {icon && (
+            <Box sx={{
+              width: 38, height: 38, borderRadius: "9px",
+              background: iconBg,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: iconColor, flexShrink: 0,
+            }}>
+              {icon}
+            </Box>
+          )}
           <Box>
-            <Typography sx={{ fontWeight: 700, fontSize: 20, color: "#212121" }}>
-              {title}
-            </Typography>
-            <Typography sx={{ fontSize: 13, color: "#757575", mt: 0.25 }}>
-              View complete information
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography sx={{ fontWeight: 600, fontSize: 15, color: COLORS.text, lineHeight: 1.3 }}>
+                {title}
+              </Typography>
+              {badge}
+            </Box>
+            {subtitle && (
+              <Typography sx={{ fontSize: 12, color: COLORS.textFaint, mt: 0.2 }}>
+                {subtitle}
+              </Typography>
+            )}
           </Box>
         </Box>
-        <Box onClick={onClose} sx={{ cursor: "pointer", color: "#9e9e9e", "&:hover": { color: "#424242" } }}>
-          <FaTimes size={18} />
+
+        <Box
+          onClick={onClose}
+          sx={{
+            cursor: "pointer", color: COLORS.textFaint, p: 0.5, borderRadius: "6px",
+            "&:hover": { color: COLORS.text, background: COLORS.bg },
+            transition: "all .15s",
+          }}
+        >
+          <FaTimes size={15} />
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ pt: 3, pb: 2, px: 3 }}>
-        <Grid container spacing={2} sx={{ maxHeight: "65vh", overflowY: "auto", pr: 1 }}>
-          {entries.map(([k, v], idx) => (
-            <Grid item xs={6} key={k}>
-              <Box sx={{ 
-                background: "linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%)", 
-                borderRadius: "10px", 
-                p: "14px 16px", 
-                border: "1px solid #e8e8e8",
-                transition: "all 0.2s ease",
-                "&:hover": {
-                  borderColor: "#1976d2",
-                  boxShadow: "0 2px 8px rgba(25, 118, 210, 0.1)",
-                  transform: "translateY(-1px)"
-                }
-              }}>
-                <Typography sx={{ 
-                  fontSize: 11, 
-                  color: "#1976d2", 
-                  textTransform: "uppercase", 
-                  letterSpacing: "0.08em", 
-                  fontWeight: 600,
-                  mb: 0.75 
-                }}>
-                  {k.replace(/([A-Z])/g, ' $1').trim()}
-                </Typography>
-                <Typography sx={{ 
-                  fontSize: 14, 
-                  fontWeight: 500, 
-                  color: "#212121",
-                  wordBreak: "break-word",
-                  lineHeight: 1.5
-                }}>
-                  {String(v ?? "—")}
-                </Typography>
-              </Box>
-            </Grid>
-          ))}
-        </Grid>
+      <DialogContent sx={{ p: 0, background: COLORS.surface }}>
+        {/* Optional slot – image preview, QR, status strip, etc. */}
+        {header}
+
+        {/* Divider rows */}
+        {rows.map(([label, value], idx) => (
+          <Box
+            key={label}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "38% 62%",
+              alignItems: "center",
+              px: 2.5,
+              py: "10px",
+              background: idx % 2 === 0 ? COLORS.surface : COLORS.bg,
+              borderBottom: idx < rows.length - 1 ? `1px solid ${COLORS.borderLight}` : "none",
+              opacity: 0,
+              animation: `rowIn .35s cubic-bezier(.22,1,.36,1) ${180 + idx * 40}ms both`,
+              "@keyframes rowIn": {
+                from: { opacity: 0, transform: "translateX(-12px)" },
+                to:   { opacity: 1, transform: "translateX(0)" },
+              },
+            }}
+          >
+            <Typography sx={{ fontSize: 12, color: COLORS.textFaint, fontWeight: 500 }}>{label}</Typography>
+            <Typography sx={{ fontSize: 13, color: COLORS.text, fontWeight: 500, wordBreak: "break-word" }}>{String(value)}</Typography>
+          </Box>
+        ))}
       </DialogContent>
 
-      <DialogActions sx={{ borderTop: "1px solid #f0f0f0", px: 3, py: 2.5, justifyContent: "center" }}>
-        <Button
-          onClick={onClose}
-          variant="contained"
-          sx={{ 
-            textTransform: "none", 
-            fontSize: 14, 
-            fontWeight: 600,
-            borderRadius: "8px",
-            px: 4,
-            py: 1,
-            background: "linear-gradient(135deg, #1976d2 0%, #1565c0 100%)",
-            boxShadow: "0 4px 12px rgba(25, 118, 210, 0.3)",
-            "&:hover": {
-              background: "linear-gradient(135deg, #1565c0 0%, #0d47a1 100%)",
-              boxShadow: "0 6px 16px rgba(25, 118, 210, 0.4)"
-            }
-          }}
-        >
+      {/* ── Footer ── */}
+      <DialogActions
+        sx={{
+          px: 2.5, py: 1.5,
+          borderTop: `1px solid ${COLORS.borderLight}`,
+          background: COLORS.surface,
+          justifyContent: "flex-end",
+        }}
+      >
+        <Button onClick={onClose} variant="outlined" sx={outlinedBtnSx}>
           Close
         </Button>
       </DialogActions>

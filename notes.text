@@ -1,0 +1,141 @@
+===============================
+ASSET LOCATION HISTORY FLOW
+===============================
+
+START
+  ↓
+User clicks "Move Asset"
+  ↓
+User selects:
+   • New Location
+   • Reason
+  ↓
+User clicks SUBMIT
+  ↓
+Frontend (React) sends data to Backend (Spring Boot)
+  ↓
+Backend receives request
+  ↓
+Backend validates:
+   ✓ User permission
+   ✓ Asset exists
+   ✓ Location exists
+   ✓ Asset available
+  ↓
+IF validation fails
+   ↓
+Return Error Message
+   ↓
+END
+
+IF validation success
+   ↓
+START DATABASE TRANSACTION
+   ↓
+=================================
+OPERATION 1 — SAVE HISTORY RECORD
+=================================
+
+Insert new row into:
+asset_location_history
+
+Save:
+   • asset_id
+   • from_location
+   • to_location
+   • moved_by
+   • moved_at
+   • reason
+
+Example:
+Laptop #1087
+Room 1 → Room 2
+Moved by Ravi
+12 Jan 2025
+
+History record saved
+   ↓
+
+=================================
+OPERATION 2 — UPDATE ASSET TABLE
+=================================
+
+Update current location
+inside asset table
+
+Before:
+Laptop #1087 → Room 1
+
+After:
+Laptop #1087 → Room 2
+   ↓
+
+=================================
+TRANSACTION SUCCESS
+=================================
+
+Commit transaction
+   ↓
+Send Success Response
+   ↓
+Frontend updates UI
+   ↓
+Timeline shows new movement
+   ↓
+END
+
+
+=================================
+IF SOMETHING FAILS
+=================================
+
+Example:
+History saved
+But asset update failed
+
+Then:
+   ↓
+ROLLBACK TRANSACTION
+   ↓
+Undo all changes
+   ↓
+Asset stays in old location
+   ↓
+Return Error Message
+   ↓
+END
+
+
+=================================
+DATABASE STRUCTURE
+=================================
+
+1. asset table
+-------------------------
+Stores CURRENT location
+
+Example:
+asset_id | name       | current_location
+1087     | Laptop     | Room 2
+
+
+2. asset_location_history table
+--------------------------------
+Stores ALL movement history
+
+Example:
+id | asset_id | from | to | moved_by
+1  | 1087     | R1   | R2 | Ravi
+2  | 1087     | R2   | WH | Priya
+
+
+=================================
+MAIN IDEA
+=================================
+
+Every move creates ONE history record.
+
+History is never deleted.
+
+Asset table = current location
+History table = all previous movements

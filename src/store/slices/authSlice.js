@@ -65,8 +65,9 @@ export const loginThunk = (email, password) => async (dispatch) => {
     dispatch(setCredentials({ token: newToken, userRole: getRoleFromToken(newToken) }));
     return { success: true };
   } catch (err) {
-    dispatch(setAuthError(err.response?.data?.message || "Login failed"));
-    return { success: false };
+    const message = err.response?.data?.message || "Login failed";
+    dispatch(setAuthError(message));
+    return { success: false, error: message };
   } finally {
     dispatch(setAuthLoading(false));
   }

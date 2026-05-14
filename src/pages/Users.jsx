@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { Box, Button, Select, MenuItem, CircularProgress } from "@mui/material";
 import { FaFilter, FaFileExport, FaPlus } from "react-icons/fa";
 import toast from "react-hot-toast";
@@ -8,7 +8,7 @@ import {
   fetchUsers,
   setUserPage, setUserSearch, setUserFilter, resetUserFilters,
 } from "../store/slices/userSlice";
-import { addUser, updateUser, deleteUser, getUserById } from "../services/users_service";
+import { deleteUser, getUserById } from "../services/users_service";
 import { COLORS } from "../theme/tokens";
 
 import PageHeader      from "../components/common/PageHeader";
@@ -16,11 +16,8 @@ import SearchBar       from "../components/common/SearchBar";
 import TableCard       from "../components/common/TableCard";
 import TablePagination from "../components/common/TablePagination";
 import UserTable       from "../components/users/UserTable";
-import UserForm        from "../components/users/UserForm";
 import UserView        from "../components/users/UserView";
 import ConfirmDialog   from "../components/common/ConfirmDialog";
-
-const EMPTY = { userId: null, userName: "", userEmail: "", userPassword: "", userRole: "USER" };
 
 export default function UsersPage() {
   const dispatch = useDispatch();
@@ -29,12 +26,11 @@ export default function UsersPage() {
   const { userRole } = useSelector((s) => s.auth);
 
   const [showCount,    setShowCount]    = useState(10);
-  const [form,         setForm]         = useState(EMPTY);
-  const [showModal,    setShowModal]    = useState(false);
   const [viewModal,    setViewModal]    = useState(false);
   const [viewData,     setViewData]     = useState(null);
   const [confirmOpen,  setConfirmOpen]  = useState(false);
   const [deleteId,     setDeleteId]     = useState(null);
+  const navigate = useNavigate();
 
   // Re-fetch whenever page, showCount, or filterRole changes
   useEffect(() => {
@@ -70,38 +66,7 @@ export default function UsersPage() {
     // useEffect above will trigger the fetch on showCount change
   };
 
-  const handleSave = async () => {
-    try {
-      const payload = {
-        userName:     form.userName,
-        userEmail:    form.userEmail,
-        userPassword: form.userPassword,
-        userRole:     form.userRole,
-      };
-      if (form.userId) {
-        await updateUser(form.userId, payload);
-        toast.success("User updated successfully");
-      } else {
-        await addUser(payload);
-        toast.success("User created successfully");
-      }
-      reload();
-      setShowModal(false);
-    } catch (e) {
-      toast.error(e.response?.data?.message || "Failed to save user");
-    }
-  };
-
-  const handleEdit = (item) => {
-    setForm({
-      userId:       item.userId || item.id,
-      userName:     item.userName  || "",
-      userEmail:    item.userEmail || "",
-      userPassword: "",
-      userRole:     item.userRole  || "USER",
-    });
-    setShowModal(true);
-  };
+  const handleEdit = (item) => navigate(`/home/users/edit/${item.userId ?? item.id}`);
 
   const handleDelete = (id) => {
     setDeleteId(id);
@@ -181,7 +146,7 @@ export default function UsersPage() {
             <Button
               variant="contained"
               startIcon={<FaPlus size={11} />}
-              onClick={() => { setForm(EMPTY); setShowModal(true); }}
+              onClick={() => navigate("/home/users/new")}
               sx={{ textTransform: "none", fontSize: 13, fontWeight: 600, borderRadius: "8px", py: "8px", px: 2, background: COLORS.primary, boxShadow: "none", "&:hover": { background: COLORS.primaryDark, boxShadow: "none" } }}
             >
               Add New User
@@ -206,13 +171,6 @@ export default function UsersPage() {
         <TablePagination page={page} totalPages={totalPages} onPageChange={(pg) => dispatch(setUserPage(pg))} />
       </TableCard>
 
-      <UserForm
-        open={showModal}
-        form={form}
-        onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })}
-        onSave={handleSave}
-        onClose={() => setShowModal(false)}
-      />
       <UserView open={viewModal} data={viewData} onClose={() => setViewModal(false)} />
       <ConfirmDialog
         open={confirmOpen}
