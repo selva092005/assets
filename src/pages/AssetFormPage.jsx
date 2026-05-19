@@ -16,6 +16,7 @@ import toast from "react-hot-toast";
 import { inputSx, selectSx, primaryBtnSx, outlinedBtnSx, COLORS } from "../theme/tokens";
 import { getAssetTypes, addAsset, updateAsset, getAssetById, uploadAssetImage, getImageUrl } from "../services/assets_service";
 import { getCompanies } from "../services/Company service";
+import { moveAsset } from "../services/location_history_service";
 import { fetchAssets } from "../store/slices/assetSlice";
 
 const EMPTY = {
@@ -65,9 +66,11 @@ export default function AssetFormPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { page, search } = useSelector((s) => s.assets);
+  const { userName } = useSelector((s) => s.auth);
   const isEdit = !!id;
 
-  const [form,         setForm]         = useState(EMPTY);
+  const [form,             setForm]             = useState(EMPTY);
+  const [originalLocation, setOriginalLocation] = useState("");
   const [types,        setTypes]        = useState([]);
   const [companies,    setCompanies]    = useState([]);
   const [imageFile,    setImageFile]    = useState(null);
@@ -93,6 +96,15 @@ export default function AssetFormPage() {
           locationName: d.locationName || "", companyName: d.companyName || "",
           typeId: String(d.typeId ?? d.assetType?.typeId ?? ""), imagePath: d.imagePath || "",
         });
+        setOriginalLocation(d.locationName || "");
+
+        // Block editing disposed assets — redirect back
+        if (d.status?.toUpperCase() === "DISPOSED") {
+          toast.error("Disposed assets cannot be edited.");
+          navigate("/home/assets");
+          return;
+        }
+
         if (d.imagePath) setImagePreview(getImageUrl(d.imagePath));
         setLoading(false);
       }).catch(() => { toast.error("Failed to load asset"); navigate("/home/assets"); });
@@ -143,13 +155,39 @@ export default function AssetFormPage() {
         imagePath: resolvedImagePath,
       };
 
-      if (isEdit) { await updateAsset(form.assetId, payload); toast.success("Asset updated successfully"); }
-      else        { await addAsset(payload);                   toast.success("Asset created successfully"); }
+      if (isEdit) {
+        // If location changed, write history BEFORE updating the asset
+        // (so the backend still sees the old location in DB when it records fromLocation)
+        const newLocation = form.locationName?.trim() || "";
+        const oldLocation = originalLocation?.trim() || "";
+        if (newLocation && newLocation !== oldLocation) {
+          try {
+            await moveAsset({
+              assetId: form.assetId,
+              fromLocation: oldLocation || null,
+              newLocation,
+              movedBy: userName || "Admin",
+              reason: "Updated via asset edit form",
+            });
+          } catch {
+            // History write failure should not block the main save
+          }
+        }
+        await updateAsset(form.assetId, payload);
+        toast.success("Asset updated successfully");
+      } else {
+        await addAsset(payload);
+        toast.success("Asset created successfully");
+      }
 
       dispatch(fetchAssets({ keyword: search, page, size: 10 }));
       navigate("/home/assets");
     } catch (e) {
-      toast.error(e.response?.data?.message || "Failed to save asset");
+      if (e.response?.status === 409) {
+        toast.error(e.response.data.message);
+      } else {
+        toast.error(e.response?.data?.message || "Failed to save asset");
+      }
     } finally { setUploading(false); }
   };
 
@@ -292,11 +330,20 @@ export default function AssetFormPage() {
           <Grid container spacing={2}>
             <Grid size={6} sx={anim(8)}>
               <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5 }}>Status</Typography>
-              <Select name="status" value={form.status} onChange={onChange} size="small" fullWidth sx={selectSx}>
-                {["AVAILABLE", "ASSIGNED", "DAMAGED"].map((v) => (
-                    <MenuItem key={v} value={v} sx={{ fontSize: 13 }}>{v}</MenuItem>
-                  ))}
+              <Select name="status" value={form.status} onChange={onChange} size="small" fullWidth sx={selectSx}
+                disabled={form.status === "ASSIGNED"}>
+                {["AVAILABLE", "DAMAGED"].map((v) => (
+                  <MenuItem key={v} value={v} sx={{ fontSize: 13 }}>{v}</MenuItem>
+                ))}
+                {form.status === "ASSIGNED" && (
+                  <MenuItem value="ASSIGNED" sx={{ fontSize: 13, color: "#f97316" }}>ASSIGNED (via Allocation)</MenuItem>
+                )}
               </Select>
+              {form.status === "ASSIGNED" && (
+                <Typography sx={{ fontSize: 11, color: "#f97316", mt: 0.5 }}>
+                  ⚠ Status is controlled by the Allocation page
+                </Typography>
+              )}
             </Grid>
             <Grid size={6} sx={anim(9)}>
               <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5 }}>Condition</Typography>

@@ -96,7 +96,11 @@ export default function UserFormPage() {
       dispatch(fetchUsers({ keyword: search, page, size: 10 }));
       navigate("/home/users");
     } catch (e) {
-      toast.error(e.response?.data?.message || "Failed to save user");
+      if (e.response?.status === 409) {
+        toast.error(e.response.data.message);
+      } else {
+        toast.error(e.response?.data?.message || "Failed to save user");
+      }
     } finally { setSaving(false); }
   };
 

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
   AppBar, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
   IconButton, List, ListItemButton, ListItemText, Toolbar, Typography,
 } from "@mui/material";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import AccountCircleIcon     from "@mui/icons-material/AccountCircle";
 import LogoutIcon            from "@mui/icons-material/Logout";
@@ -13,24 +14,28 @@ import { logoutUser }        from "../../store/slices/authSlice";
 import amsLogo               from "../../assets/ams_no_bg.png";
 import "../../styles/App.css";
 
+// ── Nav items — role restrictions defined here ─────────────────────────────
 const navItems = [
-  { label: "Dashboard", path: "/home",        end: true },
-  { label: "Assets",    path: "/home/assets" },
-  { label: "Users",     path: "/home/users"  },
-  { label: "Reports",   path: "/home/reports"},
+  { label: "Dashboard", path: "/home",       end: true, roles: ["admin", "manager", "user"] },
+  {
+    label: "Assets", path: "/home/assets", roles: ["admin", "manager", "user"],
+    dropdown: [
+      { label: "Allocation", path: "/home/allocation", roles: ["admin", "manager"] },
+      { label: "Disposal",   path: "/home/disposal",   roles: ["admin"] },
+    ],
+  },
+  { label: "Users",   path: "/home/users",   roles: ["admin", "manager"] },
+  { label: "Reports", path: "/home/reports", roles: ["admin", "manager", "user"] },
 ];
 
 const roleBadgeStyles = {
-manager: {
-  bg:     "linear-gradient(135deg, #0f172a 0%, #1e3a8a 48%, #38bdf8 100%)",
-  border: "rgba(125,211,252,0.82)",
-  color:  "#f8fafc",
-  iconBg: "rgba(255,255,255,0.16)",
-  shadow: `
-    0 10px 30px rgba(30,58,138,0.28),
-    0 6px 18px rgba(56,189,248,0.22)
-  `,
-},
+  manager: {
+    bg:     "linear-gradient(135deg, #0f172a 0%, #1e3a8a 48%, #38bdf8 100%)",
+    border: "rgba(125,211,252,0.82)",
+    color:  "#f8fafc",
+    iconBg: "rgba(255,255,255,0.16)",
+    shadow: "0 10px 30px rgba(30,58,138,0.28), 0 6px 18px rgba(56,189,248,0.22)",
+  },
   admin: {
     bg:     "linear-gradient(135deg, #172554 0%, #1e40af 48%, #60a5fa 100%)",
     border: "rgba(147,197,253,0.82)",
@@ -52,11 +57,16 @@ const Navbar = () => {
   const location  = useLocation();
   const dispatch  = useDispatch();
 
-  // ── Redux auth state ──────────────────────────────
   const { isLoggedIn, userRole } = useSelector((s) => s.auth);
 
   const [menuOpen,          setMenuOpen]          = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [dropOpen,         setDropOpen]          = useState(false);
+  const [mobileAssetsOpen, setMobileAssetsOpen]  = useState(false);
+  const closeTimer = useRef(null);
+
+  const openDropdown  = () => { clearTimeout(closeTimer.current); setDropOpen(true); };
+  const closeDropdown = () => { closeTimer.current = setTimeout(() => setDropOpen(false), 100); };
 
   const handleLogoutConfirm = () => {
     dispatch(logoutUser());
@@ -69,15 +79,14 @@ const Navbar = () => {
 
   const isManager = userRole === "manager";
   const isAdmin   = userRole === "admin";
-  const isUser    = userRole === "user";
-  const RoleIcon  = isManager ? AdminPanelSettingsIcon : isAdmin ? AdminPanelSettingsIcon : AccountCircleIcon;
+  const RoleIcon  = isManager || isAdmin ? AdminPanelSettingsIcon : AccountCircleIcon;
   const roleStyle = isManager ? roleBadgeStyles.manager : isAdmin ? roleBadgeStyles.admin : roleBadgeStyles.user;
   const roleLabel = isManager ? "Manager" : isAdmin ? "Admin" : "User";
 
-  const visibleNavItems = navItems.filter(item => {
-    if (item.path === "/home/users") return isManager;
-    return true;
-  });
+  // Filter nav items by current user role
+  const visibleNavItems = navItems.filter((item) =>
+    item.roles.includes(userRole)
+  );
 
   return (
     <>
@@ -92,15 +101,14 @@ const Navbar = () => {
           boxShadow: "0 10px 30px rgba(15,23,42,0.10)",
           color: "#111827",
           backdropFilter: "blur(14px)",
-          overflow: "hidden",
           transition: "box-shadow 180ms ease, background-color 180ms ease",
           "&::before": {
             animation: "navLightSweep 4.5s linear infinite",
             background: "linear-gradient(90deg, transparent, rgba(37,99,235,0.28), transparent)",
             content: '""', height: 2, left: "-40%", position: "absolute", top: 0, width: "40%",
           },
-          "@keyframes navbarDrop":   { "0%": { opacity: 0, transform: "translateY(-16px)" }, "100%": { opacity: 1, transform: "translateY(0)" } },
-          "@keyframes navLightSweep":{ "0%": { left: "-40%" }, "100%": { left: "100%" } },
+          "@keyframes navbarDrop":    { "0%": { opacity: 0, transform: "translateY(-16px)" }, "100%": { opacity: 1, transform: "translateY(0)" } },
+          "@keyframes navLightSweep": { "0%": { left: "-40%" }, "100%": { left: "100%" } },
         }}
       >
         <Toolbar sx={{ minHeight: { xs: 70, md: 78 }, px: { xs: 2, md: 4 }, gap: 2, justifyContent: "space-between" }}>
@@ -120,6 +128,106 @@ const Navbar = () => {
           <Box sx={{ animation: "pillGlow 5s ease-in-out infinite", background: "linear-gradient(135deg,rgba(239,246,255,0.96),rgba(219,234,254,0.92),rgba(255,255,255,0.96))", backgroundSize: "220% 220%", border: "1px solid #dbeafe", borderRadius: 999, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.85), 0 8px 22px rgba(37,99,235,0.10)", display: { xs: "none", md: "flex" }, gap: 0.5, p: 0.5, "@keyframes pillGlow": { "0%,100%": { backgroundPosition: "0% 50%" }, "50%": { backgroundPosition: "100% 50%" } } }}>
             {visibleNavItems.map((item) => {
               const active = isActivePath(item);
+              const visibleDropdown = item.dropdown?.filter((d) => d.roles.includes(userRole));
+              if (visibleDropdown?.length) {
+                const dropActive = active || visibleDropdown.some((d) => location.pathname.startsWith(d.path));
+                return (
+                  <Box key={item.path}
+                    onMouseEnter={openDropdown}
+                    onMouseLeave={closeDropdown}
+                    sx={{ position: "relative" }}
+                  >
+                    {/* Nav button */}
+                    <Button
+                      component={Link} to={item.path}
+                      endIcon={
+                        <KeyboardArrowDownIcon sx={{
+                          fontSize: "15px !important",
+                          transition: "transform 300ms cubic-bezier(.34,1.56,.64,1)",
+                          transform: dropOpen ? "rotate(180deg)" : "rotate(0deg)",
+                        }} />
+                      }
+                      sx={{
+                        bgcolor: dropActive ? "#ffffff" : "transparent",
+                        borderRadius: 999,
+                        boxShadow: dropActive ? "0 8px 24px rgba(37,99,235,0.18), inset 0 1px 0 rgba(255,255,255,0.9)" : "none",
+                        color: dropActive ? "#2563eb" : "#475569",
+                        fontWeight: dropActive ? 700 : 600,
+                        px: 2.25, textTransform: "none",
+                        transition: "all 200ms ease",
+                        "&:hover": { bgcolor: "#ffffff", color: "#2563eb", boxShadow: "0 8px 20px rgba(37,99,235,0.14)" },
+                      }}>
+                      {item.label}
+                    </Button>
+
+                    {/* Dropdown card */}
+                    {dropOpen && (
+                      <Box
+                        onMouseEnter={openDropdown}
+                        onMouseLeave={closeDropdown}
+                        sx={{
+                          position: "absolute",
+                          top: "calc(100% + 12px)",
+                          left: "50%",
+                          zIndex: 1400,
+                          minWidth: 190,
+                          borderRadius: "14px",
+                          background: "#fff",
+                          border: "1px solid #f1f5f9",
+                          boxShadow: "0 16px 48px rgba(15,23,42,0.12), 0 2px 8px rgba(15,23,42,0.06)",
+                          py: 1,
+                          animation: "simpleDrop 200ms cubic-bezier(.16,1,.3,1) both",
+                          "@keyframes simpleDrop": {
+                            "0%":   { opacity: 0, transform: "translateX(-50%) translateY(-8px)" },
+                            "100%": { opacity: 1, transform: "translateX(-50%) translateY(0)" },
+                          },
+                          "&::before": {
+                            content: '""', position: "absolute", top: -6, left: "50%",
+                            transform: "translateX(-50%) rotate(45deg)",
+                            width: 11, height: 11,
+                            background: "#fff",
+                            border: "1px solid #f1f5f9",
+                            borderBottom: "none", borderRight: "none",
+                          },
+                        }}
+                      >
+                        {visibleDropdown.map((d, i) => {
+                          const isSelected = location.pathname.startsWith(d.path);
+                          return (
+                            <Box
+                              key={d.path}
+                              component={Link} to={d.path}
+                              onClick={() => setDropOpen(false)}
+                              sx={{
+                                display: "flex", alignItems: "center", justifyContent: "space-between",
+                                px: 2, py: 1.1,
+                                mx: 0.75, borderRadius: "8px",
+                                textDecoration: "none",
+                                color: isSelected ? "#2563eb" : "#374151",
+                                fontWeight: isSelected ? 700 : 500,
+                                fontSize: 14,
+                                bgcolor: isSelected ? "#eff6ff" : "transparent",
+                                transition: "all 150ms ease",
+                                animation: `si 180ms ${i * 50}ms both`,
+                                "@keyframes si": {
+                                  "0%":   { opacity: 0 },
+                                  "100%": { opacity: 1 },
+                                },
+                                "&:hover": { bgcolor: "#f8fafc", color: "#2563eb" },
+                              }}
+                            >
+                              {d.label}
+                              {isSelected && (
+                                <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "#2563eb", flexShrink: 0 }} />
+                              )}
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    )}
+                  </Box>
+                );
+              }
               return (
                 <Button key={item.path} component={Link} to={item.path}
                   sx={{ bgcolor: active ? "#ffffff" : "transparent", borderRadius: 999, boxShadow: active ? "0 8px 24px rgba(37,99,235,0.18), inset 0 1px 0 rgba(255,255,255,0.9)" : "none", color: active ? "#111827" : "#475569", fontWeight: active ? 700 : 600, px: 2.25, textTransform: "none", transition: "transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease", "&:hover": { bgcolor: "#ffffff", boxShadow: "0 8px 20px rgba(37,99,235,0.14)", color: "#111827", transform: "translateY(-1px)" } }}>
@@ -170,6 +278,25 @@ const Navbar = () => {
           <List sx={{ p: 2 }}>
             {visibleNavItems.map((item) => {
               const active = isActivePath(item);
+              const visibleDropdown = item.dropdown?.filter((d) => d.roles.includes(userRole));
+              if (visibleDropdown?.length) {
+                return (
+                  <Box key={item.path}>
+                    <ListItemButton component={Link} to={item.path}
+                      onClick={() => setMobileAssetsOpen((p) => !p)}
+                      sx={{ bgcolor: active ? "#eff6ff" : "transparent", borderBottom: "1px solid #f3f4f6", color: active ? "#1d4ed8" : "#111827", px: 1.5, py: 1.5, "&:hover": { bgcolor: "#eff6ff" } }}>
+                      <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 15, fontWeight: active ? 800 : 600 }} />
+                      <KeyboardArrowDownIcon sx={{ fontSize: 18, transition: "transform 160ms ease", transform: mobileAssetsOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
+                    </ListItemButton>
+                    {mobileAssetsOpen && visibleDropdown.map((d) => (
+                      <ListItemButton key={d.path} component={Link} to={d.path} onClick={() => { setMenuOpen(false); setMobileAssetsOpen(false); }}
+                        sx={{ bgcolor: location.pathname.startsWith(d.path) ? "#eff6ff" : "#f8fafc", borderBottom: "1px solid #f3f4f6", color: location.pathname.startsWith(d.path) ? "#1d4ed8" : "#374151", pl: 4, py: 1.25, "&:hover": { bgcolor: "#eff6ff" } }}>
+                        <ListItemText primary={d.label} primaryTypographyProps={{ fontSize: 14, fontWeight: 600 }} />
+                      </ListItemButton>
+                    ))}
+                  </Box>
+                );
+              }
               return (
                 <ListItemButton key={item.path} component={Link} to={item.path} onClick={() => setMenuOpen(false)}
                   sx={{ bgcolor: active ? "#eff6ff" : "transparent", borderBottom: "1px solid #f3f4f6", color: active ? "#1d4ed8" : "#111827", px: 1.5, py: 1.5, transition: "transform 160ms ease", "&:hover": { bgcolor: "#eff6ff", transform: "translateX(4px)" }, "&:last-child": { borderBottom: 0 } }}>

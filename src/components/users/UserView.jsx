@@ -4,9 +4,11 @@ import { COLORS, ROLE_COLORS } from "../../theme/tokens";
 import ViewModal from "../common/ViewModal";
 
 const FIELDS = [
-  ["User ID",  "userId"],
-  ["Username", "userName"],
-  ["Email",    "userEmail"],
+  ["User ID",    "userId"],
+  ["Username",   "userName"],
+  ["Email",      "userEmail"],
+  ["Created At", "createdAt"],
+  ["Updated At", "updatedAt"],
 ];
 
 // Role → pill colors (re-use ROLE_COLORS from tokens, flatten the gradient to a flat bg)

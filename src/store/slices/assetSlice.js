@@ -3,9 +3,15 @@ import { getAssets } from "../../services/assets_service";
 
 export const fetchAssets = createAsyncThunk(
   "assets/fetchAssets",
-  async ({ keyword = "", page = 0, size = 10, type } = {}, { rejectWithValue }) => {
+  async ({ keyword = "", page = 0, size = 10, type, status } = {}, { rejectWithValue }) => {
     try {
-      const params = { name: keyword || undefined, type: type || undefined, page, size };
+      const params = {
+        name:   keyword || undefined,
+        type:   type || undefined,
+        status: status || undefined,
+        page,
+        size,
+      };
 
       const data = await getAssets(params);
       return {
@@ -21,19 +27,21 @@ export const fetchAssets = createAsyncThunk(
 const assetSlice = createSlice({
   name: "assets",
   initialState: {
-    items:      [],
-    totalPages: 0,
-    page:       0,
-    search:     "",
-    filterType: "",
-    loading:    false,
-    error:      null,
+    items:       [],
+    totalPages:  0,
+    page:        0,
+    search:      "",
+    filterType:  "",
+    filterStatus:"",
+    loading:     false,
+    error:       null,
   },
   reducers: {
-    setAssetPage(state, { payload })   { state.page       = payload; },
-    setAssetSearch(state, { payload }) { state.search     = payload; },
-    setAssetFilter(state, { payload }) { state.filterType = payload; },
-    resetAssetFilters(state)           { state.page = 0; state.search = ""; state.filterType = ""; },
+    setAssetPage(state, { payload })        { state.page        = payload; },
+    setAssetSearch(state, { payload })      { state.search      = payload; },
+    setAssetFilter(state, { payload })      { state.filterType  = payload; },
+    setAssetStatusFilter(state, { payload }){ state.filterStatus = payload; },
+    resetAssetFilters(state)                { state.page = 0; state.search = ""; state.filterType = ""; state.filterStatus = ""; },
   },
   extraReducers: (builder) => {
     builder
@@ -43,5 +51,5 @@ const assetSlice = createSlice({
   },
 });
 
-export const { setAssetPage, setAssetSearch, setAssetFilter, resetAssetFilters } = assetSlice.actions;
+export const { setAssetPage, setAssetSearch, setAssetFilter, setAssetStatusFilter, resetAssetFilters } = assetSlice.actions;
 export default assetSlice.reducer;

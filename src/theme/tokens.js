@@ -24,8 +24,9 @@ export const COLORS = {
 
 export const STATUS_COLORS = {
   AVAILABLE: { bg: "#e8f5e9", color: "#2e7d32" },
-  ASSIGNED:  { bg: "#fff3e0", color: "#e65100" },
+  ASSIGNED:  { bg: "#dbeafe", color: "#2563eb" },
   DAMAGED:   { bg: "#ffebee", color: "#c62828" },
+  DISPOSED:  { bg: "#e5e7eb", color: "#4b5563" },
 };
 
 export const CONDITION_COLORS = {

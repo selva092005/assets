@@ -1,68 +1,64 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { login as loginService, logout as logoutCookie, getTokenFromCookie } from "../../services/auth_service";
+import { login as loginService, logout as logoutFn, getToken } from "../../services/auth_service";
 
-// ── helpers ────────────────────────────────────
-const getRoleFromToken = (token) => {
-  if (!token?.includes(".")) return "user";
-  try {
-    const payload = JSON.parse(
-      atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))
-    );
-    const raw =
-      payload.role || payload.userRole || payload.type ||
-      payload.authority || payload.roles?.[0] || payload.authorities?.[0] || "user";
-    return String(raw).replace("ROLE_", "").toLowerCase();
-  } catch {
-    return "user";
-  }
+const decodePayload = (token) => {
+  if (!token?.includes(".")) return null;
+  try { return JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))); }
+  catch { return null; }
 };
 
-const token    = getTokenFromCookie();
-const userRole = getRoleFromToken(token);
+const getRoleFromToken = (token) => {
+  const p = decodePayload(token);
+  if (!p) return "user";
+  const raw = p.role || p.userRole || p.type || p.authority || p.roles?.[0] || p.authorities?.[0];
+  return raw ? String(raw).replace("ROLE_", "").toLowerCase() : "user";
+};
 
-// ── slice ──────────────────────────────────────
+const getUserNameFromToken = (token) => {
+  const p = decodePayload(token);
+  if (!p) return "";
+  return p.name || p.username || p.sub || p.email || "";
+};
+
+const token    = getToken();
+// Only use stored role if it's a non-empty string
+const stored   = localStorage.getItem("role") || "";
+const userRole = stored.trim() !== "" ? stored.trim() : getRoleFromToken(token);
+const userName = getUserNameFromToken(token);
+
 const authSlice = createSlice({
   name: "auth",
-  initialState: {
-    token,
-    userRole,
-    isLoggedIn: !!token,
-    loading:    false,
-    error:      null,
-  },
+  initialState: { token, userRole, userName, isLoggedIn: !!token, loading: false, error: null },
   reducers: {
-    setCredentials(state, { payload: { token, userRole } }) {
-      state.token      = token;
-      state.userRole   = userRole;
+    setCredentials(state, { payload }) {
+      state.token      = payload.token;
+      state.userRole   = payload.userRole;
+      state.userName   = getUserNameFromToken(payload.token);
       state.isLoggedIn = true;
       state.error      = null;
     },
     logoutUser(state) {
-      logoutCookie();
-      state.token      = null;
-      state.userRole   = "user";
-      state.isLoggedIn = false;
+      logoutFn();
+      state.token = null; state.userRole = "user"; state.userName = ""; state.isLoggedIn = false;
     },
-    setAuthError(state, { payload }) {
-      state.error   = payload;
-      state.loading = false;
-    },
-    setAuthLoading(state, { payload }) {
-      state.loading = payload;
-    },
+    setAuthError(state,   { payload }) { state.error   = payload; state.loading = false; },
+    setAuthLoading(state, { payload }) { state.loading = payload; },
   },
 });
 
 export const { setCredentials, logoutUser, setAuthError, setAuthLoading } = authSlice.actions;
 export default authSlice.reducer;
 
-// ── thunk ──────────────────────────────────────
 export const loginThunk = (email, password) => async (dispatch) => {
   dispatch(setAuthLoading(true));
   try {
-    await loginService(email, password);
-    const newToken = getTokenFromCookie();
-    dispatch(setCredentials({ token: newToken, userRole: getRoleFromToken(newToken) }));
+    const { token: newToken, role } = await loginService(email, password);
+    const resolvedRole = role
+      ? String(role).replace("ROLE_", "").toLowerCase()
+      : getRoleFromToken(newToken);
+    // Always persist resolved role so page refresh works
+    localStorage.setItem("role", resolvedRole);
+    dispatch(setCredentials({ token: newToken, userRole: resolvedRole }));
     return { success: true };
   } catch (err) {
     const message = err.response?.data?.message || "Login failed";

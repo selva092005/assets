@@ -20,13 +20,13 @@ import {
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-
+import { COLORS } from "../theme/tokens";
 /* ─── Theme ─────────────────────────────────────────────────── */
 const theme = createTheme({
   palette: {
     mode: "light",
-    primary: { main: "#6C63FF" },
-    background: { default: "#F4F6FB" },
+    primary: { main: COLORS.primary },
+    background: { default: COLORS.bg },
   },
   shape: { borderRadius: 14 },
   typography: {
@@ -40,7 +40,7 @@ const theme = createTheme({
             borderRadius: 10,
             backgroundColor: "#F9F9FC",
             "&:hover .MuiOutlinedInput-notchedOutline": {
-              borderColor: "#6C63FF",
+              borderColor: COLORS.primary,
             },
           },
         },
@@ -54,14 +54,14 @@ const theme = createTheme({
           fontWeight: 700,
           fontSize: "1rem",
           padding: "12px",
-          background: "linear-gradient(135deg, #6C63FF 0%, #8B83FF 100%)",
-          boxShadow: "0 4px 18px rgba(108,99,255,0.35)",
+          background: COLORS.primary,
+          boxShadow: "0 4px 18px rgba(25,118,210,0.18)",
           "&:hover": {
-            background: "linear-gradient(135deg, #5A52E0 0%, #7A72EE 100%)",
-            boxShadow: "0 6px 22px rgba(108,99,255,0.45)",
+            background: COLORS.primaryDark,
+            boxShadow: "0 6px 22px rgba(25,118,210,0.22)",
           },
           "&:disabled": {
-            background: "#C4C0FF",
+            background: COLORS.primaryLight,
             boxShadow: "none",
             color: "#fff",
           },
@@ -121,7 +121,7 @@ export default function Login() {
             maxWidth: 860,
             borderRadius: 4,
             overflow: "hidden",
-            boxShadow: "0 20px 60px rgba(108,99,255,0.12), 0 4px 20px rgba(0,0,0,0.06)",
+            boxShadow: "0 20px 60px rgba(25,118,210,0.12), 0 4px 20px rgba(0,0,0,0.06)",
           }}
         >
           {/* ── LEFT: Animation panel ── */}
@@ -132,7 +132,7 @@ export default function Login() {
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              background: "linear-gradient(160deg, #6C63FF 0%, #9B8FFF 100%)",
+              background: `linear-gradient(160deg, ${COLORS.primary} 0%, ${COLORS.primaryLight} 100%)`,
               p: 5,
               gap: 3,
             }}
@@ -143,10 +143,7 @@ export default function Login() {
               autoplay
               style={{ width: "100%", maxWidth: 300 }}
             />
-            <Typography
-              variant="h6"
-              sx={{ color: "rgba(255,255,255,0.9)", fontWeight: 700, textAlign: "center" }}
-            >
+            <Typography variant="h6" sx={{ color: "rgba(255,255,255,0.9)", fontWeight: 700, textAlign: "center" }}>
               Your workspace awaits
             </Typography>
             <Typography
@@ -177,8 +174,8 @@ export default function Login() {
                 label="Welcome back"
                 size="small"
                 sx={{
-                  bgcolor: "#EEF0FF",
-                  color: "#6C63FF",
+                  bgcolor: COLORS.primaryLight,
+                  color: COLORS.primary,
                   fontWeight: 700,
                   fontSize: "0.72rem",
                   letterSpacing: 0.5,
@@ -225,7 +222,7 @@ export default function Login() {
                         onClick={() => setShowPassword((v) => !v)}
                         edge="end"
                         size="small"
-                        sx={{ color: "#9B96C9" }}
+                        sx={{ color: COLORS.primaryDark }}
                       >
                         {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
                       </IconButton>
@@ -266,18 +263,10 @@ export default function Login() {
                 pt: 0.5,
               }}
             >
-              <Link
-                href="/signup"
-                underline="hover"
-                sx={{ fontSize: "0.85rem", color: "#6C63FF", fontWeight: 600 }}
-              >
+              <Link href="/signup" underline="hover" sx={{ fontSize: "0.85rem", color: COLORS.primary, fontWeight: 600 }}>
                 Create Account
               </Link>
-              <Link
-                href="/forgot-password"
-                underline="hover"
-                sx={{ fontSize: "0.85rem", color: "#9B96C9", fontWeight: 500 }}
-              >
+              <Link href="/forgot-password" underline="hover" sx={{ fontSize: "0.85rem", color: COLORS.primaryLight, fontWeight: 500 }}>
                 Forgot Password?
               </Link>
             </Box>

@@ -10,12 +10,19 @@ export default function MoveAssetModal({ open, asset, locations, onMove, onClose
   const [newLocation, setNewLocation] = useState("");
   const [reason,      setReason]      = useState("");
   const [loading,     setLoading]     = useState(false);
+  const [validationError, setValidationError] = useState("");
 
   const handleSubmit = async () => {
     if (!newLocation.trim()) return;
+    const trimmedNewLocation = newLocation.trim();
+    if (trimmedNewLocation === (asset?.locationName || "").trim()) {
+      setValidationError("Please choose a different location than the current one.");
+      return;
+    }
+    setValidationError("");
     setLoading(true);
     try {
-      await onMove({ newLocation, reason });
+      await onMove({ fromLocation: asset?.locationName || null, newLocation: trimmedNewLocation, reason });
       setNewLocation("");
       setReason("");
     } finally {
@@ -118,6 +125,9 @@ export default function MoveAssetModal({ open, asset, locations, onMove, onClose
           placeholder="e.g. Reallocation, Repair, Loan"
           sx={inputSx}
         />
+        {validationError && (
+          <Typography sx={{ fontSize: 12, color: "#c62828", mt: 1 }}>{validationError}</Typography>
+        )}
       </DialogContent>
 
       <DialogActions sx={{ px: 2.5, py: 1.5, borderTop: `1px solid ${COLORS.borderLight}`, background: COLORS.surface, gap: 1 }}>
