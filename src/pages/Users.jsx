@@ -49,7 +49,7 @@ export default function UsersPage() {
     if (userRole === "manager" || userRole === "admin") {
       dispatch(fetchUsers({ keyword: search, page, size: showCount, role: filterRole || undefined }));
     }
-  }, [page, showCount, filterRole, dispatch, search, userRole]);
+  }, [page, showCount, filterRole, dispatch, userRole]);
 
   if (userRole !== "admin" && userRole !== "manager") return <Navigate to="/home" replace />;
 

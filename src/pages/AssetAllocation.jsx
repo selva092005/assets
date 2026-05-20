@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import {
   Box, Button, Chip, CircularProgress, Dialog, DialogActions,
-  DialogContent, DialogTitle, IconButton, MenuItem, Select,
+  DialogContent, DialogTitle, IconButton, InputAdornment,
+  Popover, List, ListItemButton, ListItemText,
   Table, TableBody, TableCell, TableHead, TableRow, TextField,
-  Tooltip, Typography, InputLabel, FormControl,
+  Tooltip, Typography, InputLabel, FormControl, OutlinedInput,
 } from "@mui/material";
-import { FaPlus, FaUndo, FaTimes, FaBoxOpen } from "react-icons/fa";
+import { FaPlus, FaUndo, FaTimes, FaBoxOpen, FaSearch } from "react-icons/fa";
+import { getUsers } from "../services/users_service";
 import toast from "react-hot-toast";
 
 import { allocateAsset, getAllAllocations, returnAsset } from "../services/allocation_service";
@@ -62,6 +64,15 @@ export default function AssetAllocationPage() {
     remarks: "",
   });
 
+  const [adminUsers, setAdminUsers]       = useState([]);
+  const [allUsers,   setAllUsers]         = useState([]);
+  const [userSearch, setUserSearch]       = useState("");
+  const [anchorEl,   setAnchorEl]         = useState(null);
+  const [assignedToSearch, setAssignedToSearch] = useState("");
+  const [assignedToAnchor, setAssignedToAnchor] = useState(null);
+  const [assetSearch, setAssetSearch]     = useState("");
+  const [assetAnchor, setAssetAnchor]     = useState(null);
+
   // Return confirm
   const [returnConfirm, setReturnConfirm] = useState(false);
   const [returnId, setReturnId] = useState(null);
@@ -95,7 +106,20 @@ export default function AssetAllocationPage() {
   // ── Open allocate modal ───────────────────────────────────────────────────
   const openAllocate = async () => {
     await loadAvailableAssets();
-    setForm({ assetId: "", assignedTo: "", assignedBy: userName || "", assignedDate: today(), expectedReturnDate: "", remarks: "" });
+    setForm({ assetId: "", assignedTo: "", assignedBy: "", assignedDate: today(), expectedReturnDate: "", remarks: "" });
+    setUserSearch("");
+    setAssignedToSearch("");
+    setAssetSearch("");
+    try {
+      const res = await getUsers({ page: 0, size: 200 });
+      const all = extractList(res);
+      setAllUsers(all);
+      const admins = all.filter((u) => u.userRole === "ADMIN" || u.userRole === "MANAGER");
+      setAdminUsers(admins.length > 0 ? admins : all);
+    } catch {
+      setAdminUsers([]);
+      setAllUsers([]);
+    }
     setAllocateOpen(true);
   };
 
@@ -229,37 +253,194 @@ export default function AssetAllocationPage() {
 
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "12px !important" }}>
 
-          {/* Asset select */}
+          {/* Asset searchable dropdown */}
           <FormControl fullWidth size="small">
-            <InputLabel sx={{ fontSize: 13 }}>Asset *</InputLabel>
-            <Select
-              value={form.assetId}
+            <InputLabel shrink sx={{ fontSize: 13 }}>Asset *</InputLabel>
+            <OutlinedInput
+              readOnly
+              notched
               label="Asset *"
-              onChange={(e) => f("assetId", e.target.value)}
-              sx={{ fontSize: 13, borderRadius: "8px" }}
+              size="small"
+              value={availableAssets.find((a) => a.assetId === form.assetId)
+                ? `${availableAssets.find((a) => a.assetId === form.assetId).assetName}${availableAssets.find((a) => a.assetId === form.assetId).assetCode ? ` (${availableAssets.find((a) => a.assetId === form.assetId).assetCode})` : ""}`
+                : ""}
+              placeholder="Select asset..."
+              onClick={(e) => setAssetAnchor(e.currentTarget)}
+              endAdornment={<InputAdornment position="end"><Typography fontSize={12} color="#aaa">▾</Typography></InputAdornment>}
+              sx={{ fontSize: 13, borderRadius: "8px", cursor: "pointer", caretColor: "transparent" }}
+            />
+            <Popover
+              open={Boolean(assetAnchor)}
+              anchorEl={assetAnchor}
+              onClose={() => { setAssetAnchor(null); setAssetSearch(""); }}
+              anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+              PaperProps={{ sx: { width: assetAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } }}
             >
-              {availableAssets.length === 0 && (
-                <MenuItem disabled sx={{ fontSize: 13 }}>No available assets</MenuItem>
-              )}
-              {availableAssets.map((a) => (
-                <MenuItem key={a.assetId} value={a.assetId} sx={{ fontSize: 13 }}>
-                  {a.assetName} {a.assetCode ? `(${a.assetCode})` : ""}
-                </MenuItem>
-              ))}
-            </Select>
+              <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
+                <TextField
+                  autoFocus
+                  size="small"
+                  fullWidth
+                  placeholder="Search asset..."
+                  value={assetSearch}
+                  onChange={(e) => setAssetSearch(e.target.value)}
+                  InputProps={{ startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> }}
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }}
+                />
+              </Box>
+              <List dense sx={{ overflowY: "auto", flex: 1 }}>
+                {(() => {
+                  const q = assetSearch.toLowerCase();
+                  const filtered = availableAssets.filter((a) =>
+                    !q || a.assetName?.toLowerCase().includes(q) || a.assetCode?.toLowerCase().includes(q)
+                  );
+                  return filtered.length > 0 ? filtered.map((a) => (
+                    <ListItemButton
+                      key={a.assetId}
+                      selected={form.assetId === a.assetId}
+                      onClick={() => { f("assetId", a.assetId); setAssetAnchor(null); setAssetSearch(""); }}
+                      sx={{ py: 0.5 }}
+                    >
+                      <ListItemText
+                        primary={a.assetName}
+                        secondary={a.assetCode || ""}
+                        primaryTypographyProps={{ fontSize: 13 }}
+                        secondaryTypographyProps={{ fontSize: 11 }}
+                      />
+                    </ListItemButton>
+                  )) : (
+                    <ListItemButton disabled>
+                      <ListItemText primary="No assets found" primaryTypographyProps={{ fontSize: 13 }} />
+                    </ListItemButton>
+                  );
+                })()}
+              </List>
+            </Popover>
           </FormControl>
 
-          <TextField label="Assigned To (Users) *" size="small" fullWidth
-            value={form.assignedTo} onChange={(e) => f("assignedTo", e.target.value)}
-            inputProps={{ maxLength: 100 }}
-            sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
-          />
+          <FormControl fullWidth size="small">
+            <InputLabel shrink sx={{ fontSize: 13 }}>Assigned To *</InputLabel>
+            <OutlinedInput
+              readOnly
+              notched
+              label="Assigned To *"
+              size="small"
+              value={form.assignedTo || ""}
+              placeholder="Select employee..."
+              onClick={(e) => setAssignedToAnchor(e.currentTarget)}
+              endAdornment={<InputAdornment position="end"><Typography fontSize={12} color="#aaa">▾</Typography></InputAdornment>}
+              sx={{ fontSize: 13, borderRadius: "8px", cursor: "pointer", caretColor: "transparent" }}
+            />
+            <Popover
+              open={Boolean(assignedToAnchor)}
+              anchorEl={assignedToAnchor}
+              onClose={() => { setAssignedToAnchor(null); setAssignedToSearch(""); }}
+              anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+              PaperProps={{ sx: { width: assignedToAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } }}
+            >
+              <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
+                <TextField
+                  autoFocus
+                  size="small"
+                  fullWidth
+                  placeholder="Search employee..."
+                  value={assignedToSearch}
+                  onChange={(e) => setAssignedToSearch(e.target.value)}
+                  InputProps={{ startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> }}
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }}
+                />
+              </Box>
+              <List dense sx={{ overflowY: "auto", flex: 1 }}>
+                {(() => {
+                  const q = assignedToSearch.toLowerCase();
+                  const filtered = allUsers.filter((u) =>
+                    !q || u.userName?.toLowerCase().includes(q) || u.userEmail?.toLowerCase().includes(q)
+                  );
+                  return filtered.length > 0 ? filtered.map((u) => (
+                    <ListItemButton
+                      key={u.userId}
+                      selected={form.assignedTo === u.userName}
+                      onClick={() => { f("assignedTo", u.userName); setAssignedToAnchor(null); setAssignedToSearch(""); }}
+                      sx={{ py: 0.5 }}
+                    >
+                      <ListItemText
+                        primary={u.userName}
+                        secondary={u.userEmail}
+                        primaryTypographyProps={{ fontSize: 13 }}
+                        secondaryTypographyProps={{ fontSize: 11 }}
+                      />
+                    </ListItemButton>
+                  )) : (
+                    <ListItemButton disabled>
+                      <ListItemText primary="No users found" primaryTypographyProps={{ fontSize: 13 }} />
+                    </ListItemButton>
+                  );
+                })()}
+              </List>
+            </Popover>
+          </FormControl>
 
-          <TextField label="Assigned By *" size="small" fullWidth
-            value={form.assignedBy} onChange={(e) => f("assignedBy", e.target.value)}
-            inputProps={{ maxLength: 100 }}
-            sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
-          />
+          <FormControl fullWidth size="small">
+            <InputLabel shrink sx={{ fontSize: 13 }}>Assigned By *</InputLabel>
+            <OutlinedInput
+              readOnly
+              notched
+              label="Assigned By *"
+              size="small"
+              value={form.assignedBy || ""}
+              placeholder="Select user..."
+              onClick={(e) => setAnchorEl(e.currentTarget)}
+              endAdornment={<InputAdornment position="end"><Typography fontSize={12} color="#aaa">▾</Typography></InputAdornment>}
+              sx={{ fontSize: 13, borderRadius: "8px", cursor: "pointer", caretColor: "transparent" }}
+            />
+            <Popover
+              open={Boolean(anchorEl)}
+              anchorEl={anchorEl}
+              onClose={() => { setAnchorEl(null); setUserSearch(""); }}
+              anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+              PaperProps={{ sx: { width: anchorEl?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } }}
+            >
+              <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
+                <TextField
+                  autoFocus
+                  size="small"
+                  fullWidth
+                  placeholder="Search user..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  InputProps={{ startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> }}
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }}
+                />
+              </Box>
+              <List dense sx={{ overflowY: "auto", flex: 1 }}>
+                {(() => {
+                  const q = userSearch.toLowerCase();
+                  const filtered = adminUsers.filter((u) =>
+                    !q || u.userName?.toLowerCase().includes(q) || u.userEmail?.toLowerCase().includes(q)
+                  );
+                  return filtered.length > 0 ? filtered.map((u) => (
+                    <ListItemButton
+                      key={u.userId}
+                      selected={form.assignedBy === u.userName}
+                      onClick={() => { f("assignedBy", u.userName); setAnchorEl(null); setUserSearch(""); }}
+                      sx={{ py: 0.5 }}
+                    >
+                      <ListItemText
+                        primary={u.userName}
+                        secondary={u.userEmail}
+                        primaryTypographyProps={{ fontSize: 13 }}
+                        secondaryTypographyProps={{ fontSize: 11 }}
+                      />
+                    </ListItemButton>
+                  )) : (
+                    <ListItemButton disabled>
+                      <ListItemText primary="No users found" primaryTypographyProps={{ fontSize: 13 }} />
+                    </ListItemButton>
+                  );
+                })()}
+              </List>
+            </Popover>
+          </FormControl>
 
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
             <TextField label="Assigned Date *" type="date" size="small" fullWidth

@@ -3,10 +3,12 @@ import { useSelector } from "react-redux";
 import {
   Box, Button, Chip, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, IconButton, MenuItem, Select,
+  Popover, List, ListItemButton, ListItemText,
   Table, TableBody, TableCell, TableHead, TableRow, TextField,
-  Typography, InputLabel, FormControl, InputAdornment,
+  Typography, InputLabel, FormControl, InputAdornment, OutlinedInput,
 } from "@mui/material";
-import { FaTrash, FaTimes, FaRecycle } from "react-icons/fa";
+import { FaTrash, FaTimes, FaRecycle, FaSearch } from "react-icons/fa";
+import { getUsers } from "../services/users_service";
 import toast from "react-hot-toast";
 
 import { disposeAsset, getAllDisposals } from "../services/disposal_service";
@@ -51,11 +53,16 @@ export default function AssetDisposalPage() {
   const [disposals, setDisposals]           = useState([]);
   const [loading, setLoading]               = useState(true);
   const [disposableAssets, setDisposableAssets] = useState([]);
+  const [adminUsers, setAdminUsers]   = useState([]);
+  const [userSearch, setUserSearch]   = useState("");
+  const [anchorEl,   setAnchorEl]     = useState(null);
+  const [assetSearch, setAssetSearch] = useState("");
+  const [assetAnchor, setAssetAnchor] = useState(null);
 
   // Dispose modal
   const [disposeOpen, setDisposeOpen] = useState(false);
   const [saving, setSaving]           = useState(false);
-  const [form, setForm]               = useState(defaultForm(userName));
+  const [form, setForm]               = useState(defaultForm());
 
   // Confirm dialog
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -79,13 +86,22 @@ export default function AssetDisposalPage() {
   const openDispose = async () => {
     try {
       const res = await getAssets({ page: 0, size: 200 });
-      const all = extractList(res);
-      // Only AVAILABLE assets can be disposed
+      const all = extractList(res?.data ?? res);
       setDisposableAssets(all.filter((a) => a.status === "AVAILABLE"));
     } catch {
       toast.error("Failed to load assets");
     }
-    setForm(defaultForm(userName));
+    setUserSearch("");
+    setAssetSearch("");
+    try {
+      const res = await getUsers({ page: 0, size: 200 });
+      const all = extractList(res);
+      const filtered = all.filter((u) => u.userRole === "ADMIN" || u.userRole === "MANAGER");
+      setAdminUsers(filtered.length > 0 ? filtered : all);
+    } catch {
+      setAdminUsers([]);
+    }
+    setForm(defaultForm());
     setDisposeOpen(true);
   };
 
@@ -207,24 +223,69 @@ export default function AssetDisposalPage() {
             </Typography>
           </Box>
 
-          {/* Asset select */}
+          {/* Asset searchable dropdown */}
           <FormControl fullWidth size="small">
-            <InputLabel sx={{ fontSize: 13 }}>Asset *</InputLabel>
-            <Select
-              value={form.assetId}
+            <InputLabel shrink sx={{ fontSize: 13 }}>Asset *</InputLabel>
+            <OutlinedInput
+              readOnly
+              notched
               label="Asset *"
-              onChange={(e) => f("assetId", e.target.value)}
-              sx={{ fontSize: 13, borderRadius: "8px" }}
+              size="small"
+              value={disposableAssets.find((a) => a.assetId === form.assetId)
+                ? `${disposableAssets.find((a) => a.assetId === form.assetId).assetName}${disposableAssets.find((a) => a.assetId === form.assetId).assetCode ? ` (${disposableAssets.find((a) => a.assetId === form.assetId).assetCode})` : ""}`
+                : ""}
+              placeholder="Select asset..."
+              onClick={(e) => setAssetAnchor(e.currentTarget)}
+              endAdornment={<InputAdornment position="end"><Typography fontSize={12} color="#aaa">▾</Typography></InputAdornment>}
+              sx={{ fontSize: 13, borderRadius: "8px", cursor: "pointer", caretColor: "transparent" }}
+            />
+            <Popover
+              open={Boolean(assetAnchor)}
+              anchorEl={assetAnchor}
+              onClose={() => { setAssetAnchor(null); setAssetSearch(""); }}
+              anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+              PaperProps={{ sx: { width: assetAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } }}
             >
-              {disposableAssets.length === 0 && (
-                <MenuItem disabled sx={{ fontSize: 13 }}>No available assets to dispose</MenuItem>
-              )}
-              {disposableAssets.map((a) => (
-                <MenuItem key={a.assetId} value={a.assetId} sx={{ fontSize: 13 }}>
-                  {a.assetName} {a.assetCode ? `(${a.assetCode})` : ""}
-                </MenuItem>
-              ))}
-            </Select>
+              <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
+                <TextField
+                  autoFocus
+                  size="small"
+                  fullWidth
+                  placeholder="Search asset..."
+                  value={assetSearch}
+                  onChange={(e) => setAssetSearch(e.target.value)}
+                  InputProps={{ startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> }}
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }}
+                />
+              </Box>
+              <List dense sx={{ overflowY: "auto", flex: 1 }}>
+                {(() => {
+                  const q = assetSearch.toLowerCase();
+                  const filtered = disposableAssets.filter((a) =>
+                    !q || a.assetName?.toLowerCase().includes(q) || a.assetCode?.toLowerCase().includes(q)
+                  );
+                  return filtered.length > 0 ? filtered.map((a) => (
+                    <ListItemButton
+                      key={a.assetId}
+                      selected={form.assetId === a.assetId}
+                      onClick={() => { f("assetId", a.assetId); setAssetAnchor(null); setAssetSearch(""); }}
+                      sx={{ py: 0.5 }}
+                    >
+                      <ListItemText
+                        primary={a.assetName}
+                        secondary={a.assetCode || ""}
+                        primaryTypographyProps={{ fontSize: 13 }}
+                        secondaryTypographyProps={{ fontSize: 11 }}
+                      />
+                    </ListItemButton>
+                  )) : (
+                    <ListItemButton disabled>
+                      <ListItemText primary="No assets found" primaryTypographyProps={{ fontSize: 13 }} />
+                    </ListItemButton>
+                  );
+                })()}
+              </List>
+            </Popover>
           </FormControl>
 
           {/* Method select */}
@@ -249,11 +310,67 @@ export default function AssetDisposalPage() {
           />
 
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-            <TextField label="Disposed By *" size="small" fullWidth
-              value={form.disposedBy} onChange={(e) => f("disposedBy", e.target.value)}
-              inputProps={{ maxLength: 100 }}
-              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
-            />
+            <FormControl fullWidth size="small">
+              <InputLabel shrink sx={{ fontSize: 13 }}>Disposed By *</InputLabel>
+              <OutlinedInput
+                readOnly
+                notched
+                label="Disposed By *"
+                size="small"
+                value={form.disposedBy || ""}
+                placeholder="Select user..."
+                onClick={(e) => setAnchorEl(e.currentTarget)}
+                endAdornment={<InputAdornment position="end"><Typography fontSize={12} color="#aaa">▾</Typography></InputAdornment>}
+                sx={{ fontSize: 13, borderRadius: "8px", cursor: "pointer", caretColor: "transparent" }}
+              />
+              <Popover
+                open={Boolean(anchorEl)}
+                anchorEl={anchorEl}
+                onClose={() => { setAnchorEl(null); setUserSearch(""); }}
+                anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+                PaperProps={{ sx: { width: anchorEl?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } }}
+              >
+                <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
+                  <TextField
+                    autoFocus
+                    size="small"
+                    fullWidth
+                    placeholder="Search user..."
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    InputProps={{ startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> }}
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }}
+                  />
+                </Box>
+                <List dense sx={{ overflowY: "auto", flex: 1 }}>
+                  {(() => {
+                    const q = userSearch.toLowerCase();
+                    const filtered = adminUsers.filter((u) =>
+                      !q || u.userName?.toLowerCase().includes(q) || u.userEmail?.toLowerCase().includes(q)
+                    );
+                    return filtered.length > 0 ? filtered.map((u) => (
+                      <ListItemButton
+                        key={u.userId}
+                        selected={form.disposedBy === u.userName}
+                        onClick={() => { f("disposedBy", u.userName); setAnchorEl(null); setUserSearch(""); }}
+                        sx={{ py: 0.5 }}
+                      >
+                        <ListItemText
+                          primary={u.userName}
+                          secondary={u.userEmail}
+                          primaryTypographyProps={{ fontSize: 13 }}
+                          secondaryTypographyProps={{ fontSize: 11 }}
+                        />
+                      </ListItemButton>
+                    )) : (
+                      <ListItemButton disabled>
+                        <ListItemText primary="No users found" primaryTypographyProps={{ fontSize: 13 }} />
+                      </ListItemButton>
+                    );
+                  })()}
+                </List>
+              </Popover>
+            </FormControl>
             <TextField label="Disposal Date *" type="date" size="small" fullWidth
               value={form.disposalDate} onChange={(e) => f("disposalDate", e.target.value)}
               InputLabelProps={{ shrink: true }}
@@ -314,12 +431,12 @@ function extractList(res) {
   return [];
 }
 
-function defaultForm(userName) {
+function defaultForm() {
   return {
     assetId: "",
     disposalMethod: "",
     reason: "",
-    disposedBy: userName || "",
+    disposedBy: "",
     disposalDate: today(),
     disposalValue: "",
   };

@@ -9,6 +9,7 @@ import UserFormPage    from "../pages/UserFormPage";
 import Login           from "../pages/Login";
 import AssetAllocation from "../pages/AssetAllocation";
 import AssetDisposal   from "../pages/AssetDisposal";
+import BulkUploadPage  from "../pages/BulkUploadPage";
 
 function ProtectedRoute({ children }) {
   const { isLoggedIn } = useSelector((s) => s.auth);
@@ -33,7 +34,8 @@ export default function AppRoutes() {
         {/* Assets — all roles can view; admin+manager can create/edit */}
         <Route path="assets"          element={<Assets />} />
         <Route path="assets/new"      element={<RoleRoute allowedRoles={["admin", "manager"]}><AssetFormPage /></RoleRoute>} />
-        <Route path="assets/edit/:id" element={<RoleRoute allowedRoles={["admin", "manager"]}><AssetFormPage /></RoleRoute>} />
+        <Route path="assets/edit/:id"   element={<RoleRoute allowedRoles={["admin", "manager"]}><AssetFormPage /></RoleRoute>} />
+        <Route path="assets/bulk-upload"  element={<RoleRoute allowedRoles={["admin"]}><BulkUploadPage /></RoleRoute>} />
 
         {/* Users — admin+manager can view; only admin can create/edit */}
         <Route path="users"           element={<RoleRoute allowedRoles={["admin", "manager"]}><Users /></RoleRoute>} />

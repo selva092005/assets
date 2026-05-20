@@ -1,13 +1,12 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Box, Button, Select, MenuItem, CircularProgress,
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Typography, LinearProgress, Chip,
+  Typography, Chip,
   Tooltip, IconButton,
 } from "@mui/material";
-import { FaFilter, FaFileExport, FaPlus, FaUpload, FaDownload, FaFileExcel, FaTimes } from "react-icons/fa";
+import { FaFilter, FaFileExport, FaPlus, FaUpload } from "react-icons/fa";
 import toast from "react-hot-toast";
 import {
   fetchAssets,
@@ -15,7 +14,7 @@ import {
 } from "../store/slices/assetSlice";
 import {
   getAssetTypes, deleteAsset, getAssetById,
-  bulkUploadExcel, exportAssets, downloadTemplate,
+  exportAssets,
 } from "../services/assets_service";
 import { moveAsset } from "../services/location_history_service";
 import { COLORS } from "../theme/tokens";
@@ -37,6 +36,7 @@ export default function AssetsPage() {
     useSelector((s) => s.assets);
   const { userRole, userName } = useSelector((s) => s.auth);
 
+  const [inputValue,    setInputValue]    = useState("");
   const [types,         setTypes]         = useState([]);
   const [typesLoaded,   setTypesLoaded]   = useState(false);
   const [showCount,     setShowCount]     = useState(10);
@@ -52,13 +52,7 @@ export default function AssetsPage() {
   const [historyModal,  setHistoryModal]  = useState(false);
   const [historyAsset,  setHistoryAsset]  = useState(null);
 
-  // Bulk upload state
-  const [bulkDialog,    setBulkDialog]    = useState(false);
-  const [bulkFile,      setBulkFile]      = useState(null);
-  const [bulkLoading,   setBulkLoading]   = useState(false);
-  const [bulkResult,    setBulkResult]    = useState(null);
   const [exportLoading, setExportLoading] = useState(false);
-  const fileInputRef = useRef(null);
 
   const navigate    = useNavigate();
   const location    = useLocation();
@@ -88,13 +82,12 @@ export default function AssetsPage() {
       });
   }, []);
 
-  // ── Re-fetch whenever page / search / filterType / showCount changes ─────────
-  // BUG FIX: Only run after typesLoaded=true so resolveTypeName has the list
+  // ── Re-fetch whenever page / filterType / filterStatus / showCount changes ───
   useEffect(() => {
     if (!typesLoaded) return;
     const typeName = resolveTypeName(filterType, types);
     dispatch(fetchAssets({ keyword: search, page, size: showCount, type: typeName, status: filterStatus }));
-  }, [page, showCount, filterType, filterStatus, typesLoaded, dispatch]);
+  }, [page, showCount, filterType, filterStatus, search, typesLoaded, dispatch]);
 
   const reload = () => {
     const typeName = resolveTypeName(filterType, types);
@@ -102,12 +95,12 @@ export default function AssetsPage() {
   };
 
   const handleSearch = () => {
+    dispatch(setAssetSearch(inputValue));
     dispatch(setAssetPage(0));
-    const typeName = resolveTypeName(filterType, types);
-    dispatch(fetchAssets({ keyword: search, page: 0, size: showCount, type: typeName, status: filterStatus }));
   };
 
   const handleReset = () => {
+    setInputValue("");
     dispatch(resetAssetFilters());
     dispatch(fetchAssets({ keyword: "", page: 0, size: showCount }));
   };
@@ -192,50 +185,7 @@ export default function AssetsPage() {
     }
   };
 
-  // ── BULK UPLOAD ─────────────────────────────────────────────────────────────
-  const handleDownloadTemplate = async () => {
-    try {
-      await downloadTemplate();
-    } catch (e) {
-      toast.error("Failed to download template");
-    }
-  };
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.name.match(/\.(xlsx|xls)$/i)) {
-      toast.error("Please select an Excel file (.xlsx or .xls)");
-      return;
-    }
-    setBulkFile(file);
-    setBulkResult(null);
-  };
-
-  const handleBulkUpload = async () => {
-    if (!bulkFile) { toast.error("Please select a file first"); return; }
-    try {
-      setBulkLoading(true);
-      const result = await bulkUploadExcel(bulkFile);
-      setBulkResult(result?.data ?? result);
-      const count = result?.data?.successCount ?? result?.successCount ?? 0;
-      if (count > 0) {
-        toast.success(`${count} asset(s) uploaded successfully`);
-        reload();
-      }
-    } catch (e) {
-      toast.error(e.response?.data?.message || "Bulk upload failed");
-    } finally {
-      setBulkLoading(false);
-    }
-  };
-
-  const closeBulkDialog = () => {
-    setBulkDialog(false);
-    setBulkFile(null);
-    setBulkResult(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
 
   return (
     <Box sx={{ mt: "60px", p: "2rem 2.5rem", background: COLORS.bg, minHeight: "100vh", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
@@ -313,7 +263,7 @@ export default function AssetsPage() {
               <Button
                 variant="outlined"
                 startIcon={<FaUpload size={12} />}
-                onClick={() => setBulkDialog(true)}
+                onClick={() => navigate("/home/assets/bulk-upload")}
                 sx={{ textTransform: "none", fontSize: 13, borderColor: "#4caf50", color: "#2e7d32", borderRadius: "8px", py: "7px", px: 1.75 }}
               >
                 Bulk Upload
@@ -336,9 +286,9 @@ export default function AssetsPage() {
       />
 
       <SearchBar
-        value={search}
+        value={inputValue}
         placeholder="Search by name, serial, asset code, location..."
-        onChange={(e) => dispatch(setAssetSearch(e.target.value))}
+        onChange={(e) => setInputValue(e.target.value)}
         onSearch={handleSearch}
         onReset={handleReset}
       />
@@ -375,178 +325,7 @@ export default function AssetsPage() {
         confirmLabel="Delete"
       />
 
-      {/* ── Bulk Upload Dialog ─────────────────────────────────────────── */}
-      <Dialog open={bulkDialog} onClose={closeBulkDialog} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: "12px" } }}>
-        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <FaFileExcel color="#217346" />
-            <Typography fontWeight={600} fontSize={16}>Bulk Upload Assets</Typography>
-          </Box>
-          <IconButton size="small" onClick={closeBulkDialog}><FaTimes size={14} /></IconButton>
-        </DialogTitle>
 
-        <DialogContent sx={{ pt: 1 }}>
-          {/* Step 1: Download template — admin only */}
-          <Box sx={{ mb: 2, p: 1.5, background: "#f0f7ff", borderRadius: "8px", border: "1px solid #bbdefb" }}>
-            <Typography fontSize={13} color="#1565c0" fontWeight={500} mb={0.5}>Step 1 — Download the template</Typography>
-            <Typography fontSize={12} color="#555" mb={1}>Fill in the Excel template with your asset data and save it.</Typography>
-            <Typography fontSize={11} color="#e65100" fontWeight={500} mb={1}>Status allowed: AVAILABLE / DAMAGED &nbsp;—&nbsp; ASSIGNED and DISPOSED are not allowed.</Typography>
-            {canTemplate && (
-            <Button
-              size="small"
-              startIcon={<FaDownload size={11} />}
-              onClick={handleDownloadTemplate}
-              sx={{ textTransform: "none", fontSize: 12, color: "#1565c0", borderColor: "#1565c0", borderRadius: "6px" }}
-              variant="outlined"
-            >
-              Download Template
-            </Button>
-            )}
-          </Box>
-
-          {/* Step 2: Upload file */}
-          <Box sx={{ mb: 2 }}>
-            <Typography fontSize={13} fontWeight={500} mb={1}>Step 2 — Upload your filled Excel file</Typography>
-            <Box
-              onClick={() => fileInputRef.current?.click()}
-              sx={{
-                border: `2px dashed ${bulkFile ? "#4caf50" : COLORS.border}`,
-                borderRadius: "8px", p: 2.5, textAlign: "center", cursor: "pointer",
-                background: bulkFile ? "#f1f8e9" : "#fafafa",
-                transition: "all 0.2s",
-                "&:hover": { borderColor: COLORS.primary, background: "#f0f7ff" },
-              }}
-            >
-              <FaFileExcel size={28} color={bulkFile ? "#4caf50" : "#9e9e9e"} />
-              <Typography fontSize={13} mt={1} color={bulkFile ? "#2e7d32" : "#757575"}>
-                {bulkFile ? bulkFile.name : "Click to select .xlsx / .xls file"}
-              </Typography>
-              {bulkFile && (
-                <Typography fontSize={11} color="#888" mt={0.5}>
-                  {(bulkFile.size / 1024).toFixed(1)} KB
-                </Typography>
-              )}
-            </Box>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls"
-              style={{ display: "none" }}
-              onChange={handleFileSelect}
-            />
-          </Box>
-
-          {/* Upload progress */}
-          {bulkLoading && (
-            <Box sx={{ mb: 2 }}>
-              <Typography fontSize={12} color="#555" mb={0.5}>Uploading and processing...</Typography>
-              <LinearProgress />
-            </Box>
-          )}
-
-          {/* Results */}
-          {bulkResult && (
-            <Box sx={{ border: `1px solid ${COLORS.border}`, borderRadius: "8px", p: 1.5 }}>
-              <Typography fontSize={13} fontWeight={600} mb={1.5}>Upload Results</Typography>
-
-              {/* Summary chips — always show all 4 */}
-              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, mb: 1.5 }}>
-                <Box sx={{ p: 1, borderRadius: "8px", background: "#f8fafc", border: "1px solid #e2e8f0", textAlign: "center" }}>
-                  <Typography fontSize={18} fontWeight={800} color={COLORS.text}>{bulkResult.totalRows ?? 0}</Typography>
-                  <Typography fontSize={11} color={COLORS.textMuted}>Total Rows</Typography>
-                </Box>
-                <Box sx={{ p: 1, borderRadius: "8px", background: "#f0fdf4", border: "1px solid #bbf7d0", textAlign: "center" }}>
-                  <Typography fontSize={18} fontWeight={800} color="#16a34a">{bulkResult.successCount ?? 0}</Typography>
-                  <Typography fontSize={11} color="#16a34a">Successful</Typography>
-                </Box>
-                <Box sx={{ p: 1, borderRadius: "8px", background: "#fffbeb", border: "1px solid #fde68a", textAlign: "center" }}>
-                  <Typography fontSize={18} fontWeight={800} color="#d97706">{bulkResult.skippedCount ?? 0}</Typography>
-                  <Typography fontSize={11} color="#d97706">Skipped</Typography>
-                </Box>
-                <Box sx={{ p: 1, borderRadius: "8px", background: "#fef2f2", border: "1px solid #fecaca", textAlign: "center" }}>
-                  <Typography fontSize={18} fontWeight={800} color="#dc2626">{bulkResult.failedCount ?? 0}</Typography>
-                  <Typography fontSize={11} color="#dc2626">Failed</Typography>
-                </Box>
-              </Box>
-
-              {/* Skipped table */}
-              {bulkResult.skipped?.length > 0 && (
-                <Box sx={{ mb: 1.5 }}>
-                  <Typography fontSize={12} fontWeight={600} color="#d97706" mb={0.75}>⚠ Skipped Rows ({bulkResult.skipped.length})</Typography>
-                  <Box sx={{ maxHeight: 160, overflowY: "auto", border: "1px solid #fde68a", borderRadius: "6px" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-                      <thead>
-                        <tr style={{ background: "#fef9c3", position: "sticky", top: 0 }}>
-                          <th style={{ padding: "5px 8px", textAlign: "left", color: "#92400e", fontWeight: 600, borderBottom: "1px solid #fde68a", width: 50 }}>Row</th>
-                          <th style={{ padding: "5px 8px", textAlign: "left", color: "#92400e", fontWeight: 600, borderBottom: "1px solid #fde68a" }}>Reason</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {bulkResult.skipped.map((item, i) => (
-                          <tr key={i} style={{ background: i % 2 === 0 ? "#fffbeb" : "#fefce8" }}>
-                            <td style={{ padding: "4px 8px", color: "#92400e", borderBottom: "1px solid #fef3c7" }}>
-                              {typeof item === "object" ? item.row : "—"}
-                            </td>
-                            <td style={{ padding: "4px 8px", color: "#78350f", borderBottom: "1px solid #fef3c7" }}>
-                              {typeof item === "object" ? item.message : item}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </Box>
-                </Box>
-              )}
-
-              {/* Errors table */}
-              {bulkResult.errors?.length > 0 && (
-                <Box>
-                  <Typography fontSize={12} fontWeight={600} color="#dc2626" mb={0.75}>✕ Validation Errors ({bulkResult.errors.length})</Typography>
-                  <Box sx={{ maxHeight: 200, overflowY: "auto", border: "1px solid #fecaca", borderRadius: "6px" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-                      <thead>
-                        <tr style={{ background: "#fee2e2", position: "sticky", top: 0 }}>
-                          <th style={{ padding: "5px 8px", textAlign: "left", color: "#991b1b", fontWeight: 600, borderBottom: "1px solid #fecaca", width: 50 }}>Row</th>
-                          <th style={{ padding: "5px 8px", textAlign: "left", color: "#991b1b", fontWeight: 600, borderBottom: "1px solid #fecaca", width: 90 }}>Field</th>
-                          <th style={{ padding: "5px 8px", textAlign: "left", color: "#991b1b", fontWeight: 600, borderBottom: "1px solid #fecaca" }}>Message</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {bulkResult.errors.map((err, i) => (
-                          <tr key={i} style={{ background: i % 2 === 0 ? "#fef2f2" : "#fff5f5" }}>
-                            <td style={{ padding: "4px 8px", color: "#991b1b", borderBottom: "1px solid #fee2e2" }}>
-                              {typeof err === "object" ? err.row : "—"}
-                            </td>
-                            <td style={{ padding: "4px 8px", color: "#b91c1c", fontWeight: 500, borderBottom: "1px solid #fee2e2" }}>
-                              {typeof err === "object" ? (err.field ?? "—") : "—"}
-                            </td>
-                            <td style={{ padding: "4px 8px", color: "#7f1d1d", borderBottom: "1px solid #fee2e2" }}>
-                              {typeof err === "object" ? err.message : err}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </Box>
-                </Box>
-              )}
-            </Box>
-          )}
-        </DialogContent>
-
-        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-          <Button onClick={closeBulkDialog} sx={{ textTransform: "none", fontSize: 13 }}>Close</Button>
-          <Button
-            variant="contained"
-            startIcon={bulkLoading ? <CircularProgress size={12} color="inherit" /> : <FaUpload size={11} />}
-            onClick={handleBulkUpload}
-            disabled={!bulkFile || bulkLoading}
-            sx={{ textTransform: "none", fontSize: 13, fontWeight: 600, borderRadius: "8px", background: "#2e7d32", "&:hover": { background: "#1b5e20" } }}
-          >
-            {bulkLoading ? "Uploading..." : "Upload"}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

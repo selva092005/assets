@@ -6,9 +6,9 @@ export const fetchAssets = createAsyncThunk(
   async ({ keyword = "", page = 0, size = 10, type, status } = {}, { rejectWithValue }) => {
     try {
       const params = {
-        name:   keyword || undefined,
-        type:   type || undefined,
-        status: status || undefined,
+        keyword: keyword || undefined,
+        type:    type || undefined,
+        status:  status || undefined,
         page,
         size,
       };
