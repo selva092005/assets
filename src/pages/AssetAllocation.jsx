@@ -160,9 +160,14 @@ export default function AssetAllocationPage() {
       await returnAsset(returnId);
       toast.success("Asset returned successfully");
       load();
-      dispatch(fetchAssets({ page: 0, size: 10 })); // refresh asset table status
+      dispatch(fetchAssets({ page: 0, size: 10 }));
     } catch (e) {
-      toast.error(e.response?.data?.message || "Return failed");
+      console.error("Return asset error:", e);
+      toast.error(
+        e.response?.data?.message ||
+        e.response?.data?.error ||
+        "Return failed. Please try again."
+      );
     } finally {
       setReturnConfirm(false);
       setReturnId(null);
@@ -245,7 +250,7 @@ export default function AssetAllocationPage() {
       </TableCard>
 
       {/* ── Allocate Modal ─────────────────────────────────────────────── */}
-      <Dialog open={allocateOpen} onClose={() => setAllocateOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: "12px" } }}>
+      <Dialog open={allocateOpen} onClose={() => setAllocateOpen(false)} maxWidth="sm" fullWidth slotProps={{ paper: { sx: { borderRadius: "12px" } } }}>
         <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
           <Typography fontWeight={700} fontSize={16}>Allocate Asset</Typography>
           <IconButton size="small" onClick={() => setAllocateOpen(false)}><FaTimes size={14} /></IconButton>
@@ -274,7 +279,7 @@ export default function AssetAllocationPage() {
               anchorEl={assetAnchor}
               onClose={() => { setAssetAnchor(null); setAssetSearch(""); }}
               anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-              PaperProps={{ sx: { width: assetAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } }}
+              slotProps={{ paper: { sx: { width: assetAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } } }}
             >
               <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
                 <TextField
@@ -284,7 +289,7 @@ export default function AssetAllocationPage() {
                   placeholder="Search asset..."
                   value={assetSearch}
                   onChange={(e) => setAssetSearch(e.target.value)}
-                  InputProps={{ startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> }}
+                  slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
                   sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }}
                 />
               </Box>
@@ -336,7 +341,7 @@ export default function AssetAllocationPage() {
               anchorEl={assignedToAnchor}
               onClose={() => { setAssignedToAnchor(null); setAssignedToSearch(""); }}
               anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-              PaperProps={{ sx: { width: assignedToAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } }}
+              slotProps={{ paper: { sx: { width: assignedToAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } } }}
             >
               <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
                 <TextField
@@ -346,7 +351,7 @@ export default function AssetAllocationPage() {
                   placeholder="Search employee..."
                   value={assignedToSearch}
                   onChange={(e) => setAssignedToSearch(e.target.value)}
-                  InputProps={{ startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> }}
+                  slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
                   sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }}
                 />
               </Box>
@@ -398,7 +403,7 @@ export default function AssetAllocationPage() {
               anchorEl={anchorEl}
               onClose={() => { setAnchorEl(null); setUserSearch(""); }}
               anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-              PaperProps={{ sx: { width: anchorEl?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } }}
+              slotProps={{ paper: { sx: { width: anchorEl?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } } }}
             >
               <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
                 <TextField
@@ -408,7 +413,7 @@ export default function AssetAllocationPage() {
                   placeholder="Search user..."
                   value={userSearch}
                   onChange={(e) => setUserSearch(e.target.value)}
-                  InputProps={{ startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> }}
+                  slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
                   sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }}
                 />
               </Box>
@@ -445,19 +450,19 @@ export default function AssetAllocationPage() {
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
             <TextField label="Assigned Date *" type="date" size="small" fullWidth
               value={form.assignedDate} onChange={(e) => f("assignedDate", e.target.value)}
-              InputLabelProps={{ shrink: true }}
+              slotProps={{ inputLabel: { shrink: true } }}
               sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
             />
             <TextField label="Expected Return Date" type="date" size="small" fullWidth
               value={form.expectedReturnDate} onChange={(e) => f("expectedReturnDate", e.target.value)}
-              InputLabelProps={{ shrink: true }}
+              slotProps={{ inputLabel: { shrink: true } }}
               sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
             />
           </Box>
 
           <TextField label="Remarks" size="small" fullWidth multiline rows={2}
             value={form.remarks} onChange={(e) => f("remarks", e.target.value)}
-            inputProps={{ maxLength: 250 }}
+            slotProps={{ htmlInput: { maxLength: 250 } }}
             sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
           />
         </DialogContent>

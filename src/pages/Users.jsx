@@ -245,7 +245,7 @@ export default function UsersPage() {
 
       <UserView open={viewModal} data={viewData} onClose={() => setViewModal(false)} />
       {/* ── Bulk Upload Dialog ── */}
-      <Dialog open={bulkDialog} onClose={closeBulkDialog} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: "12px" } }}>
+      <Dialog open={bulkDialog} onClose={closeBulkDialog} maxWidth="sm" fullWidth slotProps={{ paper: { sx: { borderRadius: "12px" } } }}>
         <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <FaFileExcel color="#217346" />

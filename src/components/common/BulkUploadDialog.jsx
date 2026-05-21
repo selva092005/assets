@@ -138,7 +138,7 @@ export default function BulkUploadDialog({
       onClose={handleClose}
       maxWidth="md"
       fullWidth
-      PaperProps={{ sx: { borderRadius: "14px", overflow: "hidden" } }}
+      slotProps={{ paper: { sx: { borderRadius: "14px", overflow: "hidden" } } }}
     >
       {/* ── Header ── */}
       <DialogTitle sx={{ p: 0 }}>

@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const COOKIE_OPTS  = "path=/; SameSite=Strict; max-age=86400";
+const COOKIE_OPTS  = "path=/; SameSite=Lax; max-age=86400";
 const getCookie    = (k)    => document.cookie.split("; ").find((r) => r.startsWith(`${k}=`))?.split("=")[1];
 const setCookie    = (k, v) => { document.cookie = `${k}=${v.trim()}; ${COOKIE_OPTS}`; };
 const removeCookie = (k)    => { document.cookie = `${k}=; path=/; max-age=0; SameSite=Strict`; };
@@ -33,7 +33,8 @@ API.interceptors.response.use(
     const original = error.config;
     if (error.response?.status === 401 && !original._retry) {
       const refreshToken = getCookie("refreshToken");
-      if (!refreshToken) {
+      const accessToken  = getCookie("token");
+      if (!refreshToken || !accessToken) {
         clearSession();
         window.location.href = "/";
         return Promise.reject(error);

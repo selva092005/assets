@@ -208,7 +208,7 @@ export default function AssetDisposalPage() {
       </TableCard>
 
       {/* ── Dispose Modal ──────────────────────────────────────────────── */}
-      <Dialog open={disposeOpen} onClose={() => setDisposeOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: "12px" } }}>
+      <Dialog open={disposeOpen} onClose={() => setDisposeOpen(false)} maxWidth="sm" fullWidth slotProps={{ paper: { sx: { borderRadius: "12px" } } }}>
         <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
           <Typography fontWeight={700} fontSize={16}>Dispose Asset</Typography>
           <IconButton size="small" onClick={() => setDisposeOpen(false)}><FaTimes size={14} /></IconButton>
@@ -244,7 +244,7 @@ export default function AssetDisposalPage() {
               anchorEl={assetAnchor}
               onClose={() => { setAssetAnchor(null); setAssetSearch(""); }}
               anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-              PaperProps={{ sx: { width: assetAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } }}
+              slotProps={{ paper: { sx: { width: assetAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } } }}
             >
               <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
                 <TextField
@@ -254,7 +254,7 @@ export default function AssetDisposalPage() {
                   placeholder="Search asset..."
                   value={assetSearch}
                   onChange={(e) => setAssetSearch(e.target.value)}
-                  InputProps={{ startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> }}
+                  slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
                   sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }}
                 />
               </Box>
@@ -305,7 +305,7 @@ export default function AssetDisposalPage() {
 
           <TextField label="Reason *" size="small" fullWidth multiline rows={2}
             value={form.reason} onChange={(e) => f("reason", e.target.value)}
-            inputProps={{ maxLength: 250 }}
+            slotProps={{ htmlInput: { maxLength: 250 } }}
             sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
           />
 
@@ -328,7 +328,7 @@ export default function AssetDisposalPage() {
                 anchorEl={anchorEl}
                 onClose={() => { setAnchorEl(null); setUserSearch(""); }}
                 anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-                PaperProps={{ sx: { width: anchorEl?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } }}
+                slotProps={{ paper: { sx: { width: anchorEl?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } } }}
               >
                 <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
                   <TextField
@@ -338,7 +338,7 @@ export default function AssetDisposalPage() {
                     placeholder="Search user..."
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
-                    InputProps={{ startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> }}
+                    slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
                     sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }}
                   />
                 </Box>
@@ -373,14 +373,14 @@ export default function AssetDisposalPage() {
             </FormControl>
             <TextField label="Disposal Date *" type="date" size="small" fullWidth
               value={form.disposalDate} onChange={(e) => f("disposalDate", e.target.value)}
-              InputLabelProps={{ shrink: true }}
+              slotProps={{ inputLabel: { shrink: true } }}
               sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
             />
           </Box>
 
           <TextField label="Disposal Value (optional)" type="number" size="small" fullWidth
             value={form.disposalValue} onChange={(e) => f("disposalValue", e.target.value)}
-            InputProps={{ startAdornment: <InputAdornment position="start"><Typography fontSize={13}>₹</Typography></InputAdornment> }}
+            slotProps={{ input: { startAdornment: <InputAdornment position="start"><Typography fontSize={13}>₹</Typography></InputAdornment> } }}
             sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
           />
         </DialogContent>

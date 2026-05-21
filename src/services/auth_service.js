@@ -1,6 +1,6 @@
 import API from "../config/api";
 
-const COOKIE_OPTS = "path=/; SameSite=Strict; max-age=86400";
+const COOKIE_OPTS = "path=/; SameSite=Lax; max-age=86400";
 export const setCookie    = (k, v) => { document.cookie = `${k}=${v.trim()}; ${COOKIE_OPTS}`; };
 export const getCookie    = (k)    => document.cookie.split("; ").find((r) => r.startsWith(`${k}=`))?.split("=")[1];
 export const removeCookie = (k)    => { document.cookie = `${k}=; path=/; max-age=0; SameSite=Strict`; };

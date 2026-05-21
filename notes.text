@@ -139,3 +139,21 @@ History is never deleted.
 
 Asset table = current location
 History table = all previous movements
+
+
+
+
+Search & Filter — by status (Active/Returned), by employee name, by date range
+Pagination — backend already supports it, frontend not using it
+
+🟡 Should Have:
+
+Overdue highlighting — yellow row + warning icon when today > expected return date and still ACTIVE
+Return Date mandatory — when clicking Return button, ask for actual return date instead of auto-setting today
+View details — click a row to see full allocation details in a modal
+
+🟢 Nice to Have:
+
+Export CSV — download allocation list
+Send email reminder — for overdue allocations
+Allocation count cards — show Total / Active / Returned / Overdue counts at top of page

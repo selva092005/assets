@@ -310,8 +310,7 @@ const Navbar = () => {
 
       {/* ── Logout confirm ───────────────────────────── */}
       <Dialog open={logoutConfirmOpen} onClose={() => setLogoutConfirmOpen(false)}
-        PaperProps={{ sx: { animation: "confirmPop 220ms cubic-bezier(.2,.8,.2,1) both", border: "1px solid #dbeafe", borderRadius: 3, boxShadow: "0 24px 70px rgba(15,23,42,0.24)", maxWidth: 380, overflow: "hidden", position: "relative", width: "calc(100% - 32px)", "&::before": { background: "linear-gradient(90deg,transparent,rgba(37,99,235,0.34),transparent)", content: '""', height: 3, left: 0, position: "absolute", right: 0, top: 0 }, "@keyframes confirmPop": { "0%": { opacity: 0, transform: "translateY(10px) scale(0.96)" }, "100%": { opacity: 1, transform: "translateY(0) scale(1)" } } } }}
-        BackdropProps={{ sx: { backdropFilter: "blur(5px)", bgcolor: "rgba(15,23,42,0.28)" } }}>
+        slotProps={{ paper: { sx: { animation: "confirmPop 220ms cubic-bezier(.2,.8,.2,1) both", border: "1px solid #dbeafe", borderRadius: 3, boxShadow: "0 24px 70px rgba(15,23,42,0.24)", maxWidth: 380, overflow: "hidden", position: "relative", width: "calc(100% - 32px)", "&::before": { background: "linear-gradient(90deg,transparent,rgba(37,99,235,0.34),transparent)", content: '""', height: 3, left: 0, position: "absolute", right: 0, top: 0 }, "@keyframes confirmPop": { "0%": { opacity: 0, transform: "translateY(10px) scale(0.96)" }, "100%": { opacity: 1, transform: "translateY(0) scale(1)" } } } }, backdrop: { sx: { backdropFilter: "blur(5px)", bgcolor: "rgba(15,23,42,0.28)" } } }}>
         <DialogTitle sx={{ color: "#111827", fontSize: 20, fontWeight: 800, pb: 1, pt: 3 }}>Confirm Logout</DialogTitle>
         <DialogContent sx={{ color: "#475569", fontSize: 15, pb: 2 }}>Are you sure you want to logout from Asset Manager System?</DialogContent>
         <DialogActions sx={{ gap: 1, px: 3, pb: 3 }}>

@@ -10,8 +10,8 @@ export const allocateAsset = async (data) => {
   return res.data;
 };
 
-// PUT /api/allocations/{id} — return asset
+// PUT /api/allocations/{id}/return — return asset
 export const returnAsset = async (allocationId) => {
-  const res = await API.put(`/api/allocations/${allocationId}`);
+  const res = await API.put(`/api/allocations/${allocationId}/return`);
   return res.data;
 };
