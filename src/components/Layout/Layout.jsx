@@ -1,13 +1,19 @@
 import Navbar from "./Navbar";
 import { Outlet } from "react-router-dom";
+import { Box } from "@mui/material";
 
 const Layout = () => (
-  <div className="layout">
+  <Box sx={{ display: "flex", flexDirection: "column" }}>
     <Navbar />
-    <div className="main-content">
+    <Box sx={{
+      p: "52px 8px 8px 8px",
+      minHeight: "100vh",
+      background: "#f4f6fb",
+      boxSizing: "border-box",
+    }}>
       <Outlet />
-    </div>
-  </div>
+    </Box>
+  </Box>
 );
 
 export default Layout;

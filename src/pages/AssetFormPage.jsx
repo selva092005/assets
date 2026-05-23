@@ -34,15 +34,15 @@ const getAssetTypeList = (res) => {
 function Section({ icon, title, index }) {
   return (
     <Box sx={{
-      display: "flex", alignItems: "center", gap: 1, mb: 2, mt: index === 0 ? 0 : 3,
+      display: "flex", alignItems: "center", gap: 0.75, mb: 0.75, mt: index === 0 ? 0 : 1.25,
       animation: `sIn .4s ease ${index * 60}ms both`,
       "@keyframes sIn": { from: { opacity: 0, transform: "translateX(-8px)" }, to: { opacity: 1, transform: "translateX(0)" } },
     }}>
-      <Box sx={{ width: 28, height: 28, borderRadius: "8px", background: COLORS.primaryLight,
+      <Box sx={{ width: 20, height: 20, borderRadius: "4px", background: COLORS.primaryLight,
         display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.primary, flexShrink: 0 }}>
         {icon}
       </Box>
-      <Typography sx={{ fontSize: 12, fontWeight: 700, color: COLORS.text, textTransform: "uppercase", letterSpacing: "0.07em" }}>
+      <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.text, textTransform: "uppercase", letterSpacing: "0.07em" }}>
         {title}
       </Typography>
       <Box sx={{ flex: 1, height: "1px", background: COLORS.borderLight }} />
@@ -57,7 +57,7 @@ const anim = (i) => ({
 
 const adorn = (icon) => (
   <InputAdornment position="start">
-    <Box sx={{ color: "#c0c0c0", display: "flex", fontSize: 13 }}>{icon}</Box>
+    <Box sx={{ color: "#c0c0c0", display: "flex", fontSize: 11 }}>{icon}</Box>
   </InputAdornment>
 );
 
@@ -192,65 +192,65 @@ export default function AssetFormPage() {
   };
 
   if (loading) return (
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: COLORS.bg }}>
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh" }}>
       <CircularProgress />
     </Box>
   );
 
   return (
-    <Box sx={{ mt: "60px", minHeight: "100vh", background: COLORS.bg, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <Box sx={{ p: 0, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
 
       {/* ── Top bar ── */}
       <Box sx={{
-        px: "2.5rem", py: 1.75, background: "#fff", borderBottom: `1px solid ${COLORS.borderLight}`,
+        px: 1.5, py: 0.75, background: "#fff", borderBottom: `1px solid ${COLORS.borderLight}`,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         animation: "topIn .35s ease both",
         "@keyframes topIn": { from: { opacity: 0, transform: "translateY(-8px)" }, to: { opacity: 1, transform: "translateY(0)" } },
       }}>
         {/* Breadcrumb */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, fontSize: 13, color: COLORS.textFaint }}>
-          <FaHome size={12} />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11.5, color: COLORS.textFaint }}>
+          <FaHome size={11} />
           <Box component="span" onClick={() => navigate("/home")}
             sx={{ cursor: "pointer", "&:hover": { color: COLORS.primary }, transition: "color .2s" }}>Home</Box>
-          <FaChevronRight size={10} />
+          <FaChevronRight size={9} />
           <Box component="span" onClick={() => navigate("/home/assets")}
             sx={{ cursor: "pointer", "&:hover": { color: COLORS.primary }, transition: "color .2s" }}>Assets</Box>
-          <FaChevronRight size={10} />
+          <FaChevronRight size={9} />
           <Box component="span" sx={{ color: COLORS.primary, fontWeight: 600 }}>
             {isEdit ? "Edit Asset" : "New Asset"}
           </Box>
         </Box>
 
-        <Button variant="outlined" startIcon={<FaArrowLeft size={11} />}
+        <Button variant="outlined" startIcon={<FaArrowLeft size={10} />}
           onClick={() => navigate("/home/assets")}
-          sx={{ ...outlinedBtnSx, fontSize: 12, py: "5px" }}>
+          sx={{ ...outlinedBtnSx, fontSize: 11, py: "3px" }}>
           Back to Assets
         </Button>
       </Box>
 
       {/* ── Page content ── */}
-      <Box sx={{ maxWidth: 720, mx: "auto", px: 3, py: 4 }}>
+      <Box sx={{ maxWidth: 580, mx: "auto", px: 1, py: 1 }}>
 
         {/* Page title */}
         <Box sx={{
-          display: "flex", alignItems: "center", gap: 2, mb: 3,
+          display: "flex", alignItems: "center", gap: 1.5, mb: 1.5,
           animation: "titleIn .4s ease .05s both",
           "@keyframes titleIn": { from: { opacity: 0, transform: "translateY(12px)" }, to: { opacity: 1, transform: "translateY(0)" } },
         }}>
           <Box sx={{
-            width: 46, height: 46, borderRadius: "12px",
+            width: 36, height: 36, borderRadius: "6px",
             background: isEdit ? "linear-gradient(135deg,#fff3e0,#ffe0b2)" : "linear-gradient(135deg,#e3f2fd,#bbdefb)",
             display: "flex", alignItems: "center", justifyContent: "center",
             color: isEdit ? "#e65100" : COLORS.primary,
             boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
           }}>
-            {isEdit ? <FaEdit size={18} /> : <FaBox size={18} />}
+            {isEdit ? <FaEdit size={14} /> : <FaBox size={14} />}
           </Box>
           <Box>
-            <Typography sx={{ fontWeight: 700, fontSize: 20, color: COLORS.text, lineHeight: 1.2 }}>
+            <Typography sx={{ fontWeight: 700, fontSize: 14, color: COLORS.text, lineHeight: 1.2 }}>
               {isEdit ? "Edit Asset" : "Add New Asset"}
             </Typography>
-            <Typography sx={{ fontSize: 13, color: COLORS.textFaint, mt: 0.3 }}>
+            <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mt: 0.15 }}>
               {isEdit ? "Update the asset details below" : "Fill in the information to register a new asset"}
             </Typography>
           </Box>
@@ -258,41 +258,41 @@ export default function AssetFormPage() {
 
         {/* ── Card ── */}
         <Box sx={{
-          background: "#fff", borderRadius: "16px", border: `1px solid ${COLORS.borderLight}`,
-          boxShadow: "0 4px 24px rgba(0,0,0,0.06)", p: { xs: 2.5, sm: 3.5 },
+          background: "#fff", borderRadius: "4px", border: `1px solid ${COLORS.borderLight}`,
+          boxShadow: "0 2px 10px rgba(0,0,0,0.04)", p: 1.25,
           animation: "cardIn .45s cubic-bezier(.22,1,.36,1) .08s both",
           "@keyframes cardIn": { from: { opacity: 0, transform: "translateY(20px)" }, to: { opacity: 1, transform: "translateY(0)" } },
         }}>
 
           {/* Basic Info */}
           <Section icon={<MdOutlineInventory2 size={14} />} title="Basic Information" index={0} />
-          <Grid container spacing={2}>
+          <Grid container spacing={1}>
             <Grid size={12} sx={anim(0)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5 }}>Asset Name *</Typography>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Asset Name *</Typography>
               <TextField name="assetName" placeholder="e.g. Dell Laptop Pro" value={form.assetName} onChange={onChange}
                 size="small" fullWidth sx={inputSx}
                 slotProps={{ input: { startAdornment: adorn(<FaBox size={12} />) } }} />
             </Grid>
             <Grid size={6} sx={anim(1)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5 }}>Serial Number</Typography>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Serial Number</Typography>
               <TextField name="serialNumber" placeholder="SN-XXXXXXXX" value={form.serialNumber} onChange={onChange}
                 size="small" fullWidth sx={inputSx}
                 slotProps={{ input: { startAdornment: adorn(<FaBarcode size={12} />) } }} />
             </Grid>
             <Grid size={6} sx={anim(2)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5 }}>Brand</Typography>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Brand</Typography>
               <TextField name="brand" placeholder="e.g. Dell, HP, Apple" value={form.brand} onChange={onChange}
                 size="small" fullWidth sx={inputSx}
                 slotProps={{ input: { startAdornment: adorn(<FaTrademark size={12} />) } }} />
             </Grid>
             <Grid size={6} sx={anim(3)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5 }}>Model</Typography>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Model</Typography>
               <TextField name="model" placeholder="e.g. XPS 15" value={form.model} onChange={onChange}
                 size="small" fullWidth sx={inputSx}
                 slotProps={{ input: { startAdornment: adorn(<FaCubes size={12} />) } }} />
             </Grid>
             <Grid size={6} sx={anim(4)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5 }}>Asset Type</Typography>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Asset Type</Typography>
               <Select name="typeId" value={form.typeId} onChange={onChange} displayEmpty size="small" fullWidth sx={selectSx}>
                 <MenuItem value="" disabled sx={{ fontSize: 13 }}>Select Type</MenuItem>
                 {types.map((t) => <MenuItem key={t.typeId} value={String(t.typeId)} sx={{ fontSize: 13 }}>{t.typeName}</MenuItem>)}
@@ -302,23 +302,23 @@ export default function AssetFormPage() {
 
           {/* Purchase Details */}
           <Section icon={<FaDollarSign size={13} />} title="Purchase Details" index={1} />
-          <Grid container spacing={2}>
+          <Grid container spacing={1}>
             <Grid size={4} sx={anim(5)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5, display: "flex", alignItems: "center", gap: 0.5 }}>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25, display: "flex", alignItems: "center", gap: 0.5 }}>
                 <FaCalendarAlt size={10} /> Purchase Date
               </Typography>
               <TextField name="purchaseDate" type="date" value={form.purchaseDate} onChange={onChange}
                 size="small" fullWidth sx={inputSx} />
             </Grid>
             <Grid size={4} sx={anim(6)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5, display: "flex", alignItems: "center", gap: 0.5 }}>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25, display: "flex", alignItems: "center", gap: 0.5 }}>
                 <FaShieldAlt size={10} /> Warranty Expiry
               </Typography>
               <TextField name="warrantyExpiry" type="date" value={form.warrantyExpiry} onChange={onChange}
                 size="small" fullWidth sx={inputSx} />
             </Grid>
             <Grid size={4} sx={anim(7)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5 }}>Cost (₹)</Typography>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Cost (₹)</Typography>
               <TextField name="cost" type="number" placeholder="0.00" value={form.cost} onChange={onChange}
                 size="small" fullWidth sx={inputSx}
                 slotProps={{ input: { startAdornment: adorn(<FaDollarSign size={12} />) } }} />
@@ -327,26 +327,31 @@ export default function AssetFormPage() {
 
           {/* Status & Condition */}
           <Section icon={<FaCheckCircle size={13} />} title="Status & Condition" index={2} />
-          <Grid container spacing={2}>
+          <Grid container spacing={1}>
             <Grid size={6} sx={anim(8)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5 }}>Status</Typography>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Status</Typography>
               <Select name="status" value={form.status} onChange={onChange} size="small" fullWidth sx={selectSx}
                 disabled={form.status === "ASSIGNED"}>
-                {["AVAILABLE", "DAMAGED"].map((v) => (
-                  <MenuItem key={v} value={v} sx={{ fontSize: 13 }}>{v}</MenuItem>
+                {["AVAILABLE", "DAMAGED", "UNDER_MAINTENANCE"].map((v) => (
+                  <MenuItem key={v} value={v} sx={{ fontSize: 13 }}>{v.replace("_", " ")}</MenuItem>
                 ))}
                 {form.status === "ASSIGNED" && (
                   <MenuItem value="ASSIGNED" sx={{ fontSize: 13, color: "#f97316" }}>ASSIGNED (via Allocation)</MenuItem>
                 )}
               </Select>
               {form.status === "ASSIGNED" && (
-                <Typography sx={{ fontSize: 11, color: "#f97316", mt: 0.5 }}>
+                <Typography sx={{ fontSize: 11, color: "#f97316", mt: 0.25 }}>
                   ⚠ Status is controlled by the Allocation page
+                </Typography>
+              )}
+              {form.status === "UNDER_MAINTENANCE" && (
+                <Typography sx={{ fontSize: 11, color: "#e65100", mt: 0.25 }}>
+                  🔧 Asset is under maintenance — allocation is blocked
                 </Typography>
               )}
             </Grid>
             <Grid size={6} sx={anim(9)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5 }}>Condition</Typography>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Condition</Typography>
               <Select name="assetCondition" value={form.assetCondition} onChange={onChange} size="small" fullWidth sx={selectSx}>
                 {["GOOD", "FAIR", "POOR"].map((v) => (
                     <MenuItem key={v} value={v} sx={{ fontSize: 13 }}>{v}</MenuItem>
@@ -357,9 +362,9 @@ export default function AssetFormPage() {
 
           {/* Location & Company */}
           <Section icon={<FaMapMarkerAlt size={13} />} title="Location & Company" index={3} />
-          <Grid container spacing={2}>
+          <Grid container spacing={1}>
             <Grid size={6} sx={anim(10)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5 }}>Location</Typography>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Location</Typography>
               <TextField name="locationName" placeholder="City / Location" value={form.locationName} onChange={onChange}
                 size="small" fullWidth sx={inputSx}
                 slotProps={{ input: {
@@ -377,10 +382,10 @@ export default function AssetFormPage() {
                     </InputAdornment>
                   ),
                 }}} />
-              {gpsError && <Typography sx={{ fontSize: 11, color: "#c62828", mt: 0.4 }}>{gpsError}</Typography>}
+              {gpsError && <Typography sx={{ fontSize: 11, color: "#c62828", mt: 0.25 }}>{gpsError}</Typography>}
             </Grid>
             <Grid size={6} sx={anim(11)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5 }}>Company</Typography>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Company</Typography>
               <Select name="companyName" value={form.companyName} onChange={onChange} displayEmpty size="small" fullWidth sx={selectSx}>
                 <MenuItem value="" disabled sx={{ fontSize: 13 }}>Select Company</MenuItem>
                 {companies.map((c) => <MenuItem key={c.companyId} value={c.companyName} sx={{ fontSize: 13 }}>{c.companyName}</MenuItem>)}
@@ -392,7 +397,7 @@ export default function AssetFormPage() {
           <Section icon={<FaStickyNote size={13}  />} title="Notes" index={4} />
           <Box sx={anim(12)}>
             <TextField name="notes" placeholder="Additional notes about this asset..." value={form.notes} onChange={onChange}
-              size="small" fullWidth multiline rows={3}
+              size="small" fullWidth multiline rows={2}
               sx={{ ...inputSx, "& .MuiOutlinedInput-root": { ...inputSx["& .MuiOutlinedInput-root"], height: "auto" } }}
               slotProps={{ input: { startAdornment: <InputAdornment position="start" sx={{ alignSelf: "flex-start", mt: "8px", color: "#c0c0c0" }}><FaStickyNote size={12} /></InputAdornment> } }} />
           </Box>
@@ -402,7 +407,7 @@ export default function AssetFormPage() {
           <Box sx={{
             ...anim(13),
             border: `2px dashed ${imagePreview ? COLORS.primary : "#ddd"}`,
-            borderRadius: "12px", p: 2.5, textAlign: "center",
+            borderRadius: "8px", p: 1.5, textAlign: "center",
             background: imagePreview ? COLORS.primaryLight : "#fafafa",
             transition: "all .3s ease",
             "&:hover": { borderColor: COLORS.primary, background: COLORS.primaryLight },

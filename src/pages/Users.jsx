@@ -16,31 +16,28 @@ import {
 import { deleteUser, getUserById, bulkUploadUsers, exportUsers, downloadUserTemplate } from "../services/users_service";
 import { COLORS } from "../theme/tokens";
 
-import PageHeader      from "../components/common/PageHeader";
-import SearchBar       from "../components/common/SearchBar";
-import TableCard       from "../components/common/TableCard";
+import PageHeader from "../components/common/PageHeader";
+import SearchBar from "../components/common/SearchBar";
+import TableCard from "../components/common/TableCard";
 import TablePagination from "../components/common/TablePagination";
-import UserTable       from "../components/users/UserTable";
-import UserView        from "../components/users/UserView";
-import ConfirmDialog   from "../components/common/ConfirmDialog";
+import UserTable from "../components/users/UserTable";
+import ConfirmDialog from "../components/common/ConfirmDialog";
 
 export default function UsersPage() {
   const dispatch = useDispatch();
   const { items: users, totalPages, page, search, filterRole, loading } =
     useSelector((s) => s.users);
   const { userRole, userName } = useSelector((s) => s.auth);
-  const isAdmin   = userRole === "admin";
+  const isAdmin = userRole === "admin";
   const canExport = userRole === "admin" || userRole === "manager";
 
-  const [showCount,    setShowCount]    = useState(10);
-  const [viewModal,    setViewModal]    = useState(false);
-  const [viewData,     setViewData]     = useState(null);
-  const [confirmOpen,  setConfirmOpen]  = useState(false);
-  const [deleteId,     setDeleteId]     = useState(null);
-  const [bulkDialog,   setBulkDialog]   = useState(false);
-  const [bulkFile,     setBulkFile]     = useState(null);
-  const [bulkLoading,  setBulkLoading]  = useState(false);
-  const [bulkResult,   setBulkResult]   = useState(null);
+  const [showCount, setShowCount] = useState(10);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+  const [bulkDialog, setBulkDialog] = useState(false);
+  const [bulkFile, setBulkFile] = useState(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkResult, setBulkResult] = useState(null);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -140,19 +137,12 @@ export default function UsersPage() {
     }
   };
 
-  const handleView = async (item) => {
-    try {
-      const res = await getUserById(item.userId || item.id);
-      setViewData(res.data || res);
-      setViewModal(true);
-    } catch (e) { 
-      toast.error("Failed to load user details");
-      console.error(e); 
-    }
+  const handleView = (item) => {
+    navigate(`/home/users/view/${item.userId || item.id}`);
   };
 
   return (
-    <Box sx={{ mt: "60px", p: "2rem 2.5rem", background: COLORS.bg, minHeight: "100vh", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <Box sx={{ p: 0, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
 
       <PageHeader
         title="Users"
@@ -165,63 +155,63 @@ export default function UsersPage() {
                 value={showCount}
                 onChange={(e) => handleShowCountChange(e.target.value)}
                 size="small"
-                sx={{ fontSize: 13, borderRadius: "6px", height: 30, "& .MuiOutlinedInput-notchedOutline": { borderColor: COLORS.border } }}
+                sx={{ fontSize: 12, borderRadius: "6px", height: 26, "& .MuiOutlinedInput-notchedOutline": { borderColor: COLORS.border } }}
               >
                 {[5, 10, 20, 50].map((n) => (
-                  <MenuItem key={n} value={n} sx={{ fontSize: 13 }}>{n}</MenuItem>
+                  <MenuItem key={n} value={n} sx={{ fontSize: 12 }}>{n}</MenuItem>
                 ))}
               </Select>
             </Box>
 
             {/* Filter by role — delegates filtering to backend */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, border: `1px solid ${COLORS.border}`, borderRadius: "8px", px: 1.5, py: "5px", background: COLORS.surface }}>
-              <FaFilter size={12} />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, border: `1px solid ${COLORS.border}`, borderRadius: "6px", px: 1.25, py: "3px", background: COLORS.surface }}>
+              <FaFilter size={11} />
               <Select
                 value={filterRole}
                 onChange={(e) => handleFilterChange(e.target.value)}
                 displayEmpty
                 size="small"
-                sx={{ fontSize: 13, border: "none", "& .MuiOutlinedInput-notchedOutline": { border: "none" }, height: 24, "& .MuiSelect-select": { p: 0, fontSize: 13, color: COLORS.textMuted } }}
+                sx={{ fontSize: 12, border: "none", "& .MuiOutlinedInput-notchedOutline": { border: "none" }, height: 22, "& .MuiSelect-select": { p: 0, fontSize: 12, color: COLORS.textMuted } }}
               >
-                <MenuItem value="" sx={{ fontSize: 13 }}>All Roles</MenuItem>
+                <MenuItem value="" sx={{ fontSize: 12 }}>All Roles</MenuItem>
                 {["ADMIN", "MANAGER", "USER"].map((r) => (
-                  <MenuItem key={r} value={r} sx={{ fontSize: 13 }}>{r}</MenuItem>
+                  <MenuItem key={r} value={r} sx={{ fontSize: 12 }}>{r}</MenuItem>
                 ))}
               </Select>
             </Box>
 
             {/* Bulk Upload — admin only */}
             {isAdmin && (
-            <Button
-              variant="outlined"
-              startIcon={<FaUpload size={12} />}
-              onClick={() => setBulkDialog(true)}
-              sx={{ textTransform: "none", fontSize: 13, borderColor: "#4caf50", color: "#2e7d32", borderRadius: "8px", py: "7px", px: 1.75 }}
-            >
-              Bulk Upload
-            </Button>
+              <Button
+                variant="outlined"
+                startIcon={<FaUpload size={12} />}
+                onClick={() => setBulkDialog(true)}
+                sx={{ textTransform: "none", fontSize: 12, borderColor: "#4caf50", color: "#2e7d32", borderRadius: "6px", py: "4px", px: 1.25 }}
+              >
+                Bulk Upload
+              </Button>
             )}
             {/* Export — admin + manager */}
             {canExport && (
-            <Button
-              variant="outlined"
-              startIcon={<FaFileExport size={12} />}
-              onClick={handleExport}
-              sx={{ textTransform: "none", fontSize: 13, borderColor: COLORS.border, color: COLORS.textMuted, borderRadius: "8px", py: "7px", px: 1.75 }}
-            >
-              Export
-            </Button>
+              <Button
+                variant="outlined"
+                startIcon={<FaFileExport size={12} />}
+                onClick={handleExport}
+                sx={{ textTransform: "none", fontSize: 12, borderColor: COLORS.border, color: COLORS.textMuted, borderRadius: "6px", py: "4px", px: 1.25 }}
+              >
+                Export
+              </Button>
             )}
             {/* Add New — admin only */}
             {isAdmin && (
-            <Button
-              variant="contained"
-              startIcon={<FaPlus size={11} />}
-              onClick={() => navigate("/home/users/new")}
-              sx={{ textTransform: "none", fontSize: 13, fontWeight: 600, borderRadius: "8px", py: "8px", px: 2, background: COLORS.primary, boxShadow: "none", "&:hover": { background: COLORS.primaryDark, boxShadow: "none" } }}
-            >
-              Add New User
-            </Button>
+              <Button
+                variant="contained"
+                startIcon={<FaPlus size={11} />}
+                onClick={() => navigate("/home/users/new")}
+                sx={{ textTransform: "none", fontSize: 12, fontWeight: 600, borderRadius: "6px", py: "5px", px: 1.5, background: COLORS.primary, boxShadow: "none", "&:hover": { background: COLORS.primaryDark, boxShadow: "none" } }}
+              >
+                Add New User
+              </Button>
             )}
           </>
         }
@@ -243,7 +233,6 @@ export default function UsersPage() {
         <TablePagination page={page} totalPages={totalPages} onPageChange={(pg) => dispatch(setUserPage(pg))} />
       </TableCard>
 
-      <UserView open={viewModal} data={viewData} onClose={() => setViewModal(false)} />
       {/* ── Bulk Upload Dialog ── */}
       <Dialog open={bulkDialog} onClose={closeBulkDialog} maxWidth="sm" fullWidth slotProps={{ paper: { sx: { borderRadius: "12px" } } }}>
         <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
@@ -267,8 +256,10 @@ export default function UsersPage() {
           <Box sx={{ mb: 2 }}>
             <Typography fontSize={13} fontWeight={500} mb={1}>Step 2 — Upload your filled Excel file</Typography>
             <Box onClick={() => fileInputRef.current?.click()}
-              sx={{ border: `2px dashed ${bulkFile ? "#4caf50" : COLORS.border}`, borderRadius: "8px", p: 2.5, textAlign: "center", cursor: "pointer",
-                background: bulkFile ? "#f1f8e9" : "#fafafa", transition: "all 0.2s", "&:hover": { borderColor: COLORS.primary, background: "#f0f7ff" } }}>
+              sx={{
+                border: `2px dashed ${bulkFile ? "#4caf50" : COLORS.border}`, borderRadius: "8px", p: 2.5, textAlign: "center", cursor: "pointer",
+                background: bulkFile ? "#f1f8e9" : "#fafafa", transition: "all 0.2s", "&:hover": { borderColor: COLORS.primary, background: "#f0f7ff" }
+              }}>
               <FaFileExcel size={28} color={bulkFile ? "#4caf50" : "#9e9e9e"} />
               <Typography fontSize={13} mt={1} color={bulkFile ? "#2e7d32" : "#757575"}>
                 {bulkFile ? bulkFile.name : "Click to select .xlsx / .xls file"}

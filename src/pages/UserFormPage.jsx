@@ -21,15 +21,15 @@ const ROLE_COLORS = { ADMIN: "#7c3aed", MANAGER: "#1976d2", USER: "#2e7d32" };
 function Section({ icon, title, index }) {
   return (
     <Box sx={{
-      display: "flex", alignItems: "center", gap: 1, mb: 2, mt: index === 0 ? 0 : 3,
+      display: "flex", alignItems: "center", gap: 0.75, mb: 0.75, mt: index === 0 ? 0 : 1.25,
       animation: `sIn .4s ease ${index * 60}ms both`,
       "@keyframes sIn": { from: { opacity: 0, transform: "translateX(-8px)" }, to: { opacity: 1, transform: "translateX(0)" } },
     }}>
-      <Box sx={{ width: 28, height: 28, borderRadius: "8px", background: COLORS.primaryLight,
+      <Box sx={{ width: 20, height: 20, borderRadius: "4px", background: COLORS.primaryLight,
         display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.primary, flexShrink: 0 }}>
         {icon}
       </Box>
-      <Typography sx={{ fontSize: 12, fontWeight: 700, color: COLORS.text, textTransform: "uppercase", letterSpacing: "0.07em" }}>
+      <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.text, textTransform: "uppercase", letterSpacing: "0.07em" }}>
         {title}
       </Typography>
       <Box sx={{ flex: 1, height: "1px", background: COLORS.borderLight }} />
@@ -44,7 +44,7 @@ const anim = (i) => ({
 
 const adorn = (icon) => (
   <InputAdornment position="start">
-    <Box sx={{ color: "#c0c0c0", display: "flex", fontSize: 13 }}>{icon}</Box>
+    <Box sx={{ color: "#c0c0c0", display: "flex", fontSize: 11 }}>{icon}</Box>
   </InputAdornment>
 );
 
@@ -105,63 +105,63 @@ export default function UserFormPage() {
   };
 
   if (loading) return (
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: COLORS.bg }}>
+    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh" }}>
       <CircularProgress />
     </Box>
   );
 
   return (
-    <Box sx={{ mt: "60px", minHeight: "100vh", background: COLORS.bg, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <Box sx={{ p: 0, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
 
       {/* ── Top bar ── */}
       <Box sx={{
-        px: "2.5rem", py: 1.75, background: "#fff", borderBottom: `1px solid ${COLORS.borderLight}`,
+        px: 1.5, py: 0.75, background: "#fff", borderBottom: `1px solid ${COLORS.borderLight}`,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         animation: "topIn .35s ease both",
         "@keyframes topIn": { from: { opacity: 0, transform: "translateY(-8px)" }, to: { opacity: 1, transform: "translateY(0)" } },
       }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, fontSize: 13, color: COLORS.textFaint }}>
-          <FaHome size={12} />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11.5, color: COLORS.textFaint }}>
+          <FaHome size={11} />
           <Box component="span" onClick={() => navigate("/home")}
             sx={{ cursor: "pointer", "&:hover": { color: COLORS.primary }, transition: "color .2s" }}>Home</Box>
-          <FaChevronRight size={10} />
+          <FaChevronRight size={9} />
           <Box component="span" onClick={() => navigate("/home/users")}
             sx={{ cursor: "pointer", "&:hover": { color: COLORS.primary }, transition: "color .2s" }}>Users</Box>
-          <FaChevronRight size={10} />
+          <FaChevronRight size={9} />
           <Box component="span" sx={{ color: COLORS.primary, fontWeight: 600 }}>
             {isEdit ? "Edit User" : "New User"}
           </Box>
         </Box>
-        <Button variant="outlined" startIcon={<FaArrowLeft size={11} />}
+        <Button variant="outlined" startIcon={<FaArrowLeft size={10} />}
           onClick={() => navigate("/home/users")}
-          sx={{ ...outlinedBtnSx, fontSize: 12, py: "5px" }}>
+          sx={{ ...outlinedBtnSx, fontSize: 11, py: "3px" }}>
           Back to Users
         </Button>
       </Box>
 
       {/* ── Page content ── */}
-      <Box sx={{ maxWidth: 600, mx: "auto", px: 3, py: 4 }}>
+      <Box sx={{ maxWidth: 500, mx: "auto", px: 1, py: 1 }}>
 
         {/* Page title */}
         <Box sx={{
-          display: "flex", alignItems: "center", gap: 2, mb: 3,
+          display: "flex", alignItems: "center", gap: 1.5, mb: 1.5,
           animation: "titleIn .4s ease .05s both",
           "@keyframes titleIn": { from: { opacity: 0, transform: "translateY(12px)" }, to: { opacity: 1, transform: "translateY(0)" } },
         }}>
           <Box sx={{
-            width: 46, height: 46, borderRadius: "12px",
+            width: 36, height: 36, borderRadius: "6px",
             background: isEdit ? "linear-gradient(135deg,#f3e8ff,#e9d5ff)" : "linear-gradient(135deg,#e3f2fd,#bbdefb)",
             display: "flex", alignItems: "center", justifyContent: "center",
             color: isEdit ? "#7c3aed" : COLORS.primary,
             boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
           }}>
-            {isEdit ? <FaEdit size={18} /> : <FaUserPlus size={18} />}
+            {isEdit ? <FaEdit size={14} /> : <FaUserPlus size={14} />}
           </Box>
           <Box>
-            <Typography sx={{ fontWeight: 700, fontSize: 20, color: COLORS.text, lineHeight: 1.2 }}>
+            <Typography sx={{ fontWeight: 700, fontSize: 14, color: COLORS.text, lineHeight: 1.2 }}>
               {isEdit ? "Edit User" : "Add New User"}
             </Typography>
-            <Typography sx={{ fontSize: 13, color: COLORS.textFaint, mt: 0.3 }}>
+            <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mt: 0.15 }}>
               {isEdit ? "Update the user account details below" : "Fill in the information to create a new user account"}
             </Typography>
           </Box>
@@ -169,23 +169,23 @@ export default function UserFormPage() {
 
         {/* ── Card ── */}
         <Box sx={{
-          background: "#fff", borderRadius: "16px", border: `1px solid ${COLORS.borderLight}`,
-          boxShadow: "0 4px 24px rgba(0,0,0,0.06)", p: { xs: 2.5, sm: 3.5 },
+          background: "#fff", borderRadius: "4px", border: `1px solid ${COLORS.borderLight}`,
+          boxShadow: "0 2px 10px rgba(0,0,0,0.04)", p: 1.25,
           animation: "cardIn .45s cubic-bezier(.22,1,.36,1) .08s both",
           "@keyframes cardIn": { from: { opacity: 0, transform: "translateY(20px)" }, to: { opacity: 1, transform: "translateY(0)" } },
         }}>
 
           {/* Account Info */}
           <Section icon={<MdManageAccounts size={15} />} title="Account Information" index={0} />
-          <Grid container spacing={2}>
+          <Grid container spacing={1}>
             <Grid size={6} sx={anim(0)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5 }}>Username *</Typography>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Username *</Typography>
               <TextField name="userName" placeholder="e.g. john_doe" value={form.userName} onChange={onChange}
                 size="small" fullWidth sx={inputSx}
                 slotProps={{ input: { startAdornment: adorn(<FaUser size={12} />) } }} />
             </Grid>
             <Grid size={6} sx={anim(1)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5 }}>Email Address *</Typography>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Email Address *</Typography>
               <TextField name="userEmail" placeholder="user@example.com" type="email" value={form.userEmail} onChange={onChange}
                 size="small" fullWidth sx={inputSx}
                 slotProps={{ input: { startAdornment: adorn(<FaEnvelope size={12} />) } }} />
@@ -194,9 +194,9 @@ export default function UserFormPage() {
 
           {/* Security */}
           <Section icon={<FaLock size={12} />} title="Security" index={1} />
-          <Grid container spacing={2}>
+          <Grid container spacing={1}>
             <Grid size={12} sx={anim(2)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5 }}>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>
                 Password {isEdit && <Box component="span" sx={{ color: "#bbb" }}>(leave blank to keep current)</Box>}
               </Typography>
               <TextField
@@ -222,9 +222,9 @@ export default function UserFormPage() {
 
           {/* Role */}
           <Section icon={<FaUserTag size={12} />} title="Role & Permissions" index={2} />
-          <Grid container spacing={2}>
+          <Grid container spacing={1}>
             <Grid size={12} sx={anim(3)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.5 }}>User Role</Typography>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>User Role</Typography>
               <Select name="userRole" value={form.userRole} onChange={onChange} size="small" fullWidth sx={selectSx}>
                 {[
                   { v: "ADMIN",   label: "Admin",   desc: "Full access" },

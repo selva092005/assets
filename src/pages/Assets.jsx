@@ -19,16 +19,15 @@ import {
 import { moveAsset } from "../services/location_history_service";
 import { COLORS } from "../theme/tokens";
 
-import PageHeader      from "../components/common/PageHeader";
-import SearchBar       from "../components/common/SearchBar";
-import TableCard       from "../components/common/TableCard";
+import PageHeader from "../components/common/PageHeader";
+import SearchBar from "../components/common/SearchBar";
+import TableCard from "../components/common/TableCard";
 import TablePagination from "../components/common/TablePagination";
-import AssetTable      from "../components/assets/AssetTable";
-import AssetView       from "../components/assets/AssetView";
-import AssetQR         from "../components/assets/AssetQR";
-import MoveAssetModal  from "../components/assets/MoveAssetModal";
+import AssetTable from "../components/assets/AssetTable";
+import AssetQR from "../components/assets/AssetQR";
+import MoveAssetModal from "../components/assets/MoveAssetModal";
 import LocationHistoryModal from "../components/assets/LocationHistoryModal";
-import ConfirmDialog   from "../components/common/ConfirmDialog";
+import ConfirmDialog from "../components/common/ConfirmDialog";
 
 export default function AssetsPage() {
   const dispatch = useDispatch();
@@ -36,31 +35,29 @@ export default function AssetsPage() {
     useSelector((s) => s.assets);
   const { userRole, userName } = useSelector((s) => s.auth);
 
-  const [inputValue,    setInputValue]    = useState("");
-  const [types,         setTypes]         = useState([]);
-  const [typesLoaded,   setTypesLoaded]   = useState(false);
-  const [showCount,     setShowCount]     = useState(10);
-  const [warrantyDays,  setWarrantyDays]  = useState(null);
-  const [viewModal,     setViewModal]     = useState(false);
-  const [viewData,      setViewData]      = useState(null);
-  const [qrModal,       setQrModal]       = useState(false);
-  const [qrAsset,       setQrAsset]       = useState(null);
-  const [confirmOpen,   setConfirmOpen]   = useState(false);
-  const [deleteId,      setDeleteId]      = useState(null);
-  const [moveModal,     setMoveModal]     = useState(false);
+  const [inputValue, setInputValue] = useState("");
+  const [types, setTypes] = useState([]);
+  const [typesLoaded, setTypesLoaded] = useState(false);
+  const [showCount, setShowCount] = useState(10);
+  const [warrantyDays, setWarrantyDays] = useState(null);
+  const [qrModal, setQrModal] = useState(false);
+  const [qrAsset, setQrAsset] = useState(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
+  const [moveModal, setMoveModal] = useState(false);
   const [moveAssetData, setMoveAssetData] = useState(null);
-  const [historyModal,  setHistoryModal]  = useState(false);
-  const [historyAsset,  setHistoryAsset]  = useState(null);
+  const [historyModal, setHistoryModal] = useState(false);
+  const [historyAsset, setHistoryAsset] = useState(null);
 
   const [exportLoading, setExportLoading] = useState(false);
 
-  const navigate    = useNavigate();
-  const location    = useLocation();
-  const canWrite     = userRole === "admin" || userRole === "manager"; // create/edit
-  const canDelete    = userRole === "admin";                           // admin only
-  const canExport    = userRole === "admin" || userRole === "manager"; // admin + manager
-  const canBulk      = userRole === "admin";                           // admin only
-  const canTemplate  = userRole === "admin";                           // admin only
+  const navigate = useNavigate();
+  const location = useLocation();
+  const canWrite = userRole === "admin" || userRole === "manager"; // create/edit
+  const canDelete = userRole === "admin";                           // admin only
+  const canExport = userRole === "admin" || userRole === "manager"; // admin + manager
+  const canBulk = userRole === "admin";                           // admin only
+  const canTemplate = userRole === "admin";                           // admin only
 
   // ── Helper: resolve typeName from filterType (typeId) ──────────────────────
   const resolveTypeName = (typeId, typeList) => {
@@ -123,9 +120,9 @@ export default function AssetsPage() {
     // useEffect will fire from showCount change
   };
 
-  const handleEdit    = (item) => navigate(`/home/assets/edit/${item.assetId}`);
-  const handleDelete  = (id)   => { setDeleteId(id); setConfirmOpen(true); };
-  const handleMove    = (item) => { setMoveAssetData(item); setMoveModal(true); };
+  const handleEdit = (item) => navigate(`/home/assets/edit/${item.assetId}`);
+  const handleDelete = (id) => { setDeleteId(id); setConfirmOpen(true); };
+  const handleMove = (item) => { setMoveAssetData(item); setMoveModal(true); };
   const handleHistory = (item) => { setHistoryAsset(item); setHistoryModal(true); };
 
   const confirmDelete = async () => {
@@ -141,14 +138,8 @@ export default function AssetsPage() {
     }
   };
 
-  const handleView = async (item) => {
-    try {
-      const res = await getAssetById(item.assetId);
-      setViewData(res.data ?? res);
-      setViewModal(true);
-    } catch (e) {
-      toast.error("Failed to load asset details");
-    }
+  const handleView = (item) => {
+    navigate(`/home/assets/view/${item.assetId}`);
   };
 
   const handleQR = async (item) => {
@@ -188,74 +179,82 @@ export default function AssetsPage() {
 
 
   return (
-    <Box sx={{ mt: "60px", p: "2rem 2.5rem", background: COLORS.bg, minHeight: "100vh", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <Box sx={{ p: 0, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
 
       <PageHeader
         title="Assets"
         actions={
-          <>
+          <Box sx={{
+            display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center",
+            animation: "fadeLeft 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+            animationDelay: "50ms",
+            "@keyframes fadeLeft": {
+              from: { opacity: 0, transform: "translateX(15px)" },
+              to: { opacity: 1, transform: "translateX(0)" },
+            }
+          }}>
             {/* Show count */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, fontSize: 13, color: COLORS.textMuted }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, fontSize: 12, color: COLORS.textMuted }}>
               Showing
               <Select
                 value={showCount}
                 onChange={(e) => handleShowCountChange(e.target.value)}
                 size="small"
-                sx={{ fontSize: 13, borderRadius: "6px", height: 30, "& .MuiOutlinedInput-notchedOutline": { borderColor: COLORS.border } }}
+                sx={{ fontSize: 12, borderRadius: "6px", height: 26, "& .MuiOutlinedInput-notchedOutline": { borderColor: COLORS.border } }}
               >
                 {[5, 10, 20, 50].map((n) => (
-                  <MenuItem key={n} value={n} sx={{ fontSize: 13 }}>{n}</MenuItem>
+                  <MenuItem key={n} value={n} sx={{ fontSize: 12 }}>{n}</MenuItem>
                 ))}
               </Select>
             </Box>
 
-            {/* Filter by type — FIX: uses typeId as value, resolves name on fetch */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, border: `1px solid ${COLORS.border}`, borderRadius: "8px", px: 1.5, py: "5px", background: COLORS.surface }}>
-              <FaFilter size={12} />
+            {/* Filter by type */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, border: `1px solid ${COLORS.border}`, borderRadius: "6px", px: 1.25, py: "3px", background: COLORS.surface }}>
+              <FaFilter size={11} />
               <Select
                 value={filterType}
                 onChange={(e) => handleFilterChange(e.target.value)}
                 displayEmpty
                 size="small"
-                sx={{ fontSize: 13, border: "none", "& .MuiOutlinedInput-notchedOutline": { border: "none" }, height: 24, "& .MuiSelect-select": { p: 0, fontSize: 13, color: COLORS.textMuted } }}
+                sx={{ fontSize: 12, border: "none", "& .MuiOutlinedInput-notchedOutline": { border: "none" }, height: 22, "& .MuiSelect-select": { p: 0, fontSize: 12, color: COLORS.textMuted } }}
               >
-                <MenuItem value="" sx={{ fontSize: 13 }}>All Types</MenuItem>
+                <MenuItem value="" sx={{ fontSize: 12 }}>All Types</MenuItem>
                 {types.map((t) => (
-                  <MenuItem key={t.typeId} value={t.typeId} sx={{ fontSize: 13 }}>{t.typeName}</MenuItem>
+                  <MenuItem key={t.typeId} value={t.typeId} sx={{ fontSize: 12 }}>{t.typeName}</MenuItem>
                 ))}
               </Select>
             </Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, border: `1px solid ${COLORS.border}`, borderRadius: "8px", px: 1.5, py: "5px", background: COLORS.surface }}>
-              <FaFilter size={12} />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, border: `1px solid ${COLORS.border}`, borderRadius: "6px", px: 1.25, py: "3px", background: COLORS.surface }}>
+              <FaFilter size={11} />
               <Select
                 value={filterStatus}
                 onChange={(e) => handleStatusChange(e.target.value)}
                 displayEmpty
                 size="small"
-                sx={{ fontSize: 13, border: "none", "& .MuiOutlinedInput-notchedOutline": { border: "none" }, height: 24, "& .MuiSelect-select": { p: 0, fontSize: 13, color: COLORS.textMuted } }}
+                sx={{ fontSize: 12, border: "none", "& .MuiOutlinedInput-notchedOutline": { border: "none" }, height: 22, "& .MuiSelect-select": { p: 0, fontSize: 12, color: COLORS.textMuted } }}
               >
-                <MenuItem value="" sx={{ fontSize: 13 }}>All Statuses</MenuItem>
-                {['AVAILABLE','ASSIGNED','DAMAGED','DISPOSED'].map((status) => (
-                  <MenuItem key={status} value={status} sx={{ fontSize: 13 }}>{status}</MenuItem>
+                <MenuItem value="" sx={{ fontSize: 12 }}>All Statuses</MenuItem>
+                {['AVAILABLE', 'ASSIGNED', 'DAMAGED', 'DISPOSED', 'UNDER_MAINTENANCE'].map((status) => (
+                  <MenuItem key={status} value={status} sx={{ fontSize: 12 }}>{status}</MenuItem>
                 ))}
               </Select>
             </Box>
 
             {/* Export — admin + manager */}
             {canExport && (
-            <Tooltip title="Exports all active assets to Excel">
-              <span>
-                <Button
-                  variant="outlined"
-                  startIcon={exportLoading ? <CircularProgress size={12} /> : <FaFileExport size={12} />}
-                  onClick={handleExport}
-                  disabled={exportLoading}
-                  sx={{ textTransform: "none", fontSize: 13, borderColor: COLORS.border, color: COLORS.textMuted, borderRadius: "8px", py: "7px", px: 1.75 }}
-                >
-                  Export
-                </Button>
-              </span>
-            </Tooltip>
+              <Tooltip title="Exports all active assets to Excel">
+                <span>
+                  <Button
+                    variant="outlined"
+                    startIcon={exportLoading ? <CircularProgress size={12} /> : <FaFileExport size={12} />}
+                    onClick={handleExport}
+                    disabled={exportLoading}
+                    sx={{ textTransform: "none", fontSize: 12, borderColor: COLORS.border, color: COLORS.textMuted, borderRadius: "6px", py: "4px", px: 1.25 }}
+                  >
+                    Export
+                  </Button>
+                </span>
+              </Tooltip>
             )}
 
             {/* Bulk Upload — admin only */}
@@ -264,7 +263,7 @@ export default function AssetsPage() {
                 variant="outlined"
                 startIcon={<FaUpload size={12} />}
                 onClick={() => navigate("/home/assets/bulk-upload")}
-                sx={{ textTransform: "none", fontSize: 13, borderColor: "#4caf50", color: "#2e7d32", borderRadius: "8px", py: "7px", px: 1.75 }}
+                sx={{ textTransform: "none", fontSize: 12, borderColor: "#4caf50", color: "#2e7d32", borderRadius: "6px", py: "4px", px: 1.25 }}
               >
                 Bulk Upload
               </Button>
@@ -276,12 +275,12 @@ export default function AssetsPage() {
                 variant="contained"
                 startIcon={<FaPlus size={11} />}
                 onClick={() => navigate("/home/assets/new")}
-                sx={{ textTransform: "none", fontSize: 13, fontWeight: 600, borderRadius: "8px", py: "8px", px: 2, background: COLORS.primary, boxShadow: "none", "&:hover": { background: COLORS.primaryDark, boxShadow: "none" } }}
+                sx={{ textTransform: "none", fontSize: 12, fontWeight: 600, borderRadius: "6px", py: "5px", px: 1.5, background: COLORS.primary, boxShadow: "none", "&:hover": { background: COLORS.primaryDark, boxShadow: "none" } }}
               >
                 Add New Asset
               </Button>
             )}
-          </>
+          </Box>
         }
       />
 
@@ -301,9 +300,8 @@ export default function AssetsPage() {
         <TablePagination page={page} totalPages={totalPages} onPageChange={(pg) => dispatch(setAssetPage(pg))} />
       </TableCard>
 
-      {/* ── View / QR / Move / History Modals ── */}
-      <AssetView open={viewModal} data={viewData} onClose={() => setViewModal(false)} />
-      <AssetQR   open={qrModal}  asset={qrAsset}  onClose={() => setQrModal(false)} />
+      {/* ── QR / Move / History Modals ── */}
+      <AssetQR open={qrModal} asset={qrAsset} onClose={() => setQrModal(false)} />
       <MoveAssetModal
         open={moveModal}
         asset={moveAssetData}
@@ -332,9 +330,9 @@ export default function AssetsPage() {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function getAssetTypeList(raw) {
-  if (Array.isArray(raw))            return raw;
-  if (Array.isArray(raw?.data))      return raw.data;
-  if (raw?.data?.content)            return raw.data.content;
-  if (raw?.content)                  return raw.content;
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw?.data)) return raw.data;
+  if (raw?.data?.content) return raw.data.content;
+  if (raw?.content) return raw.content;
   return [];
 }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import { useSearchParams } from "react-router-dom";
 import {
   Box, Button, Chip, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, IconButton, InputAdornment,
@@ -24,6 +25,7 @@ import { fetchAssets } from "../store/slices/assetSlice";
 import PageHeader from "../components/common/PageHeader";
 import TableCard from "../components/common/TableCard";
 import ConfirmDialog from "../components/common/ConfirmDialog";
+import ActionBtn from "../components/common/ActionBtn";
 import { COLORS } from "../theme/tokens";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
@@ -52,12 +54,12 @@ const EmptyState = () => (
 
 // ── Donut Chart ───────────────────────────────────────────────────────────────
 function DonutChart({ segments, total }) {
-  const SIZE = 140, CX = 70, CY = 70, R = 52, STROKE = 18;
+  const SIZE = 110, CX = 55, CY = 55, R = 40, STROKE = 14;
   const CIRC = 2 * Math.PI * R;
   let offset = 0;
   const arcs = segments.map((seg) => {
     const dash = total > 0 ? (seg.value / total) * CIRC : 0;
-    const arc  = { ...seg, dash, gap: CIRC - dash, offset };
+    const arc = { ...seg, dash, gap: CIRC - dash, offset };
     offset += dash;
     return arc;
   });
@@ -76,27 +78,27 @@ function DonutChart({ segments, total }) {
           style={{ transition: "stroke-dasharray 0.5s ease" }}
         />
       ))}
-      <text x={CX} y={CY - 6} textAnchor="middle" fontSize={11} fill="#888" fontFamily="Inter,sans-serif">Total</text>
-      <text x={CX} y={CY + 12} textAnchor="middle" fontSize={22} fontWeight={800} fill="#1a1a2e" fontFamily="Inter,sans-serif">{total}</text>
+      <text x={CX} y={CY - 4} textAnchor="middle" fontSize={9} fill="#888" fontFamily="Inter,sans-serif">Total</text>
+      <text x={CX} y={CY + 10} textAnchor="middle" fontSize={17} fontWeight={800} fill="#1a1a2e" fontFamily="Inter,sans-serif">{total}</text>
     </svg>
   );
 }
 
 // ── Recent Activity Item — premium compact ────────────────────────────────────
 function ActivityItem({ row, isLast }) {
-  const isActive   = row.status === "ACTIVE";
+  const isActive = row.status === "ACTIVE";
   const isReturned = row.status === "RETURNED";
-  const isOverdue  = isActive && row.expectedReturnDate && row.expectedReturnDate < new Date().toISOString().split("T")[0];
+  const isOverdue = isActive && row.expectedReturnDate && row.expectedReturnDate < new Date().toISOString().split("T")[0];
 
-  const badge = isOverdue  ? { label: "Overdue",  bg: "#fff3e0", color: "#e65100" }
-              : isReturned ? { label: "Returned", bg: "#f3e5f5", color: "#6a1b9a" }
-              :               { label: "Active",   bg: "#e8f5e9", color: "#2e7d32" };
+  const badge = isOverdue ? { label: "Overdue", bg: "#fff3e0", color: "#e65100" }
+    : isReturned ? { label: "Returned", bg: "#f3e5f5", color: "#6a1b9a" }
+      : { label: "Active", bg: "#e8f5e9", color: "#2e7d32" };
 
   const fmtDt = (d) =>
     d ? new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "";
 
   const eventDate = isReturned ? fmtDt(row.returnDate) : fmtDt(row.assignedDate);
-  const iconBg    = isOverdue ? "#fff3e0" : isReturned ? "#f3e5f5" : "#e8f5e9";
+  const iconBg = isOverdue ? "#fff3e0" : isReturned ? "#f3e5f5" : "#e8f5e9";
   const iconColor = isOverdue ? "#e65100" : isReturned ? "#6a1b9a" : "#2e7d32";
 
   return (
@@ -143,37 +145,37 @@ function AssetOverview({ stats, loading, recentAllocations }) {
   const pct = (v) => total > 0 ? `${Math.round((v / total) * 100)}%` : "0%";
 
   const segments = [
-    { label: "Active",   value: active,   color: "#4caf50" },
+    { label: "Active", value: active, color: "#4caf50" },
     { label: "Returned", value: returned, color: "#1976d2" },
-    { label: "Overdue",  value: overdue,  color: "#ffa726" },
+    { label: "Overdue", value: overdue, color: "#ffa726" },
   ];
 
   const legend = [
-    { label: "Active",   value: active,   dot: "#4caf50", text: "#2e7d32" },
+    { label: "Active", value: active, dot: "#4caf50", text: "#2e7d32" },
     { label: "Returned", value: returned, dot: "#1976d2", text: "#1565c0" },
-    { label: "Overdue",  value: overdue,  dot: "#ffa726", text: "#e65100" },
+    { label: "Overdue", value: overdue, dot: "#ffa726", text: "#e65100" },
   ];
 
   const miniCards = [
-    { label: "Total",    value: total,    bg: "#e3f2fd", icon: <FaBoxes size={13} color="#1976d2" /> },
-    { label: "Active",   value: active,   bg: "#e8f5e9", icon: <FaCheckCircle size={13} color="#2e7d32" /> },
+    { label: "Total", value: total, bg: "#e3f2fd", icon: <FaBoxes size={13} color="#1976d2" /> },
+    { label: "Active", value: active, bg: "#e8f5e9", icon: <FaCheckCircle size={13} color="#2e7d32" /> },
     { label: "Returned", value: returned, bg: "#ede7f6", icon: <FaLayerGroup size={13} color="#7b1fa2" /> },
-    { label: "Overdue",  value: overdue,  bg: "#fff8e1", icon: <FaClock size={13} color="#f57c00" /> },
+    { label: "Overdue", value: overdue, bg: "#fff8e1", icon: <FaClock size={13} color="#f57c00" /> },
   ];
 
   const recent = (recentAllocations || []).slice(0, 6);
 
   return (
-    <Box sx={{ display: "flex", gap: 2, mb: 2.5, flexWrap: "wrap" }}>
+    <Box sx={{ display: "flex", gap: 1.5, mb: 2, flexWrap: "wrap" }}>
 
       {/* ── Left: Donut overview ── */}
       <Box sx={{
-        flex: "1 1 320px",
-        background: "linear-gradient(180deg, #ffffff, #fbfbfd)",
-        borderRadius: "16px",
-        border: "1px solid rgba(16,24,40,0.06)",
-        boxShadow: "0 6px 18px rgba(16,24,40,0.06), 0 8px 24px rgba(0,0,0,0.04)",
-        p: "16px",
+        flex: "1 1 280px",
+        background: "#fff",
+        borderRadius: "10px",
+        border: `1px solid ${COLORS.border}`,
+        boxShadow: COLORS.shadow,
+        p: "12px",
       }}>
         <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#aaa", letterSpacing: "0.07em", textTransform: "uppercase", mb: 1.5 }}>
           Asset Overview
@@ -221,11 +223,11 @@ function AssetOverview({ stats, loading, recentAllocations }) {
 
       {/* ── Right: Recent Activities (live from backend) ── */}
       <Box sx={{
-        flex: "1 1 320px",
-        background: "linear-gradient(180deg, #ffffff, #fbfbfd)",
-        borderRadius: "16px",
-        border: "1px solid rgba(16,24,40,0.06)",
-        boxShadow: "0 6px 18px rgba(16,24,40,0.06), 0 8px 24px rgba(0,0,0,0.04)",
+        flex: "1 1 280px",
+        background: "#fff",
+        borderRadius: "10px",
+        border: `1px solid ${COLORS.border}`,
+        boxShadow: COLORS.shadow,
         p: "12px",
         display: "flex", flexDirection: "column",
       }}>
@@ -254,30 +256,39 @@ function AssetOverview({ stats, loading, recentAllocations }) {
 }
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
-const StatCard = ({ label, value, icon, gradient, iconBg, iconColor, borderColor }) => (
+const StatCard = ({ label, value, icon, gradient, iconBg, iconColor, borderColor, delay = "0ms" }) => (
   <Box sx={{
-    flex: 1, minWidth: 140,
-    background: gradient || "linear-gradient(180deg, rgba(255,255,255,0.85), #fff)",
-    border: `1px solid ${borderColor || 'rgba(16,24,40,0.04)'}`,
-    borderRadius: "16px",
-    p: "18px 20px",
-    display: "flex", alignItems: "center", gap: 2,
-    boxShadow: "0 8px 20px rgba(16,24,40,0.06), inset 0 1px 0 rgba(255,255,255,0.6)",
-    transition: "transform 0.18s, box-shadow 0.18s",
-    "&:hover": { transform: "translateY(-4px)", boxShadow: "0 14px 36px rgba(16,24,40,0.12)" },
+    flex: 1, minWidth: 120,
+    background: gradient || "rgba(255, 255, 255, 0.9)",
+    backdropFilter: "blur(8px)",
+    border: `1px solid ${borderColor || "rgba(255, 255, 255, 0.5)"}`,
+    borderRadius: "12px",
+    p: "12px 16px",
+    display: "flex", alignItems: "center", gap: 1.5,
+    boxShadow: "0 4px 16px rgba(0,0,0,0.03)",
+    animation: "statCardFadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+    animationDelay: delay,
+    "@keyframes statCardFadeUp": {
+      from: { opacity: 0, transform: "translateY(12px) scale(0.96)" },
+      to: { opacity: 1, transform: "translateY(0) scale(1)" },
+    },
+    transition: "all 300ms ease",
+    "&:hover": {
+      transform: "translateY(-3px)",
+      boxShadow: "0 10px 24px rgba(0,0,0,0.06)",
+    }
   }}>
     <Box sx={{
-      width: 48, height: 48, borderRadius: "12px",
-      background: iconBg || "linear-gradient(135deg, rgba(255,255,255,0.9), rgba(240,240,255,0.6))",
+      width: 36, height: 36, borderRadius: "8px",
+      background: iconBg || "#f0f0ff",
       display: "flex", alignItems: "center", justifyContent: "center",
       flexShrink: 0,
-      boxShadow: "0 6px 18px rgba(16,24,40,0.06)",
     }}>
       {icon}
     </Box>
     <Box>
-      <Typography fontSize={12} fontWeight={700} color={COLORS.textMuted} mb={0.3}>{label}</Typography>
-      <Typography fontSize={26} fontWeight={800} color={COLORS.text} lineHeight={1}>{value}</Typography>
+      <Typography fontSize={11} fontWeight={600} color={COLORS.textMuted}>{label}</Typography>
+      <Typography fontSize={20} fontWeight={800} color={COLORS.text} lineHeight={1.1}>{value}</Typography>
     </Box>
   </Box>
 );
@@ -292,10 +303,10 @@ function isOverdue(row) {
   return row.status === "ACTIVE" && row.expectedReturnDate && row.expectedReturnDate < today();
 }
 function extractList(res) {
-  if (Array.isArray(res))       return res;
+  if (Array.isArray(res)) return res;
   if (Array.isArray(res?.data)) return res.data;
-  if (res?.data?.content)       return res.data.content;
-  if (res?.content)             return res.content;
+  if (res?.data?.content) return res.data.content;
+  if (res?.content) return res.content;
   return [];
 }
 
@@ -304,50 +315,51 @@ const SIZE = 10;
 export default function AssetAllocationPage() {
   const { userRole, userName } = useSelector((s) => s.auth);
   const dispatch = useDispatch();
+  const [searchParams, setSearchParams] = useSearchParams();
   const canWrite = userRole === "admin" || userRole === "manager";
 
   // ── Table state ───────────────────────────────────────────────────────────
-  const [allocations,    setAllocations]    = useState([]);
-  const [loading,        setLoading]        = useState(true);
-  const [page,           setPage]           = useState(0);
-  const [totalPages,     setTotalPages]     = useState(0);
-  const [totalElements,  setTotalElements]  = useState(0);
+  const [allocations, setAllocations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
 
   // ── Filter state ──────────────────────────────────────────────────────────
-  const [searchInput,  setSearchInput]  = useState("");
-  const [search,       setSearch]       = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [fromDate,     setFromDate]     = useState("");
-  const [toDate,       setToDate]       = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const debounceRef = useRef(null);
 
   // ── Allocate modal state ──────────────────────────────────────────────────
-  const [availableAssets,    setAvailableAssets]    = useState([]);
-  const [allocateOpen,       setAllocateOpen]       = useState(false);
-  const [saving,             setSaving]             = useState(false);
+  const [availableAssets, setAvailableAssets] = useState([]);
+  const [allocateOpen, setAllocateOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     assetId: "", assignedTo: "", assignedBy: userName || "",
     assignedDate: today(), expectedReturnDate: "", remarks: "",
   });
-  const [adminUsers,         setAdminUsers]         = useState([]);
-  const [allUsers,           setAllUsers]           = useState([]);
-  const [userSearch,         setUserSearch]         = useState("");
-  const [anchorEl,           setAnchorEl]           = useState(null);
-  const [assignedToSearch,   setAssignedToSearch]   = useState("");
-  const [assignedToAnchor,   setAssignedToAnchor]   = useState(null);
-  const [assetSearch,        setAssetSearch]        = useState("");
-  const [assetAnchor,        setAssetAnchor]        = useState(null);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [assignedToSearch, setAssignedToSearch] = useState("");
+  const [assignedToAnchor, setAssignedToAnchor] = useState(null);
+  const [assetSearch, setAssetSearch] = useState("");
+  const [assetAnchor, setAssetAnchor] = useState(null);
 
   // ── Return / View state ───────────────────────────────────────────────────
   const [returnConfirm, setReturnConfirm] = useState(false);
-  const [returnId,      setReturnId]      = useState(null);
-  const [viewOpen,      setViewOpen]      = useState(false);
-  const [viewData,      setViewData]      = useState(null);
-  const [viewLoading,   setViewLoading]   = useState(false);
+  const [returnId, setReturnId] = useState(null);
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewData, setViewData] = useState(null);
+  const [viewLoading, setViewLoading] = useState(false);
 
   // ── Overview state ────────────────────────────────────────────────────────
-  const [overviewStats,    setOverviewStats]    = useState({ total: 0, active: 0, returned: 0, overdue: 0, awaitingReturn: 0 });
-  const [overviewLoading,  setOverviewLoading]  = useState(true);
+  const [overviewStats, setOverviewStats] = useState({ total: 0, active: 0, returned: 0, overdue: 0, awaitingReturn: 0 });
+  const [overviewLoading, setOverviewLoading] = useState(true);
   // ── Recent activities state (separate from paginated table) ───────────────
   const [recentActivities, setRecentActivities] = useState([]);
 
@@ -356,13 +368,13 @@ export default function AssetAllocationPage() {
     setLoading(true);
     try {
       const params = { page: pg, size: SIZE };
-      if (search)       params.search   = search;
-      if (statusFilter) params.status   = statusFilter;
-      if (fromDate)     params.fromDate = fromDate;
-      if (toDate)       params.toDate   = toDate;
-      const res      = await getAllAllocations(params);
+      if (search) params.search = search;
+      if (statusFilter) params.status = statusFilter;
+      if (fromDate) params.fromDate = fromDate;
+      if (toDate) params.toDate = toDate;
+      const res = await getAllAllocations(params);
       const pageData = res?.data || res;
-      setAllocations(pageData?.content   || []);
+      setAllocations(pageData?.content || []);
       setTotalPages(pageData?.totalPages || 0);
       setTotalElements(pageData?.totalElements || 0);
     } catch {
@@ -378,13 +390,13 @@ export default function AssetAllocationPage() {
   const loadOverview = useCallback(async () => {
     setOverviewLoading(true);
     try {
-      const res  = await getAllocationOverview();
+      const res = await getAllocationOverview();
       const data = res?.data || res;
       setOverviewStats({
-        total:          data.total          ?? 0,
-        active:         data.active         ?? 0,
-        returned:       data.returned       ?? 0,
-        overdue:        data.overdue        ?? 0,
+        total: data.total ?? 0,
+        active: data.active ?? 0,
+        returned: data.returned ?? 0,
+        overdue: data.overdue ?? 0,
         awaitingReturn: data.awaitingReturn ?? 0,
       });
     } catch { /* silent */ } finally { setOverviewLoading(false); }
@@ -395,9 +407,9 @@ export default function AssetAllocationPage() {
   // ── Recent activities loader — fetches latest 10 from backend ─────────────
   const loadRecentActivities = useCallback(async () => {
     try {
-      const res      = await getAllAllocations({ page: 0, size: 10 });
+      const res = await getAllAllocations({ page: 0, size: 10 });
       const pageData = res?.data || res;
-      const items    = pageData?.content || (Array.isArray(pageData) ? pageData : []);
+      const items = pageData?.content || (Array.isArray(pageData) ? pageData : []);
       // sort newest assigned date first
       items.sort((a, b) => (b.assignedDate || "") > (a.assignedDate || "") ? 1 : -1);
       setRecentActivities(items);
@@ -415,8 +427,8 @@ export default function AssetAllocationPage() {
   };
 
   const handleStatusChange = (e) => { setStatusFilter(e.target.value); setPage(0); };
-  const handleFromDate      = (e) => { setFromDate(e.target.value);    setPage(0); };
-  const handleToDate        = (e) => { setToDate(e.target.value);      setPage(0); };
+  const handleFromDate = (e) => { setFromDate(e.target.value); setPage(0); };
+  const handleToDate = (e) => { setToDate(e.target.value); setPage(0); };
 
   // ── Clear / Reset all filters ─────────────────────────────────────────────
   const clearFilters = () => {
@@ -425,9 +437,9 @@ export default function AssetAllocationPage() {
   };
 
   // ── Stat counts ───────────────────────────────────────────────────────────
-  const activeCount   = allocations.filter((r) => r.status === "ACTIVE").length;
+  const activeCount = allocations.filter((r) => r.status === "ACTIVE").length;
   const returnedCount = allocations.filter((r) => r.status === "RETURNED").length;
-  const overdueCount  = allocations.filter(isOverdue).length;
+  const overdueCount = allocations.filter(isOverdue).length;
 
   // ── View details ──────────────────────────────────────────────────────────
   const openView = async (id) => {
@@ -443,17 +455,17 @@ export default function AssetAllocationPage() {
 
   // ── Export CSV ────────────────────────────────────────────────────────────
   const exportCSV = () => {
-    const headers = ["ID","Asset","Code","Assigned To","Assigned By","Date","Expected Return","Return Date","Status","Remarks"];
+    const headers = ["ID", "Asset", "Code", "Assigned To", "Assigned By", "Date", "Expected Return", "Return Date", "Status", "Remarks"];
     const rows = allocations.map((r) => [
       r.allocationId, r.assetName, r.assetCode || "",
       r.assignedTo, r.assignedBy,
       r.assignedDate || "", r.expectedReturnDate || "", r.returnDate || "",
       r.status, r.remarks || "",
     ]);
-    const csv  = [headers, ...rows].map((r) => r.join(",")).join("\n");
+    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
     a.href = url; a.download = "allocations.csv"; a.click();
     URL.revokeObjectURL(url);
   };
@@ -466,9 +478,9 @@ export default function AssetAllocationPage() {
     } catch { toast.error("Failed to load assets"); }
   };
 
-  const openAllocate = async () => {
+  const openAllocate = async (preselectedAssetId = null) => {
     await loadAvailableAssets();
-    setForm({ assetId: "", assignedTo: "", assignedBy: "", assignedDate: today(), expectedReturnDate: "", remarks: "" });
+    setForm({ assetId: preselectedAssetId || "", assignedTo: "", assignedBy: "", assignedDate: today(), expectedReturnDate: "", remarks: "" });
     setUserSearch(""); setAssignedToSearch(""); setAssetSearch("");
     try {
       const res = await getUsers({ page: 0, size: 200 });
@@ -480,10 +492,18 @@ export default function AssetAllocationPage() {
     setAllocateOpen(true);
   };
 
+  useEffect(() => {
+    const assetIdParam = searchParams.get("assetId");
+    if (assetIdParam && canWrite) {
+      openAllocate(Number(assetIdParam));
+      setSearchParams({});
+    }
+  }, []);
+
   const handleAllocate = async () => {
-    if (!form.assetId)      { toast.error("Select an asset"); return; }
-    if (!form.assignedTo)   { toast.error("Enter employee name"); return; }
-    if (!form.assignedBy)   { toast.error("Enter assigned-by name"); return; }
+    if (!form.assetId) { toast.error("Select an asset"); return; }
+    if (!form.assignedTo) { toast.error("Enter employee name"); return; }
+    if (!form.assignedBy) { toast.error("Enter assigned-by name"); return; }
     if (!form.assignedDate) { toast.error("Select assigned date"); return; }
     if (form.expectedReturnDate && form.expectedReturnDate < form.assignedDate) {
       toast.error("Expected return date must be on or after the assigned date"); return;
@@ -532,7 +552,7 @@ export default function AssetAllocationPage() {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <Box sx={{ mt: "78px", p: "2rem 2.5rem", background: COLORS.bg, minHeight: "100vh", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <Box sx={{ p: 0, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
 
       {/* ── Page Header with reset hook ──────────────────────────────────── */}
       <PageHeader
@@ -541,10 +561,10 @@ export default function AssetAllocationPage() {
           canWrite && (
             <Box sx={{ display: "flex", gap: 1 }}>
               <Button
-                variant="outlined" size="small"
+                variant="outlined"
                 startIcon={<FaDownload size={11} />}
                 onClick={exportCSV}
-                sx={{ textTransform: "none", fontSize: 12, borderRadius: "8px" }}
+                sx={{ textTransform: "none", fontSize: 12, borderRadius: "6px", py: "4px", px: 1.25, borderColor: COLORS.border, color: COLORS.textMuted }}
               >
                 Export CSV
               </Button>
@@ -552,7 +572,7 @@ export default function AssetAllocationPage() {
                 variant="contained"
                 startIcon={<FaPlus size={11} />}
                 onClick={openAllocate}
-                sx={{ textTransform: "none", fontSize: 13, fontWeight: 600, borderRadius: "8px", py: "8px", px: 2, background: COLORS.primary, boxShadow: "none", "&:hover": { background: COLORS.primaryDark, boxShadow: "none" } }}
+                sx={{ textTransform: "none", fontSize: 12, fontWeight: 600, borderRadius: "6px", py: "5px", px: 1.5, background: COLORS.primary, boxShadow: "none", "&:hover": { background: COLORS.primaryDark, boxShadow: "none" } }}
               >
                 Allocate Asset
               </Button>
@@ -562,35 +582,11 @@ export default function AssetAllocationPage() {
       />
 
       {/* ── Stat Cards ──────────────────────────────────────────────────── */}
-      <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
-        <StatCard
-          label="Total Records"
-          value={totalElements}
-          icon={<FaBoxes size={18} color="#1976d2" />}
-          gradient="linear-gradient(135deg, #e3f2fd 0%, #fff 100%)"
-          iconBg="#dbeafe" iconColor="#1976d2" borderColor="#bfdbfe"
-        />
-        <StatCard
-          label="Active"
-          value={activeCount}
-          icon={<FaCheckCircle size={18} color="#2e7d32" />}
-          gradient="linear-gradient(135deg, #e8f5e9 0%, #fff 100%)"
-          iconBg="#dcfce7" iconColor="#2e7d32" borderColor="#a5d6a7"
-        />
-        <StatCard
-          label="Returned"
-          value={returnedCount}
-          icon={<FaLayerGroup size={18} color="#6b7280" />}
-          gradient="linear-gradient(135deg, #f3f4f6 0%, #fff 100%)"
-          iconBg="#e5e7eb" iconColor="#6b7280" borderColor="#d1d5db"
-        />
-        <StatCard
-          label="Overdue"
-          value={overdueCount}
-          icon={<FaClock size={18} color="#b45309" />}
-          gradient="linear-gradient(135deg, #fffbeb 0%, #fff 100%)"
-          iconBg="#fef3c7" iconColor="#b45309" borderColor="#fcd34d"
-        />
+      <Box sx={{ display: "flex", gap: 1.5, mb: 2, flexWrap: "wrap" }}>
+        <StatCard label="Total Records" value={totalElements} icon={<FaBoxes size={15} color="#1976d2" />} iconBg="#dbeafe" borderColor="#bfdbfe" delay="0ms" />
+        <StatCard label="Active" value={activeCount} icon={<FaCheckCircle size={15} color="#2e7d32" />} iconBg="#dcfce7" borderColor="#a5d6a7" delay="100ms" />
+        <StatCard label="Returned" value={returnedCount} icon={<FaLayerGroup size={15} color="#6b7280" />} iconBg="#e5e7eb" borderColor="#d1d5db" delay="200ms" />
+        <StatCard label="Overdue" value={overdueCount} icon={<FaClock size={15} color="#b45309" />} iconBg="#fef3c7" borderColor="#fcd34d" delay="300ms" />
       </Box>
 
       {/* (AssetOverview moved below the table) */}
@@ -602,12 +598,12 @@ export default function AssetAllocationPage() {
           placeholder="Search asset, code, employee…"
           value={searchInput}
           onChange={handleSearchChange}
-          slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={12} color="#aaa" /></InputAdornment> } }}
-          sx={{ minWidth: 240, "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
+          slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
+          sx={{ minWidth: 240, "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 11.5, height: 30 } }}
         />
         <Select
           size="small" value={statusFilter} onChange={handleStatusChange} displayEmpty
-          sx={{ minWidth: 130, fontSize: 13, borderRadius: "8px" }}
+          sx={{ minWidth: 130, fontSize: 11.5, borderRadius: "6px", height: 30 }}
         >
           <MenuItem value="">All Status</MenuItem>
           <MenuItem value="ACTIVE">Active</MenuItem>
@@ -617,13 +613,13 @@ export default function AssetAllocationPage() {
           size="small" type="date" label="From Date"
           value={fromDate} onChange={handleFromDate}
           slotProps={{ inputLabel: { shrink: true } }}
-          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
+          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 11.5, height: 30 } }}
         />
         <TextField
           size="small" type="date" label="To Date"
           value={toDate} onChange={handleToDate}
           slotProps={{ inputLabel: { shrink: true } }}
-          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
+          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 11.5, height: 30 } }}
         />
 
         {/* Reset icon button — same style as existing app buttons */}
@@ -633,14 +629,19 @@ export default function AssetAllocationPage() {
             aria-label="Reset"
             sx={{
               border: "1px solid #e0e0e0",
-              borderRadius: "8px",
-              p: "7px",
+              borderRadius: "6px",
+              width: 30,
+              height: 30,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              p: 0,
               background: "#fff",
               color: "#757575",
               "&:hover": { background: "#f5f5f5", borderColor: "#bbb", color: COLORS.primary },
             }}
           >
-            <MdRefresh size={18} />
+            <MdRefresh size={14} />
           </IconButton>
         </Tooltip>
       </Box>
@@ -653,11 +654,11 @@ export default function AssetAllocationPage() {
           <EmptyState />
         ) : (
           <Box sx={{ overflowX: "auto" }}>
-            <Table size="small" sx={{ minWidth: 860 }}>
+            <Table size="small" sx={{ minWidth: 860, tableLayout: "auto", borderCollapse: "collapse" }}>
               <TableHead>
-                <TableRow sx={{ background: "#f8fafc" }}>
-                  {["#","Asset","Code","Assigned To","Assigned By","Date","Expected Return","Return Date","Status","Remarks","Actions"].map((h) => (
-                    <TableCell key={h} sx={{ fontSize: 12, fontWeight: 700, color: COLORS.textMuted, py: 1.5, whiteSpace: "nowrap" }}>{h}</TableCell>
+                <TableRow>
+                  {["#", "Asset", "Code", "Assigned To", "Assigned By", "Date", "Expected Return", "Return Date", "Status", "Remarks", "Actions"].map((h) => (
+                    <TableCell key={h} sx={{ fontWeight: 700, color: "#64748b", whiteSpace: "nowrap", background: "#f8fafc", borderBottom: "2px solid #e2e8f0", letterSpacing: "0.05em", textTransform: "uppercase" }}>{h}</TableCell>
                   ))}
                 </TableRow>
               </TableHead>
@@ -665,46 +666,69 @@ export default function AssetAllocationPage() {
                 {allocations.map((row, i) => {
                   const overdue = isOverdue(row);
                   return (
-                    <TableRow
-                      key={row.allocationId} hover
-                      sx={{ "&:last-child td": { border: 0 }, background: overdue ? "#fffbeb" : undefined }}
-                    >
-                      <TableCell sx={{ fontSize: 12, color: COLORS.textFaint }}>{page * SIZE + i + 1}</TableCell>
-                      <TableCell sx={{ fontSize: 13, fontWeight: 500 }}>
+                    <TableRow key={row.allocationId} sx={{ borderLeft: "3px solid transparent", transition: "all 180ms ease", "&:last-child td": { border: 0 }, "&:hover": { borderLeft: "3px solid #3b82f6", "& td": { background: overdue ? "#fff7ed" : "#f0f7ff" } }, "& td": { background: overdue ? "#fffbeb" : i % 2 === 0 ? "#fff" : "#f8faff", borderBottom: "1px solid #f1f5f9" } }}>
+                      <TableCell sx={{ verticalAlign: "middle", color: COLORS.textFaint }}>{page * SIZE + i + 1}</TableCell>
+                      <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8", fontWeight: 600, color: "#1e1b4b" }}>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                           {overdue && <Tooltip title="Overdue"><span><FaExclamationTriangle size={11} color="#b45309" /></span></Tooltip>}
                           {row.assetName}
                         </Box>
                       </TableCell>
-                      <TableCell>
-                        <Chip label={row.assetCode || "—"} size="small" sx={{ fontSize: 11, height: 20, background: "#eff6ff", color: "#1d4ed8" }} />
+                      <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>
+                        <Chip label={row.assetCode || "—"} size="small" sx={{ fontSize: 9.5, height: 18, background: "#eff6ff", color: "#1d4ed8", borderRadius: "5px", "& .MuiChip-label": { px: "6px" } }} />
                       </TableCell>
-                      <TableCell sx={{ fontSize: 13 }}>{row.assignedTo}</TableCell>
-                      <TableCell sx={{ fontSize: 12, color: COLORS.textMuted }}>{row.assignedBy}</TableCell>
-                      <TableCell sx={{ fontSize: 12 }}>{fmt(row.assignedDate)}</TableCell>
-                      <TableCell sx={{ fontSize: 12, color: overdue ? "#b45309" : COLORS.textMuted, fontWeight: overdue ? 600 : 400 }}>
-                        {row.expectedReturnDate ? fmt(row.expectedReturnDate) : "—"}
-                      </TableCell>
-                      <TableCell sx={{ fontSize: 12, color: COLORS.textMuted }}>{row.returnDate ? fmt(row.returnDate) : "—"}</TableCell>
-                      <TableCell><StatusBadge status={row.status} /></TableCell>
-                      <TableCell sx={{ fontSize: 12, color: COLORS.textMuted, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>{row.assignedTo}</TableCell>
+                      <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8", color: COLORS.textMuted }}>{row.assignedBy}</TableCell>
+                      <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>{fmt(row.assignedDate)}</TableCell>
+                      <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8", color: overdue ? "#b45309" : COLORS.textMuted, fontWeight: overdue ? 700 : 400 }}>{row.expectedReturnDate ? fmt(row.expectedReturnDate) : "—"}</TableCell>
+                      <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8", color: COLORS.textMuted }}>{row.returnDate ? fmt(row.returnDate) : "—"}</TableCell>
+                      <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}><StatusBadge status={row.status} /></TableCell>
+                      <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8", color: COLORS.textMuted, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         <Tooltip title={row.remarks || ""}><span>{row.remarks || "—"}</span></Tooltip>
                       </TableCell>
-                      <TableCell>
+                      <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>
                         <Box sx={{ display: "flex", gap: 0.5 }}>
-                          <Tooltip title="View Details">
-                            <IconButton size="small" onClick={() => openView(row.allocationId)}
-                              sx={{ color: "#1d4ed8", border: "1px solid #bfdbfe", borderRadius: "6px", p: "4px 7px", "&:hover": { background: "#eff6ff" } }}>
+                          <Tooltip title="View Details" arrow>
+                            <IconButton
+                              size="small"
+                              onClick={() => openView(row.allocationId)}
+                              sx={{
+                                width: 22,
+                                height: 22,
+                                color: "#3b82f6",
+                                background: "transparent",
+                                borderRadius: "4px",
+                                transition: "all 0.15s ease",
+                                p: 0,
+                                "&:hover": {
+                                  background: "rgba(59, 130, 246, 0.08)",
+                                  color: "#2563eb",
+                                }
+                              }}
+                            >
                               <FaEye size={11} />
                             </IconButton>
                           </Tooltip>
                           {canWrite && row.status === "ACTIVE" && (
-                            <Tooltip title="Mark as Returned">
-                              <IconButton size="small"
+                            <Tooltip title="Mark as Returned" arrow>
+                              <IconButton
+                                size="small"
                                 onClick={() => { setReturnId(row.allocationId); setReturnConfirm(true); }}
-                                sx={{ color: "#2e7d32", border: "1px solid #a5d6a7", borderRadius: "6px", p: "4px 8px", fontSize: 11, gap: 0.5, "&:hover": { background: "#e8f5e9" } }}>
+                                sx={{
+                                  width: 22,
+                                  height: 22,
+                                  color: "#10b981",
+                                  background: "transparent",
+                                  borderRadius: "4px",
+                                  transition: "all 0.15s ease",
+                                  p: 0,
+                                  "&:hover": {
+                                    background: "rgba(16, 185, 129, 0.08)",
+                                    color: "#059669",
+                                  }
+                                }}
+                              >
                                 <FaUndo size={11} />
-                                <Typography fontSize={11} fontWeight={600}>Return</Typography>
                               </IconButton>
                             </Tooltip>
                           )}
@@ -745,7 +769,7 @@ export default function AssetAllocationPage() {
       </TableCard>
 
       {/* ── Asset Overview ──────────────────────────────────────────────── */}
-      <Box sx={{ mt: 4 }}>
+      <Box sx={{ mt: 2 }}>
         <AssetOverview stats={overviewStats} loading={overviewLoading} recentAllocations={recentActivities} />
       </Box>
 
@@ -881,38 +905,49 @@ export default function AssetAllocationPage() {
       </Dialog>
 
       {/* ── View Details Modal ───────────────────────────────────────────── */}
-      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} maxWidth="sm" fullWidth slotProps={{ paper: { sx: { borderRadius: "12px" } } }}>
-        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
-          <Typography fontWeight={700} fontSize={16}>Allocation Details</Typography>
-          <IconButton size="small" onClick={() => setViewOpen(false)}><FaTimes size={14} /></IconButton>
+      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} maxWidth="sm" fullWidth slotProps={{ paper: { sx: { borderRadius: "6px" } } }}>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1, borderBottom: "1px solid " + COLORS.borderLight }}>
+          <Typography fontWeight={700} fontSize={14} sx={{ textTransform: "uppercase", letterSpacing: "0.05em" }}>Allocation Details</Typography>
+          <IconButton size="small" onClick={() => setViewOpen(false)}><FaTimes size={13} /></IconButton>
         </DialogTitle>
-        <DialogContent sx={{ pt: "12px !important" }}>
+        <DialogContent sx={{ pt: "16px !important", pb: 2 }}>
           {viewLoading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}><CircularProgress /></Box>
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}><CircularProgress size={24} /></Box>
           ) : viewData ? (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <Box sx={{ display: "flex", flexDirection: "column" }}>
               {[
-                ["Allocation ID",   viewData.allocationId],
-                ["Asset",           `${viewData.assetName} (${viewData.assetCode || "—"})`],
-                ["Location",        viewData.locationName || "—"],
-                ["Assigned To",     viewData.assignedTo],
-                ["Assigned By",     viewData.assignedBy],
-                ["Assigned Date",   fmt(viewData.assignedDate)],
+                ["Allocation ID", viewData.allocationId],
+                ["Asset", `${viewData.assetName} (${viewData.assetCode || "—"})`],
+                ["Location", viewData.locationName || "—"],
+                ["Assigned To", viewData.assignedTo],
+                ["Assigned By", viewData.assignedBy],
+                ["Assigned Date", fmt(viewData.assignedDate)],
                 ["Expected Return", viewData.expectedReturnDate ? fmt(viewData.expectedReturnDate) : "—"],
-                ["Return Date",     viewData.returnDate ? fmt(viewData.returnDate) : "—"],
-                ["Status",          viewData.status],
-                ["Remarks",         viewData.remarks || "—"],
+                ["Return Date", viewData.returnDate ? fmt(viewData.returnDate) : "—"],
+                ["Status", viewData.status],
+                ["Remarks", viewData.remarks || "—"],
               ].map(([label, value]) => (
-                <Box key={label} sx={{ display: "flex", gap: 1 }}>
-                  <Typography fontSize={12} color={COLORS.textMuted} sx={{ minWidth: 130 }}>{label}</Typography>
-                  <Typography fontSize={13} fontWeight={500}>{String(value)}</Typography>
+                <Box key={label} sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  py: 1,
+                  borderBottom: "1px dashed " + COLORS.borderLight,
+                  "&:last-child": { borderBottom: "none" }
+                }}>
+                  <Typography sx={{ fontSize: 11, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                    {label}
+                  </Typography>
+                  <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: "text.primary", textAlign: "right" }}>
+                    {String(value || "—")}
+                  </Typography>
                 </Box>
               ))}
             </Box>
           ) : null}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setViewOpen(false)} sx={{ textTransform: "none", fontSize: 13 }}>Close</Button>
+        <DialogActions sx={{ px: 3, pb: 2, borderTop: "1px solid " + COLORS.borderLight }}>
+          <Button onClick={() => setViewOpen(false)} variant="outlined" size="small" sx={{ textTransform: "none", fontSize: 11.5, color: COLORS.textMuted, borderColor: COLORS.border, "&:hover": { borderColor: "#bbb", background: "#f9fafb" } }}>Close</Button>
         </DialogActions>
       </Dialog>
 

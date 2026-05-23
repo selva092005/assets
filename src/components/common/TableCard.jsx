@@ -9,14 +9,11 @@ export default function TableCard({ title, children }) {
   const checkScroll = () => {
     const el = scrollRef.current;
     if (!el) return;
-    const newShadows = {
+    const s = {
       right: el.scrollWidth > el.clientWidth && el.scrollLeft < el.scrollWidth - el.clientWidth - 1,
       bottom: el.scrollHeight > el.clientHeight && el.scrollTop < el.scrollHeight - el.clientHeight - 1,
     };
-    setShadows((prev) => {
-      if (prev.right === newShadows.right && prev.bottom === newShadows.bottom) return prev;
-      return newShadows;
-    });
+    setShadows((p) => (p.right === s.right && p.bottom === s.bottom ? p : s));
   };
 
   useEffect(() => {
@@ -25,54 +22,44 @@ export default function TableCard({ title, children }) {
     checkScroll();
     el.addEventListener("scroll", checkScroll);
     window.addEventListener("resize", checkScroll);
-    return () => {
-      el.removeEventListener("scroll", checkScroll);
-      window.removeEventListener("resize", checkScroll);
-    };
+    return () => { el.removeEventListener("scroll", checkScroll); window.removeEventListener("resize", checkScroll); };
   }, []);
 
   useEffect(() => { checkScroll(); }, [children]);
 
   return (
-    <Paper
-      elevation={1}
-      sx={{
-        borderRadius: "14px",
-        overflow: "hidden",
-        border: "1px solid rgba(16,24,40,0.04)",
-        background: "linear-gradient(180deg, rgba(255,255,255,0.82), rgba(250,250,252,0.92))",
-        boxShadow: "0 12px 32px rgba(16,24,40,0.08)",
-        backdropFilter: "saturate(120%) blur(8px)",
-      }}
-    >
+    <Paper elevation={0} sx={{
+      borderRadius: "8px",
+      overflow: "hidden",
+      border: "1px solid #f1f5f9",
+      background: "#fff",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.05)",
+      animation: "cardIn 300ms ease both",
+      "@keyframes cardIn": {
+        from: { opacity: 0, transform: "translateY(8px)" },
+        to: { opacity: 1, transform: "translateY(0)" },
+      },
+    }}>
       {title && (
-        <Box sx={{ px: 3, py: 2, borderBottom: "1px solid " + COLORS.borderLight, background: "linear-gradient(90deg, rgba(255,255,255,0.65), transparent)" }}>
-          <Typography sx={{ fontWeight: 700, fontSize: 15, color: COLORS.text }}>{title}</Typography>
+        <Box sx={{ px: 2.5, py: 1.5, borderBottom: "1px solid #f1f5f9", background: "#fafbfc" }}>
+          <Typography sx={{ fontWeight: 700, fontSize: 13, color: "#0f172a" }}>{title}</Typography>
         </Box>
       )}
       <Box sx={{ position: "relative" }}>
-        <Box ref={scrollRef} sx={{ overflowX: "auto", overflowY: "auto", px: 3, py: 2 }}>
+        <Box ref={scrollRef} sx={{ overflowX: "auto", overflowY: "auto" }}>
           {children}
         </Box>
-
         <Box sx={{
-          pointerEvents: "none",
-          position: "absolute",
-          top: 0, right: 0, bottom: 0,
-          width: 48,
-          background: "linear-gradient(to left, rgba(16,24,40,0.08), transparent)",
-          opacity: shadows.right ? 1 : 0,
-          transition: "opacity 200ms ease",
+          pointerEvents: "none", position: "absolute",
+          top: 0, right: 0, bottom: 0, width: 60,
+          background: "linear-gradient(to left, rgba(255,255,255,0.95), transparent)",
+          opacity: shadows.right ? 1 : 0, transition: "opacity 200ms ease",
         }} />
-
         <Box sx={{
-          pointerEvents: "none",
-          position: "absolute",
-          left: 0, right: 0, bottom: 0,
-          height: 48,
-          background: "linear-gradient(to top, rgba(16,24,40,0.08), transparent)",
-          opacity: shadows.bottom ? 1 : 0,
-          transition: "opacity 200ms ease",
+          pointerEvents: "none", position: "absolute",
+          left: 0, right: 0, bottom: 0, height: 48,
+          background: "linear-gradient(to top, rgba(255,255,255,0.95), transparent)",
+          opacity: shadows.bottom ? 1 : 0, transition: "opacity 200ms ease",
         }} />
       </Box>
     </Paper>

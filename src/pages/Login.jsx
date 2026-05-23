@@ -19,67 +19,19 @@ import {
   Link,
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { COLORS } from "../theme/tokens";
-/* ─── Theme ─────────────────────────────────────────────────── */
-const theme = createTheme({
-  palette: {
-    mode: "light",
-    primary: { main: COLORS.primary },
-    background: { default: COLORS.bg },
-  },
-  shape: { borderRadius: 14 },
-  typography: {
-    fontFamily: "'Nunito', 'Segoe UI', sans-serif",
-  },
-  components: {
-    MuiTextField: {
-      styleOverrides: {
-        root: {
-          "& .MuiOutlinedInput-root": {
-            borderRadius: 10,
-            backgroundColor: "#F9F9FC",
-            "&:hover .MuiOutlinedInput-notchedOutline": {
-              borderColor: COLORS.primary,
-            },
-          },
-        },
-      },
-    },
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          borderRadius: 10,
-          textTransform: "none",
-          fontWeight: 700,
-          fontSize: "1rem",
-          padding: "12px",
-          background: COLORS.primary,
-          boxShadow: "0 4px 18px rgba(25,118,210,0.18)",
-          "&:hover": {
-            background: COLORS.primaryDark,
-            boxShadow: "0 6px 22px rgba(25,118,210,0.22)",
-          },
-          "&:disabled": {
-            background: COLORS.primaryLight,
-            boxShadow: "none",
-            color: "#fff",
-          },
-        },
-      },
-    },
-  },
-});
+import { ThemeProvider } from "@mui/material/styles";
+import { theme } from "../theme/theme";
 
 /* ─── Component ─────────────────────────────────────────────── */
 export default function Login() {
-  const dispatch   = useDispatch();
-  const navigate   = useNavigate();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { isLoggedIn, loading, error: storeError } = useSelector((s) => s.auth);
 
-  const [email,        setEmail]        = useState("");
-  const [password,     setPassword]     = useState("");
-  const [localError,   setLocalError]   = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [localError, setLocalError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   if (isLoggedIn) return <Navigate to="/home" replace />;
@@ -266,7 +218,7 @@ export default function Login() {
               <Link href="/signup" underline="hover" sx={{ fontSize: "0.85rem", color: COLORS.primary, fontWeight: 600 }}>
                 Create Account
               </Link>
-              <Link href="/forgot-password" underline="hover" sx={{ fontSize: "0.85rem", color: COLORS.primaryLight, fontWeight: 500 }}>
+              <Link href="/forgot-password" underline="hover" sx={{ fontSize: "0.85rem", color: COLORS.primary, fontWeight: 500 }}>
                 Forgot Password?
               </Link>
             </Box>

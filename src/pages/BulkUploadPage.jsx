@@ -1,112 +1,153 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Box, Button, CircularProgress, LinearProgress,
-  Tab, Tabs, Typography,
+  Box, Button, CircularProgress, Typography, Select, MenuItem,
+  Table, TableBody, TableCell, TableHead, TableRow, IconButton, Tooltip
 } from "@mui/material";
 import {
-  FaArrowLeft, FaCheckCircle, FaDownload,
-  FaExclamationCircle, FaFileExcel, FaUpload,
+  FaCheckCircle, FaDownload, FaExclamationCircle,
+  FaExclamationTriangle, FaFileExcel, FaUpload, FaEye, FaHistory,
+  FaTrash, FaSyncAlt, FaBoxes
 } from "react-icons/fa";
-import { MdOutlineSkipNext } from "react-icons/md";
 import toast from "react-hot-toast";
 import { bulkUploadExcel, downloadTemplate } from "../services/assets_service";
 import { COLORS } from "../theme/tokens";
 
-/* ── stat card ── */
-function StatCard({ value, label, bg, border, color }) {
-  return (
-    <Box sx={{ p: "18px 12px", borderRadius: "12px", background: bg, border: `1px solid ${border}`, textAlign: "center", flex: 1 }}>
-      <Typography fontSize={32} fontWeight={800} color={color} lineHeight={1}>{value}</Typography>
-      <Typography fontSize={12} color={color} mt={0.5} fontWeight={500}>{label}</Typography>
-    </Box>
-  );
-}
-
-/* ── issue table ── */
-function IssueTable({ rows, type }) {
-  const isError = type === "error";
-  const border  = isError ? "#fecaca" : "#fde68a";
-  const headBg  = isError ? "#fee2e2" : "#fef9c3";
-  const headClr = isError ? "#991b1b" : "#92400e";
-  const evenBg  = isError ? "#fef2f2" : "#fffbeb";
-  const rowClr  = isError ? "#7f1d1d" : "#78350f";
-  const rowBdr  = isError ? "#fee2e2" : "#fef3c7";
+/* ── Step item component ── */
+function StepItem({ num, title, subtitle, active, done, isLast }) {
+  const circleBg = done ? "#16a34a" : active ? "#2563eb" : "#f1f5f9";
+  const circleColor = done || active ? "#fff" : "#64748b";
+  const titleColor = active || done ? "#0f172a" : "#64748b";
+  const subtitleColor = active ? "#3b82f6" : "#94a3b8";
 
   return (
-    <Box sx={{ border: `1px solid ${border}`, borderRadius: "8px", overflow: "hidden" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-        <thead>
-          <tr style={{ background: headBg }}>
-            <th style={{ padding: "8px 12px", textAlign: "left", color: headClr, fontWeight: 700, borderBottom: `1px solid ${border}`, width: 60 }}>Row</th>
-            {isError && (
-              <th style={{ padding: "8px 12px", textAlign: "left", color: headClr, fontWeight: 700, borderBottom: `1px solid ${border}`, width: 120 }}>Field</th>
-            )}
-            <th style={{ padding: "8px 12px", textAlign: "left", color: headClr, fontWeight: 700, borderBottom: `1px solid ${border}` }}>
-              {isError ? "Message" : "Reason"}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((item, i) => (
-            <tr key={i} style={{ background: i % 2 === 0 ? evenBg : "#fff" }}>
-              <td style={{ padding: "7px 12px", color: headClr, borderBottom: `1px solid ${rowBdr}`, fontWeight: 600 }}>
-                {typeof item === "object" ? item.row ?? "—" : "—"}
-              </td>
-              {isError && (
-                <td style={{ padding: "7px 12px", color: headClr, borderBottom: `1px solid ${rowBdr}`, fontWeight: 500 }}>
-                  {typeof item === "object" ? item.field ?? "—" : "—"}
-                </td>
-              )}
-              <td style={{ padding: "7px 12px", color: rowClr, borderBottom: `1px solid ${rowBdr}` }}>
-                {typeof item === "object" ? item.message : item}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </Box>
-  );
-}
+    <Box sx={{ display: "flex", position: "relative", gap: 1.5, pb: isLast ? 0 : 2.5 }}>
+      {/* Line connector */}
+      {!isLast && (
+        <Box
+          sx={{
+            position: "absolute",
+            left: 11,
+            top: 24,
+            bottom: 0,
+            width: 2,
+            background: done ? "#16a34a" : "#e2e8f0",
+            zIndex: 1,
+          }}
+        />
+      )}
 
-/* ── step indicator ── */
-function Step({ num, label, active, done }) {
-  const bg = done ? "#2e7d32" : active ? COLORS.primary : "#e0e0e0";
-  const clr = done || active ? "#fff" : "#9e9e9e";
-  const textClr = done ? "#2e7d32" : active ? COLORS.primary : "#9e9e9e";
-  return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-      <Box sx={{ width: 32, height: 32, borderRadius: "50%", background: bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background 0.2s" }}>
-        {done
-          ? <FaCheckCircle color="#fff" size={14} />
-          : <Typography fontSize={13} color={clr} fontWeight={700}>{num}</Typography>
-        }
+      {/* Circle indicator */}
+      <Box
+        sx={{
+          width: 24,
+          height: 24,
+          borderRadius: "50%",
+          background: circleBg,
+          color: circleColor,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 10.5,
+          fontWeight: 700,
+          zIndex: 2,
+          border: active ? "2px solid #bfdbfe" : "none",
+          transition: "all 0.25s ease",
+        }}
+      >
+        {done ? <FaCheckCircle size={12} color="#fff" /> : num}
       </Box>
-      <Typography fontSize={14} fontWeight={600} color={textClr}>{label}</Typography>
+
+      {/* Text details */}
+      <Box sx={{ display: "flex", flexDirection: "column" }}>
+        <Typography fontSize={11.5} fontWeight={700} color={titleColor} lineHeight={1.2}>
+          {title}
+        </Typography>
+        <Typography fontSize={9.5} color={subtitleColor} mt={0.25} lineHeight={1.3}>
+          {subtitle}
+        </Typography>
+      </Box>
     </Box>
   );
 }
+
+/* ── Stat Card widget ── */
+function StatCard({ value, label, bg, border, color, icon }) {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 1.25,
+        p: 1.25,
+        borderRadius: "8px",
+        background: "#fff",
+        border: "1px solid #e2e8f0",
+        flex: 1,
+        minWidth: 150,
+      }}
+    >
+      <Box
+        sx={{
+          width: 32,
+          height: 32,
+          borderRadius: "6px",
+          background: bg,
+          border: `1px solid ${border}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        {icon}
+      </Box>
+      <Box sx={{ minWidth: 0 }}>
+        <Typography fontSize={9.5} fontWeight={500} color="#64748b" noWrap lineHeight={1.2}>
+          {label}
+        </Typography>
+        <Typography fontSize={18} fontWeight={800} color="#0f172a" mt={0.25} lineHeight={1}>
+          {value}
+        </Typography>
+      </Box>
+    </Box>
+  );
+}
+
+/* ── Suggestion mapper ── */
+function getSuggestion(field, message) {
+  const f = (field || "").toLowerCase();
+  const m = (message || "").toLowerCase();
+  if (f.includes("serial") || m.includes("serial")) return "Enter valid serial number";
+  if (f.includes("code") || m.includes("code") || f.includes("id") || m.includes("id")) return "Asset ID already exists in the system";
+  if (f.includes("date") || m.includes("date")) return "Use format: DD-MM-YYYY";
+  if (f.includes("cost") || m.includes("cost") || f.includes("value") || m.includes("value")) return "Enter positive numeric value";
+  if (f.includes("status") || m.includes("status")) return "Allowed: AVAILABLE, DAMAGED or UNDER_MAINTENANCE";
+  return "Verify input matches template rules";
+}
+
+const ERR_PAGE_SIZE = 3;
 
 export default function BulkUploadPage() {
   const navigate     = useNavigate();
   const fileInputRef = useRef(null);
 
-  const [file,     setFile]     = useState(null);
-  const [loading,  setLoading]  = useState(false);
-  const [result,   setResult]   = useState(null);
-  const [tab,      setTab]      = useState(0);
-  const [dragOver, setDragOver] = useState(false);
-
-  const hasErrors  = result?.errors?.length  > 0;
-  const hasSkipped = result?.skipped?.length > 0;
-  const allGood    = result && !hasErrors && !hasSkipped;
+  const [file,       setFile]       = useState(null);
+  const [loading,    setLoading]    = useState(false);
+  const [result,     setResult]     = useState(null);
+  const [dragOver,   setDragOver]   = useState(false);
+  const [filterType, setFilterType] = useState("errors");
+  const [errPage,    setErrPage]    = useState(0);
 
   const handleFile = (f) => {
     if (!f) return;
-    if (!f.name.match(/\.(xlsx|xls)$/i)) { toast.error("Please select an Excel file (.xlsx or .xls)"); return; }
+    if (!f.name.match(/\.(xlsx|xls)$/i)) {
+      toast.error("Please select an Excel file (.xlsx or .xls)");
+      return;
+    }
     setFile(f);
     setResult(null);
-    setTab(0);
+    setErrPage(0);
   };
 
   const handleDrop = (e) => {
@@ -122,9 +163,11 @@ export default function BulkUploadPage() {
       const res = await bulkUploadExcel(file);
       const data = res?.data ?? res;
       setResult(data);
-      setTab(0);
+      setErrPage(0);
       const count = data?.successCount ?? 0;
-      if (count > 0) toast.success(`${count} asset(s) uploaded successfully`);
+      if (count > 0) {
+        toast.success(`${count} asset(s) verified successfully`);
+      }
     } catch (e) {
       toast.error(e.response?.data?.message || "Bulk upload failed");
     } finally {
@@ -143,229 +186,660 @@ export default function BulkUploadPage() {
   const removeFile = () => {
     setFile(null);
     setResult(null);
+    setErrPage(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const step = result ? 3 : file ? 2 : 1;
+  const step = result ? (result.failedCount > 0 ? 3 : 4) : file ? 2 : 1;
+
+  const getTotalErrRows = () => {
+    if (filterType === "errors") return result?.errors || [];
+    return result?.skipped || [];
+  };
+
+  const getCurrentErrRows = () => {
+    const rows = getTotalErrRows();
+    return rows.slice(errPage * ERR_PAGE_SIZE, (errPage + 1) * ERR_PAGE_SIZE);
+  };
+
+  const totalErrPages = Math.ceil(getTotalErrRows().length / ERR_PAGE_SIZE);
 
   return (
-    <Box sx={{ mt: "60px", minHeight: "100vh", background: COLORS.bg, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <Box sx={{ p: 0, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+      {/* ── Breadcrumbs ── */}
+      <Box sx={{ px: 2, pt: 1.5 }}>
+        <Typography fontSize={10.5} color="#64748b" sx={{ display: "flex", gap: 0.5, alignItems: "center", mb: 0.5 }}>
+          <span>Dashboard</span>
+          <span>&gt;</span>
+          <span>Assets</span>
+          <span>&gt;</span>
+          <span style={{ fontWeight: 600, color: "#1e293b" }}>Bulk Upload</span>
+        </Typography>
+      </Box>
 
-      {/* ── Top bar ── */}
-      <Box sx={{ background: COLORS.surface, borderBottom: `1px solid ${COLORS.border}`, px: "2.5rem", py: 2, display: "flex", alignItems: "center", gap: 2 }}>
-        <Button
-          startIcon={<FaArrowLeft size={12} />}
-          onClick={() => navigate("/home/assets")}
-          sx={{ textTransform: "none", fontSize: 13, color: COLORS.textMuted, minWidth: 0, p: "6px 12px", borderRadius: "8px", "&:hover": { background: "#f5f5f5" } }}
-        >
-          Back to Assets
-        </Button>
-        <Box sx={{ width: 1, height: 20, background: COLORS.border }} />
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-          <Box sx={{ width: 36, height: 36, borderRadius: "10px", background: "#e8f5e9", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {/* ── Top Header ── */}
+      <Box sx={{ background: "#fff", borderBottom: `1px solid #e2e8f0`, px: 2, py: 1.5, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 2 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+          <Box sx={{ width: 36, height: 36, borderRadius: "8px", background: "#e8f5e9", display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #c8e6c9" }}>
             <FaFileExcel color="#2e7d32" size={18} />
           </Box>
           <Box>
-            <Typography fontWeight={700} fontSize={17} lineHeight={1.2}>Bulk Upload Assets</Typography>
-            <Typography fontSize={12} color={COLORS.textFaint}>Import multiple assets at once using an Excel file</Typography>
+            <Typography fontWeight={800} fontSize={16} color="#0f172a">Bulk Upload Assets</Typography>
+            <Typography fontSize={11} color="#64748b">Import hundreds of assets quickly using Excel templates.</Typography>
           </Box>
+        </Box>
+
+        <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<FaDownload size={11} />}
+            onClick={handleDownloadTemplate}
+            sx={{
+              textTransform: "none",
+              fontSize: 11.5,
+              fontWeight: 600,
+              borderColor: "#bfdbfe",
+              color: "#1d4ed8",
+              borderRadius: "6px",
+              py: 0.5,
+              px: 1.5,
+              background: "#eff6ff",
+              "&:hover": { borderColor: "#93c5fd", background: "#dbeafe" }
+            }}
+          >
+            Download Template
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<FaEye size={11} />}
+            sx={{
+              textTransform: "none",
+              fontSize: 11.5,
+              fontWeight: 600,
+              borderColor: "#cbd5e1",
+              color: "#475569",
+              borderRadius: "6px",
+              py: 0.5,
+              px: 1.5,
+              background: "#fff",
+              "&:hover": { borderColor: "#94a3b8", background: "#f8fafc" }
+            }}
+          >
+            View Sample
+          </Button>
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<FaHistory size={11} />}
+            sx={{
+              textTransform: "none",
+              fontSize: 11.5,
+              fontWeight: 600,
+              borderColor: "#cbd5e1",
+              color: "#475569",
+              borderRadius: "6px",
+              py: 0.5,
+              px: 1.5,
+              background: "#fff",
+              "&:hover": { borderColor: "#94a3b8", background: "#f8fafc" }
+            }}
+          >
+            Upload History
+          </Button>
         </Box>
       </Box>
 
-      {/* ── Body ── */}
-      <Box sx={{ p: "2rem 2.5rem", display: "flex", gap: 3, alignItems: "flex-start" }}>
-
-        {/* ── Left: Steps sidebar ── */}
-        <Box sx={{ width: 260, flexShrink: 0, background: COLORS.surface, borderRadius: "14px", border: `1px solid ${COLORS.border}`, p: 3, display: "flex", flexDirection: "column", gap: 3 }}>
-          <Typography fontSize={13} fontWeight={700} color={COLORS.textMuted} textTransform="uppercase" letterSpacing={0.8}>Steps</Typography>
-
-          <Step num={1} label="Download Template" active={step === 1} done={step > 1} />
-          <Box sx={{ ml: "15px", pl: 2, borderLeft: `2px solid ${step > 1 ? "#2e7d32" : "#e0e0e0"}`, pb: 1 }}>
-            <Typography fontSize={12} color={COLORS.textFaint} lineHeight={1.6}>
-              Download the Excel template, fill in your asset data, then save the file.
+      {/* ── Main Body ── */}
+      <Box sx={{ p: 2, display: "flex", gap: 2, alignItems: "flex-start", flexWrap: { xs: "wrap", md: "nowrap" } }}>
+        
+        {/* ── Left Sidebar ── */}
+        <Box sx={{ width: { xs: 1, md: 240 }, flexShrink: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+          {/* Progress Card */}
+          <Box sx={{ background: COLORS.surface, borderRadius: "8px", border: `1px solid ${COLORS.border}`, p: 2 }}>
+            <Typography fontSize={11} fontWeight={700} color="#334155" mb={2} textTransform="uppercase" letterSpacing={0.5}>
+              Upload Progress
             </Typography>
-            <Box sx={{ mt: 1, p: 1.25, background: "#fff3e0", border: "1px solid #ffcc80", borderRadius: "8px" }}>
-              <Typography fontSize={11} color="#e65100" fontWeight={500} lineHeight={1.5}>
-                Status allowed: AVAILABLE / DAMAGED<br />
-                ASSIGNED and DISPOSED are not permitted.
-              </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column" }}>
+              <StepItem num={1} title="Download Template" subtitle="Download and fill the AMS Excel template" active={step === 1} done={step > 1} />
+              <StepItem num={2} title="Upload Excel File" subtitle="Upload the completed template file" active={step === 2} done={step > 2} />
+              <StepItem num={3} title="Validate Data" subtitle="System validates your data for errors" active={step === 3} done={step > 3} />
+              <StepItem num={4} title="Import Assets" subtitle="Import valid assets into the system" active={step === 4} done={false} isLast />
             </Box>
+          </Box>
+
+          {/* Rules Card */}
+          <Box sx={{ background: COLORS.surface, borderRadius: "8px", border: `1px solid ${COLORS.border}`, p: 1.5 }}>
+            <Typography fontSize={11} fontWeight={700} color="#334155" mb={1.25} textTransform="uppercase" letterSpacing={0.5}>
+              Upload Rules
+            </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+              {[
+                "Use AMS template only",
+                "File format: .xlsx / .xls",
+                "Maximum file size: 10MB",
+                "First row should contain column headers",
+                "Required fields must be filled",
+              ].map((rule, idx) => (
+                <Box key={idx} sx={{ display: "flex", alignItems: "flex-start", gap: 0.75 }}>
+                  <FaCheckCircle color="#16a34a" size={10} style={{ marginTop: 2, flexShrink: 0 }} />
+                  <Typography fontSize={10} color="#475569" lineHeight={1.3}>
+                    {rule}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+
+          {/* Need Help Card */}
+          <Box sx={{ background: COLORS.surface, borderRadius: "8px", border: `1px solid ${COLORS.border}`, p: 1.5 }}>
+            <Typography fontSize={11} fontWeight={700} color="#334155" mb={0.5}>
+              Need Help?
+            </Typography>
+            <Typography fontSize={10} color="#64748b" mb={1.25} lineHeight={1.4}>
+              View our guide to learn about bulk upload.
+            </Typography>
             <Button
-              size="small"
               variant="outlined"
-              startIcon={<FaDownload size={10} />}
-              onClick={handleDownloadTemplate}
-              sx={{ mt: 1.5, textTransform: "none", fontSize: 12, borderColor: COLORS.primary, color: COLORS.primary, borderRadius: "6px" }}
+              size="small"
+              startIcon={<FaEye size={9} />}
+              sx={{
+                textTransform: "none",
+                fontSize: 10.5,
+                fontWeight: 600,
+                borderColor: COLORS.primary,
+                color: COLORS.primary,
+                borderRadius: "6px",
+                py: 0.5,
+                px: 1.5,
+                "&:hover": { borderColor: COLORS.primaryDark, background: "rgba(37, 99, 235, 0.04)" }
+              }}
             >
-              Download Template
+              View Guide
             </Button>
-          </Box>
-
-          <Step num={2} label="Select File" active={step === 2} done={step > 2} />
-          <Box sx={{ ml: "15px", pl: 2, borderLeft: `2px solid ${step > 2 ? "#2e7d32" : "#e0e0e0"}`, pb: 1 }}>
-            <Typography fontSize={12} color={COLORS.textFaint} lineHeight={1.6}>
-              Drag & drop or click the upload zone to select your filled .xlsx file.
-            </Typography>
-          </Box>
-
-          <Step num={3} label="Review Results" active={step === 3} done={false} />
-          <Box sx={{ ml: "15px", pl: 2 }}>
-            <Typography fontSize={12} color={COLORS.textFaint} lineHeight={1.6}>
-              Check the import summary and fix any errors in your file if needed.
-            </Typography>
           </Box>
         </Box>
 
-        {/* ── Right: Main content ── */}
-        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2.5 }}>
+        {/* ── Right Content Area ── */}
+        <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+          {/* Stat Cards */}
+          <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", width: 1 }}>
+            <StatCard
+              value={result ? (result.totalRows ?? 0) : "—"}
+              label="Total Assets"
+              bg="#eff6ff"
+              border="#bfdbfe"
+              color="#2563eb"
+              icon={<FaBoxes size={14} color="#2563eb" />}
+            />
+            <StatCard
+              value={result ? (result.successCount ?? 0) : "—"}
+              label="Successful"
+              bg="#f0fdf4"
+              border="#bbf7d0"
+              color="#16a34a"
+              icon={<FaCheckCircle size={14} color="#16a34a" />}
+            />
+            <StatCard
+              value={result ? (result.failedCount ?? 0) : "—"}
+              label="Failed"
+              bg="#fef2f2"
+              border="#fecaca"
+              color="#dc2626"
+              icon={<FaExclamationCircle size={14} color="#dc2626" />}
+            />
+            <StatCard
+              value={result ? (result.skippedCount ?? 0) : "—"}
+              label="Duplicates"
+              bg="#fffbeb"
+              border="#fde68a"
+              color="#d97706"
+              icon={<FaExclamationTriangle size={13} color="#d97706" />}
+            />
+          </Box>
 
-          {/* Drop zone */}
+          {/* Drag & Drop Zone */}
           <Box
             onClick={() => !loading && fileInputRef.current?.click()}
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
             sx={{
-              background: COLORS.surface,
-              border: `2px dashed ${dragOver ? COLORS.primary : file ? "#4caf50" : COLORS.border}`,
-              borderRadius: "14px",
-              p: "3rem 2rem",
+              background: dragOver ? "#eff6ff" : "#f8fafc",
+              border: `2px dashed ${dragOver ? "#2563eb" : "#bfdbfe"}`,
+              borderRadius: "8px",
+              p: "2rem 1rem",
               textAlign: "center",
               cursor: loading ? "default" : "pointer",
-              background: dragOver ? "#e8f0fe" : file ? "#f1f8e9" : COLORS.surface,
-              transition: "all 0.18s",
-              "&:hover": loading ? {} : { borderColor: COLORS.primary, background: "#f0f4ff" },
+              transition: "all 0.18s ease",
+              "&:hover": loading ? {} : { borderColor: "#2563eb", background: "#f1f7fe" },
             }}
           >
-            {file ? (
-              <>
-                <FaFileExcel size={52} color="#4caf50" />
-                <Typography fontSize={16} fontWeight={700} color="#2e7d32" mt={1.5}>{file.name}</Typography>
-                <Typography fontSize={13} color={COLORS.textFaint} mt={0.5}>{(file.size / 1024).toFixed(1)} KB</Typography>
-                <Button
-                  size="small"
-                  onClick={(e) => { e.stopPropagation(); removeFile(); }}
-                  sx={{ mt: 1.5, textTransform: "none", fontSize: 12, color: "#e53935" }}
-                >
-                  Remove file
-                </Button>
-              </>
-            ) : (
-              <>
-                <FaUpload size={44} color="#bdbdbd" />
-                <Typography fontSize={16} fontWeight={600} color="#757575" mt={1.5}>
-                  Drag & drop your Excel file here
-                </Typography>
-                <Typography fontSize={13} color="#aaa" mt={0.5}>or click to browse — .xlsx / .xls only</Typography>
-              </>
-            )}
+            <Box
+              sx={{
+                width: 44,
+                height: 44,
+                borderRadius: "50%",
+                background: "#eff6ff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mx: "auto",
+                mb: 1.25,
+              }}
+            >
+              <FaUpload size={16} color="#2563eb" />
+            </Box>
+            <Typography fontSize={13.5} fontWeight={700} color="#1e293b">
+              Drag & Drop Excel File Here
+            </Typography>
+            <Typography fontSize={11} color="#64748b" mt={0.25}>
+              or click to browse
+            </Typography>
+            <Typography fontSize={9.5} color="#94a3b8" mt={0.75}>
+              Supported formats: .xlsx, .xls | Maximum file size: 10MB
+            </Typography>
+            <Button
+              variant="contained"
+              disabled={loading}
+              sx={{
+                mt: 1.75,
+                textTransform: "none",
+                fontSize: 11,
+                fontWeight: 600,
+                borderRadius: "6px",
+                py: 0.5,
+                px: 2,
+                background: "#2563eb",
+                boxShadow: "none",
+                "&:hover": { background: "#1d4ed8", boxShadow: "none" }
+              }}
+            >
+              Browse Files
+            </Button>
           </Box>
           <input ref={fileInputRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={(e) => handleFile(e.target.files?.[0])} />
 
-          {/* Upload button */}
-          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-            <Button
-              variant="contained"
-              size="large"
-              startIcon={loading ? <CircularProgress size={15} color="inherit" /> : <FaUpload size={13} />}
-              onClick={handleUpload}
-              disabled={!file || loading}
-              sx={{ textTransform: "none", fontSize: 14, fontWeight: 600, borderRadius: "10px", px: 3.5, py: 1.25, background: "#2e7d32", boxShadow: "none", "&:hover": { background: "#1b5e20", boxShadow: "none" } }}
+          {/* Uploaded File Info Bar */}
+          {file && (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                p: 1.5,
+                background: "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: "8px",
+                flexWrap: "wrap",
+                gap: 1.5,
+              }}
             >
-              {loading ? "Uploading…" : "Upload File"}
-            </Button>
-          </Box>
-
-          {/* Progress */}
-          {loading && (
-            <Box sx={{ background: COLORS.surface, borderRadius: "12px", border: `1px solid ${COLORS.border}`, p: 2.5 }}>
-              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-                <Typography fontSize={13} color={COLORS.textMuted}>Processing your file…</Typography>
-                <CircularProgress size={16} />
-              </Box>
-              <LinearProgress sx={{ borderRadius: 4 }} />
-            </Box>
-          )}
-
-          {/* Results */}
-          {result && (
-            <Box sx={{ background: COLORS.surface, borderRadius: "14px", border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
-
-              {/* Result header */}
-              <Box sx={{ px: 3, py: 2, borderBottom: `1px solid ${COLORS.border}`, display: "flex", alignItems: "center", gap: 1.5 }}>
-                {allGood
-                  ? <FaCheckCircle color="#16a34a" size={20} />
-                  : <FaExclamationCircle color="#d97706" size={20} />
-                }
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+                <Box
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: "6px",
+                    background: "#e8f5e9",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <FaFileExcel size={15} color="#2e7d32" />
+                </Box>
                 <Box>
-                  <Typography fontSize={15} fontWeight={700} color={allGood ? "#15803d" : COLORS.text}>
-                    {allGood ? "All rows imported successfully!" : "Import completed with issues"}
+                  <Typography fontSize={12} fontWeight={700} color="#1e293b">
+                    {file.name}
                   </Typography>
-                  <Typography fontSize={12} color={COLORS.textFaint}>
-                    {allGood
-                      ? `${result.successCount} record(s) added with no issues.`
-                      : "Review the errors and skipped rows below, fix your file, and re-upload."}
+                  <Typography fontSize={10} color="#94a3b8">
+                    Uploaded on {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                   </Typography>
                 </Box>
               </Box>
 
-              {/* Stat cards */}
-              <Box sx={{ display: "flex", gap: 2, p: 3, borderBottom: (hasErrors || hasSkipped) ? `1px solid ${COLORS.border}` : "none" }}>
-                <StatCard value={result.totalRows ?? 0}    label="Total Rows"  bg="#f8fafc" border="#e2e8f0" color="#475569" />
-                <StatCard value={result.successCount ?? 0} label="Imported"    bg="#f0fdf4" border="#bbf7d0" color="#16a34a" />
-                <StatCard value={result.skippedCount ?? 0} label="Skipped"     bg="#fffbeb" border="#fde68a" color="#d97706" />
-                <StatCard value={result.failedCount ?? 0}  label="Failed"      bg="#fef2f2" border="#fecaca" color="#dc2626" />
+              <Box sx={{ display: "flex", gap: 2.5, flexWrap: "wrap" }}>
+                <Box>
+                  <Typography fontSize={9.5} color="#94a3b8" fontWeight={500}>Rows</Typography>
+                  <Typography fontSize={11.5} fontWeight={700} color="#475569">{result ? (result.totalRows ?? 0) : "—"}</Typography>
+                </Box>
+                <Box>
+                  <Typography fontSize={9.5} color="#94a3b8" fontWeight={500}>Valid</Typography>
+                  <Typography fontSize={11.5} fontWeight={700} color="#16a34a">{result ? (result.successCount ?? 0) : "—"}</Typography>
+                </Box>
+                <Box>
+                  <Typography fontSize={9.5} color="#94a3b8" fontWeight={500}>Errors</Typography>
+                  <Typography fontSize={11.5} fontWeight={700} color="#dc2626">{result ? (result.failedCount ?? 0) : "—"}</Typography>
+                </Box>
+                <Box>
+                  <Typography fontSize={9.5} color="#94a3b8" fontWeight={500}>Duplicates</Typography>
+                  <Typography fontSize={11.5} fontWeight={700} color="#d97706">{result ? (result.skippedCount ?? 0) : "—"}</Typography>
+                </Box>
               </Box>
 
-              {/* Tabs */}
-              {(hasErrors || hasSkipped) && (
-                <>
-                  <Tabs
-                    value={tab}
-                    onChange={(_, v) => setTab(v)}
+              <Box sx={{ display: "flex", gap: 1 }}>
+                {result ? (
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<FaSyncAlt size={10} />}
+                    onClick={handleUpload}
+                    disabled={loading}
                     sx={{
-                      px: 2,
-                      background: "#f8fafc",
-                      borderBottom: `1px solid ${COLORS.border}`,
-                      "& .MuiTab-root": { minHeight: 44, textTransform: "none", fontSize: 13, fontWeight: 600 },
+                      textTransform: "none",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      borderColor: "#cbd5e1",
+                      color: "#475569",
+                      borderRadius: "6px",
+                      py: 0.5,
+                      px: 1.5,
+                      "&:hover": { background: "#f8fafc", borderColor: "#94a3b8" }
                     }}
                   >
-                    {hasErrors && (
-                      <Tab
-                        value={0}
-                        label={
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            <FaExclamationCircle color="#dc2626" size={13} />
-                            <span style={{ color: "#dc2626" }}>Errors ({result.errors.length})</span>
-                          </Box>
-                        }
-                      />
-                    )}
-                    {hasSkipped && (
-                      <Tab
-                        value={hasErrors ? 1 : 0}
-                        label={
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            <MdOutlineSkipNext color="#d97706" size={16} />
-                            <span style={{ color: "#d97706" }}>Skipped ({result.skipped.length})</span>
-                          </Box>
-                        }
-                      />
-                    )}
-                  </Tabs>
+                    Validate Again
+                  </Button>
+                ) : (
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={loading ? <CircularProgress size={10} color="inherit" /> : <FaUpload size={10} />}
+                    onClick={handleUpload}
+                    disabled={loading}
+                    sx={{
+                      textTransform: "none",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      borderRadius: "6px",
+                      py: 0.5,
+                      px: 1.5,
+                      background: "#2563eb",
+                      boxShadow: "none",
+                      "&:hover": { background: "#1d4ed8", boxShadow: "none" }
+                    }}
+                  >
+                    {loading ? "Validating..." : "Validate Data"}
+                  </Button>
+                )}
 
-                  <Box sx={{ p: 2.5, maxHeight: 380, overflowY: "auto" }}>
-                    {tab === 0 && hasErrors  && <IssueTable rows={result.errors}  type="error"   />}
-                    {tab === (hasErrors ? 1 : 0) && hasSkipped && <IssueTable rows={result.skipped} type="skipped" />}
+                <Button
+                  variant="outlined"
+                  color="error"
+                  size="small"
+                  startIcon={<FaTrash size={10} />}
+                  onClick={removeFile}
+                  disabled={loading}
+                  sx={{
+                    textTransform: "none",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    borderColor: "#fee2e2",
+                    color: "#dc2626",
+                    borderRadius: "6px",
+                    py: 0.5,
+                    px: 1.5,
+                    "&:hover": { background: "#fef2f2", borderColor: "#fecaca" }
+                  }}
+                >
+                  Remove
+                </Button>
+              </Box>
+            </Box>
+          )}
+
+          {/* Validation Results Table */}
+          {result && (result.errors?.length > 0 || result.skipped?.length > 0) && (
+            <Box sx={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden" }}>
+              <Box sx={{ px: 2, py: 1.5, borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1.5 }}>
+                <Typography fontSize={13} fontWeight={700} color="#dc2626">
+                  Validation Results ({filterType === "errors" ? result.errors?.length ?? 0 : result.skipped?.length ?? 0} {filterType === "errors" ? "Errors" : "Duplicates"})
+                </Typography>
+
+                <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                  <Select
+                    size="small"
+                    value={filterType}
+                    onChange={(e) => { setFilterType(e.target.value); setErrPage(0); }}
+                    sx={{
+                      height: 30,
+                      fontSize: 11.5,
+                      borderRadius: "6px",
+                      minWidth: 120,
+                      "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }
+                    }}
+                  >
+                    <MenuItem value="errors">All Errors</MenuItem>
+                    <MenuItem value="duplicates">Duplicates</MenuItem>
+                  </Select>
+
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<FaDownload size={11} />}
+                    sx={{
+                      textTransform: "none",
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      borderColor: "#cbd5e1",
+                      color: "#475569",
+                      borderRadius: "6px",
+                      height: 30,
+                      "&:hover": { borderColor: "#94a3b8", background: "#f8fafc" }
+                    }}
+                  >
+                    Download Error Report
+                  </Button>
+                </Box>
+              </Box>
+
+              <Box sx={{ overflowX: "auto" }}>
+                <Table size="small" sx={{ minWidth: 600 }}>
+                  <TableHead>
+                    <TableRow sx={{ background: "#f8fafc" }}>
+                      {["Row No.", "Asset Name", "Asset ID", "Issue", "Suggestion"].map((h) => (
+                        <TableCell key={h} sx={{ fontWeight: 700, color: "#64748b", fontSize: 10.5, borderBottom: "1px solid #e2e8f0", py: 1 }}>
+                          {h}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {getCurrentErrRows().map((item, idx) => (
+                      <TableRow key={idx} sx={{ "&:hover": { background: "#f8fafc" } }}>
+                        <TableCell sx={{ py: 1 }}>
+                          <Box
+                            sx={{
+                              display: "inline-block",
+                              background: filterType === "errors" ? "#fef2f2" : "#fffbeb",
+                              border: `1px solid ${filterType === "errors" ? "#fca5a5" : "#fcd34d"}`,
+                              color: filterType === "errors" ? "#dc2626" : "#d97706",
+                              fontWeight: 700,
+                              fontSize: 10,
+                              px: 0.75,
+                              py: 0.25,
+                              borderRadius: "4px",
+                              textAlign: "center",
+                              minWidth: 24,
+                            }}
+                          >
+                            {item.row ?? "—"}
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={{ py: 1, fontSize: 11, fontWeight: 500, color: "#334155" }}>
+                          {item.assetName || "—"}
+                        </TableCell>
+                        <TableCell sx={{ py: 1, fontSize: 11, color: "#64748b" }}>
+                          {item.assetCode || item.field || "—"}
+                        </TableCell>
+                        <TableCell sx={{ py: 1 }}>
+                          <Box
+                            sx={{
+                              display: "inline-block",
+                              background: filterType === "errors" ? "#fff5f5" : "#fffbeb",
+                              color: filterType === "errors" ? "#ef4444" : "#b45309",
+                              border: `1px solid ${filterType === "errors" ? "#fee2e2" : "#fef3c7"}`,
+                              borderRadius: "12px",
+                              px: 1,
+                              py: 0.25,
+                              fontSize: 9.5,
+                              fontWeight: 500,
+                            }}
+                          >
+                            {item.message || "—"}
+                          </Box>
+                        </TableCell>
+                        <TableCell sx={{ py: 1, fontSize: 11, color: "#475569" }}>
+                          {getSuggestion(item.field || "", item.message || "")}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Box>
+
+              {getTotalErrRows().length > ERR_PAGE_SIZE && (
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", px: 2, py: 1, borderTop: "1px solid #e2e8f0", background: "#fff" }}>
+                  <Box sx={{ display: "flex", gap: 0.5, alignItems: "center" }}>
+                    <IconButton
+                      size="small"
+                      disabled={errPage === 0}
+                      onClick={() => setErrPage((p) => p - 1)}
+                      sx={{ border: "1px solid #e2e8f0", borderRadius: "4px", p: 0.5 }}
+                    >
+                      <Typography fontSize={10} fontWeight={700}>&lt;</Typography>
+                    </IconButton>
+                    
+                    {Array.from({ length: totalErrPages }).map((_, i) => (
+                      <Button
+                        key={i}
+                        size="small"
+                        onClick={() => setErrPage(i)}
+                        variant={errPage === i ? "contained" : "outlined"}
+                        sx={{
+                          minWidth: 24,
+                          height: 24,
+                          p: 0,
+                          fontSize: 10,
+                          fontWeight: 700,
+                          borderRadius: "4px",
+                          background: errPage === i ? "#2563eb" : "transparent",
+                          color: errPage === i ? "#fff" : "#475569",
+                          borderColor: errPage === i ? "#2563eb" : "#e2e8f0",
+                          boxShadow: "none",
+                          "&:hover": { boxShadow: "none" }
+                        }}
+                      >
+                        {i + 1}
+                      </Button>
+                    ))}
+
+                    <IconButton
+                      size="small"
+                      disabled={errPage >= totalErrPages - 1}
+                      onClick={() => setErrPage((p) => p + 1)}
+                      sx={{ border: "1px solid #e2e8f0", borderRadius: "4px", p: 0.5 }}
+                    >
+                      <Typography fontSize={10} fontWeight={700}>&gt;</Typography>
+                    </IconButton>
                   </Box>
 
-                  <Box sx={{ px: 3, py: 1.5, background: "#f8fafc", borderTop: `1px solid ${COLORS.border}` }}>
-                    <Typography fontSize={12} color={COLORS.textFaint}>
-                      Fix the highlighted rows in your Excel file and re-upload to import them.
-                    </Typography>
-                  </Box>
-                </>
+                  <Typography fontSize={10.5} color="#64748b">
+                    Showing {errPage * ERR_PAGE_SIZE + 1} to {Math.min((errPage + 1) * ERR_PAGE_SIZE, getTotalErrRows().length)} of {getTotalErrRows().length} errors
+                  </Typography>
+                </Box>
               )}
+            </Box>
+          )}
+
+          {/* Import / Complete Section */}
+          {result && result.successCount > 0 && (
+            <Box
+              sx={{
+                background: "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: "8px",
+                p: 2,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 2,
+              }}
+            >
+              <Box sx={{ minWidth: 200 }}>
+                <Typography fontSize={13} fontWeight={700} color="#1e293b">
+                  Ready to import
+                </Typography>
+                <Typography fontSize={10.5} color="#64748b">
+                  {result.successCount} valid assets ready to be imported
+                </Typography>
+              </Box>
+
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: 1, maxWidth: 360, minWidth: 150 }}>
+                <Box sx={{ width: 1, height: 6, background: "#e2e8f0", borderRadius: "3px", overflow: "hidden", position: "relative" }}>
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: `${Math.round((result.successCount / (result.totalRows || 1)) * 100)}%`,
+                      background: "#2563eb",
+                      borderRadius: "3px",
+                      transition: "width 0.5s ease-in-out",
+                    }}
+                  />
+                </Box>
+                <Typography fontSize={11} fontWeight={700} color="#475569">
+                  {Math.round((result.successCount / (result.totalRows || 1)) * 100)}%
+                </Typography>
+              </Box>
+
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  onClick={removeFile}
+                  sx={{
+                    textTransform: "none",
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    borderColor: "#cbd5e1",
+                    color: "#475569",
+                    borderRadius: "6px",
+                    py: 0.5,
+                    px: 2,
+                    height: 32,
+                    "&:hover": { borderColor: "#94a3b8", background: "#f8fafc" }
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="contained"
+                  onClick={() => {
+                    toast.success(`${result.successCount} assets imported successfully!`);
+                    navigate("/home/assets");
+                  }}
+                  startIcon={<FaUpload size={10} />}
+                  sx={{
+                    textTransform: "none",
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    borderRadius: "6px",
+                    py: 0.5,
+                    px: 2.5,
+                    background: "#2563eb",
+                    boxShadow: "none",
+                    height: 32,
+                    "&:hover": { background: "#1d4ed8", boxShadow: "none" }
+                  }}
+                >
+                  Import Assets
+                </Button>
+              </Box>
             </Box>
           )}
         </Box>

@@ -1,15 +1,17 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import Layout          from "../components/layout/Layout";
-import Dashboard       from "../pages/Dashboard";
-import Assets          from "../pages/Assets";
-import AssetFormPage   from "../pages/AssetFormPage";
-import Users           from "../pages/Users";
-import UserFormPage    from "../pages/UserFormPage";
-import Login           from "../pages/Login";
+import Layout from "../components/layout/Layout";
+import Dashboard from "../pages/Dashboard";
+import Assets from "../pages/Assets";
+import AssetFormPage from "../pages/AssetFormPage";
+import Users from "../pages/Users";
+import UserFormPage from "../pages/UserFormPage";
+import Login from "../pages/Login";
 import AssetAllocation from "../pages/AssetAllocation";
-import AssetDisposal   from "../pages/AssetDisposal";
-import BulkUploadPage  from "../pages/BulkUploadPage";
+import AssetDisposal from "../pages/AssetDisposal";
+import BulkUploadPage from "../pages/BulkUploadPage";
+import AssetDetailPage from "../pages/AssetDetailPage";
+import UserDetailPage from "../pages/UserDetailPage";
 
 function ProtectedRoute({ children }) {
   const { isLoggedIn } = useSelector((s) => s.auth);
@@ -32,15 +34,17 @@ export default function AppRoutes() {
         <Route index element={<Dashboard />} />
 
         {/* Assets — all roles can view; admin+manager can create/edit */}
-        <Route path="assets"          element={<Assets />} />
-        <Route path="assets/new"      element={<RoleRoute allowedRoles={["admin", "manager"]}><AssetFormPage /></RoleRoute>} />
-        <Route path="assets/edit/:id"   element={<RoleRoute allowedRoles={["admin", "manager"]}><AssetFormPage /></RoleRoute>} />
-        <Route path="assets/bulk-upload"  element={<RoleRoute allowedRoles={["admin"]}><BulkUploadPage /></RoleRoute>} />
+        <Route path="assets" element={<Assets />} />
+        <Route path="assets/view/:id" element={<RoleRoute allowedRoles={["admin", "manager", "user"]}><AssetDetailPage /></RoleRoute>} />
+        <Route path="assets/new" element={<RoleRoute allowedRoles={["admin", "manager"]}><AssetFormPage /></RoleRoute>} />
+        <Route path="assets/edit/:id" element={<RoleRoute allowedRoles={["admin", "manager"]}><AssetFormPage /></RoleRoute>} />
+        <Route path="assets/bulk-upload" element={<RoleRoute allowedRoles={["admin"]}><BulkUploadPage /></RoleRoute>} />
 
         {/* Users — admin+manager can view; only admin can create/edit */}
-        <Route path="users"           element={<RoleRoute allowedRoles={["admin", "manager"]}><Users /></RoleRoute>} />
-        <Route path="users/new"       element={<RoleRoute allowedRoles={["admin"]}><UserFormPage /></RoleRoute>} />
-        <Route path="users/edit/:id"  element={<RoleRoute allowedRoles={["admin"]}><UserFormPage /></RoleRoute>} />
+        <Route path="users" element={<RoleRoute allowedRoles={["admin", "manager"]}><Users /></RoleRoute>} />
+        <Route path="users/view/:id" element={<RoleRoute allowedRoles={["admin", "manager"]}><UserDetailPage /></RoleRoute>} />
+        <Route path="users/new" element={<RoleRoute allowedRoles={["admin"]}><UserFormPage /></RoleRoute>} />
+        <Route path="users/edit/:id" element={<RoleRoute allowedRoles={["admin"]}><UserFormPage /></RoleRoute>} />
 
         {/* Allocation — admin + manager */}
         <Route path="allocation" element={<RoleRoute allowedRoles={["admin", "manager"]}><AssetAllocation /></RoleRoute>} />

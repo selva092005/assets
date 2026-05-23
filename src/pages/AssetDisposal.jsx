@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
+import { useSearchParams } from "react-router-dom";
 import {
   Box, Button, Chip, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, IconButton, MenuItem, Select,
@@ -21,10 +22,10 @@ import { COLORS } from "../theme/tokens";
 const DISPOSAL_METHODS = ["SOLD", "SCRAPPED", "DONATED", "DAMAGED"];
 
 const METHOD_STYLES = {
-  SOLD:     { bg: "#e8f5e9", color: "#2e7d32" },
+  SOLD: { bg: "#e8f5e9", color: "#2e7d32" },
   SCRAPPED: { bg: "#fff3e0", color: "#e65100" },
-  DONATED:  { bg: "#e3f2fd", color: "#1565c0" },
-  DAMAGED:  { bg: "#ffebee", color: "#c62828" },
+  DONATED: { bg: "#e3f2fd", color: "#1565c0" },
+  DAMAGED: { bg: "#ffebee", color: "#c62828" },
 };
 
 const MethodBadge = ({ method }) => {
@@ -48,21 +49,22 @@ const EmptyState = () => (
 export default function AssetDisposalPage() {
   const { userRole, userName } = useSelector((s) => s.auth);
   const canDispose = userRole === "admin"; // admin only
-  const canView    = userRole === "admin"; // admin only
+  const canView = userRole === "admin"; // admin only
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [disposals, setDisposals]           = useState([]);
-  const [loading, setLoading]               = useState(true);
+  const [disposals, setDisposals] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [disposableAssets, setDisposableAssets] = useState([]);
-  const [adminUsers, setAdminUsers]   = useState([]);
-  const [userSearch, setUserSearch]   = useState("");
-  const [anchorEl,   setAnchorEl]     = useState(null);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [anchorEl, setAnchorEl] = useState(null);
   const [assetSearch, setAssetSearch] = useState("");
   const [assetAnchor, setAssetAnchor] = useState(null);
 
   // Dispose modal
   const [disposeOpen, setDisposeOpen] = useState(false);
-  const [saving, setSaving]           = useState(false);
-  const [form, setForm]               = useState(defaultForm());
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(defaultForm());
 
   // Confirm dialog
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -83,11 +85,11 @@ export default function AssetDisposalPage() {
   useEffect(() => { load(); }, []);
 
   // ── Open dispose modal ────────────────────────────────────────────────────
-  const openDispose = async () => {
+  const openDispose = async (preselectedAssetId = null) => {
     try {
       const res = await getAssets({ page: 0, size: 200 });
       const all = extractList(res?.data ?? res);
-      setDisposableAssets(all.filter((a) => a.status === "AVAILABLE"));
+      setDisposableAssets(all.filter((a) => a.status === "AVAILABLE" || a.status === "UNDER_MAINTENANCE" || a.assetId === preselectedAssetId));
     } catch {
       toast.error("Failed to load assets");
     }
@@ -101,17 +103,25 @@ export default function AssetDisposalPage() {
     } catch {
       setAdminUsers([]);
     }
-    setForm(defaultForm());
+    setForm({ ...defaultForm(), assetId: preselectedAssetId || "" });
     setDisposeOpen(true);
   };
 
+  useEffect(() => {
+    const assetIdParam = searchParams.get("assetId");
+    if (assetIdParam && canDispose) {
+      openDispose(Number(assetIdParam));
+      setSearchParams({});
+    }
+  }, []);
+
   // ── Submit disposal ───────────────────────────────────────────────────────
   const handleDispose = async () => {
-    if (!form.assetId)        { toast.error("Select an asset"); return; }
+    if (!form.assetId) { toast.error("Select an asset"); return; }
     if (!form.disposalMethod) { toast.error("Select disposal method"); return; }
-    if (!form.reason)         { toast.error("Enter disposal reason"); return; }
-    if (!form.disposedBy)     { toast.error("Enter disposed-by name"); return; }
-    if (!form.disposalDate)   { toast.error("Select disposal date"); return; }
+    if (!form.reason) { toast.error("Enter disposal reason"); return; }
+    if (!form.disposedBy) { toast.error("Enter disposed-by name"); return; }
+    if (!form.disposalDate) { toast.error("Select disposal date"); return; }
     setConfirmOpen(true);
   };
 
@@ -142,14 +152,14 @@ export default function AssetDisposalPage() {
   // Block non-authorised users
   if (!canView) {
     return (
-      <Box sx={{ mt: "78px", p: "2rem 2.5rem", display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
         <Typography fontSize={15} color={COLORS.textMuted}>You do not have permission to view this page.</Typography>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ mt: "78px", p: "2rem 2.5rem", background: COLORS.bg, minHeight: "100vh", fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <Box sx={{ p: 0, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
 
       <PageHeader
         title="Asset Disposal"
@@ -159,7 +169,7 @@ export default function AssetDisposalPage() {
               variant="contained"
               startIcon={<FaTrash size={11} />}
               onClick={openDispose}
-              sx={{ textTransform: "none", fontSize: 13, fontWeight: 600, borderRadius: "8px", py: "8px", px: 2, background: "#c62828", boxShadow: "none", "&:hover": { background: "#b71c1c", boxShadow: "none" } }}
+              sx={{ textTransform: "none", fontSize: 12, fontWeight: 600, borderRadius: "6px", py: "5px", px: 1.5, background: "#c62828", boxShadow: "none", "&:hover": { background: "#b71c1c", boxShadow: "none" } }}
             >
               Dispose Asset
             </Button>
@@ -174,29 +184,27 @@ export default function AssetDisposalPage() {
           <EmptyState />
         ) : (
           <Box sx={{ overflowX: "auto" }}>
-            <Table size="small" sx={{ minWidth: 700 }}>
+            <Table size="small" sx={{ minWidth: 700, tableLayout: "auto", borderCollapse: "collapse" }}>
               <TableHead>
-                <TableRow sx={{ background: "#f8fafc" }}>
+                <TableRow>
                   {["#", "Asset", "Code", "Method", "Disposal Date", "Disposed By", "Reason", "Value (₹)"].map((h) => (
-                    <TableCell key={h} sx={{ fontSize: 12, fontWeight: 700, color: COLORS.textMuted, py: 1.5, whiteSpace: "nowrap" }}>{h}</TableCell>
+                    <TableCell key={h} sx={{ fontWeight: 700, color: "#64748b", whiteSpace: "nowrap", background: "#f8fafc", borderBottom: "2px solid #e2e8f0", letterSpacing: "0.05em", textTransform: "uppercase" }}>{h}</TableCell>
                   ))}
                 </TableRow>
               </TableHead>
               <TableBody>
                 {disposals.map((row, i) => (
-                  <TableRow key={row.disposalId} hover sx={{ "&:last-child td": { border: 0 } }}>
-                    <TableCell sx={{ fontSize: 12, color: COLORS.textFaint }}>{i + 1}</TableCell>
-                    <TableCell sx={{ fontSize: 13, fontWeight: 500 }}>{row.assetName}</TableCell>
-                    <TableCell>
-                      <Chip label={row.assetCode || "—"} size="small" sx={{ fontSize: 11, height: 20, background: "#ffebee", color: "#c62828" }} />
+                  <TableRow key={row.disposalId} sx={{ borderLeft: "3px solid transparent", transition: "all 180ms ease", "&:last-child td": { border: 0 }, "&:hover": { borderLeft: "3px solid #3b82f6", "& td": { background: "#f0f7ff" } }, "& td": { background: i % 2 === 0 ? "#fff" : "#f8faff", borderBottom: "1px solid #f1f5f9" } }}>
+                    <TableCell sx={{ verticalAlign: "middle", color: COLORS.textFaint }}>{i + 1}</TableCell>
+                    <TableCell sx={{ fontSize: 11, fontWeight: 600, color: "#1e1b4b", verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>{row.assetName}</TableCell>
+                    <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>
+                      <Chip label={row.assetCode || "—"} size="small" sx={{ fontSize: 9.5, height: 18, background: "#ffebee", color: "#c62828", borderRadius: "5px", "& .MuiChip-label": { px: "6px" } }} />
                     </TableCell>
-                    <TableCell><MethodBadge method={row.disposalMethod} /></TableCell>
-                    <TableCell sx={{ fontSize: 12 }}>{fmt(row.disposalDate)}</TableCell>
-                    <TableCell sx={{ fontSize: 12, color: COLORS.textMuted }}>{row.disposedBy}</TableCell>
-                    <TableCell sx={{ fontSize: 12, color: COLORS.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {row.reason}
-                    </TableCell>
-                    <TableCell sx={{ fontSize: 12 }}>
+                    <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}><MethodBadge method={row.disposalMethod} /></TableCell>
+                    <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>{fmt(row.disposalDate)}</TableCell>
+                    <TableCell sx={{ fontSize: 11, color: COLORS.textMuted, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>{row.disposedBy}</TableCell>
+                    <TableCell sx={{ fontSize: 11, color: COLORS.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>{row.reason}</TableCell>
+                    <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>
                       {row.disposalValue != null ? `₹${row.disposalValue.toLocaleString("en-IN")}` : "—"}
                     </TableCell>
                   </TableRow>
@@ -424,10 +432,10 @@ function fmt(dateStr) {
 }
 
 function extractList(res) {
-  if (Array.isArray(res))           return res;
-  if (Array.isArray(res?.data))     return res.data;
-  if (res?.data?.content)           return res.data.content;
-  if (res?.content)                 return res.content;
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res?.data)) return res.data;
+  if (res?.data?.content) return res.data.content;
+  if (res?.content) return res.content;
   return [];
 }
 
