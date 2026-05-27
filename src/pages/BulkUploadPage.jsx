@@ -9,9 +9,9 @@ import {
   FaExclamationTriangle, FaFileExcel, FaUpload, FaEye, FaHistory,
   FaTrash, FaSyncAlt, FaBoxes
 } from "react-icons/fa";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.jsx";
 import { bulkUploadExcel, downloadTemplate } from "../services/assets_service";
-import { COLORS } from "../theme/tokens";
+import { COLORS, selectSx } from "../theme/tokens";
 
 /* ── Step item component ── */
 function StepItem({ num, title, subtitle, active, done, isLast }) {
@@ -60,10 +60,10 @@ function StepItem({ num, title, subtitle, active, done, isLast }) {
 
       {/* Text details */}
       <Box sx={{ display: "flex", flexDirection: "column" }}>
-        <Typography fontSize={11.5} fontWeight={700} color={titleColor} lineHeight={1.2}>
+        <Typography fontSize={11.5} fontWeight={700} color={titleColor} sx={{ lineHeight: 1.2 }}>
           {title}
         </Typography>
-        <Typography fontSize={9.5} color={subtitleColor} mt={0.25} lineHeight={1.3}>
+        <Typography fontSize={9.5} color={subtitleColor} mt={0.25} sx={{ lineHeight: 1.3 }}>
           {subtitle}
         </Typography>
       </Box>
@@ -103,10 +103,10 @@ function StatCard({ value, label, bg, border, color, icon }) {
         {icon}
       </Box>
       <Box sx={{ minWidth: 0 }}>
-        <Typography fontSize={9.5} fontWeight={500} color="#64748b" noWrap lineHeight={1.2}>
+        <Typography fontSize={9.5} fontWeight={500} color="#64748b" noWrap sx={{ lineHeight: 1.2 }}>
           {label}
         </Typography>
-        <Typography fontSize={18} fontWeight={800} color="#0f172a" mt={0.25} lineHeight={1}>
+        <Typography fontSize={18} fontWeight={800} color="#0f172a" mt={0.25} sx={{ lineHeight: 1 }}>
           {value}
         </Typography>
       </Box>
@@ -129,15 +129,15 @@ function getSuggestion(field, message) {
 const ERR_PAGE_SIZE = 3;
 
 export default function BulkUploadPage() {
-  const navigate     = useNavigate();
+  const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
-  const [file,       setFile]       = useState(null);
-  const [loading,    setLoading]    = useState(false);
-  const [result,     setResult]     = useState(null);
-  const [dragOver,   setDragOver]   = useState(false);
+  const [file, setFile] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [dragOver, setDragOver] = useState(false);
   const [filterType, setFilterType] = useState("errors");
-  const [errPage,    setErrPage]    = useState(0);
+  const [errPage, setErrPage] = useState(0);
 
   const handleFile = (f) => {
     if (!f) return;
@@ -293,7 +293,7 @@ export default function BulkUploadPage() {
 
       {/* ── Main Body ── */}
       <Box sx={{ p: 2, display: "flex", gap: 2, alignItems: "flex-start", flexWrap: { xs: "wrap", md: "nowrap" } }}>
-        
+
         {/* ── Left Sidebar ── */}
         <Box sx={{ width: { xs: 1, md: 240 }, flexShrink: 0, display: "flex", flexDirection: "column", gap: 2 }}>
           {/* Progress Card */}
@@ -324,7 +324,7 @@ export default function BulkUploadPage() {
               ].map((rule, idx) => (
                 <Box key={idx} sx={{ display: "flex", alignItems: "flex-start", gap: 0.75 }}>
                   <FaCheckCircle color="#16a34a" size={10} style={{ marginTop: 2, flexShrink: 0 }} />
-                  <Typography fontSize={10} color="#475569" lineHeight={1.3}>
+                  <Typography fontSize={10} color="#475569" sx={{ lineHeight: 1.3 }}>
                     {rule}
                   </Typography>
                 </Box>
@@ -337,7 +337,7 @@ export default function BulkUploadPage() {
             <Typography fontSize={11} fontWeight={700} color="#334155" mb={0.5}>
               Need Help?
             </Typography>
-            <Typography fontSize={10} color="#64748b" mb={1.25} lineHeight={1.4}>
+            <Typography fontSize={10} color="#64748b" mb={1.25} sx={{ lineHeight: 1.4 }}>
               View our guide to learn about bulk upload.
             </Typography>
             <Button
@@ -603,13 +603,7 @@ export default function BulkUploadPage() {
                     size="small"
                     value={filterType}
                     onChange={(e) => { setFilterType(e.target.value); setErrPage(0); }}
-                    sx={{
-                      height: 30,
-                      fontSize: 11.5,
-                      borderRadius: "6px",
-                      minWidth: 120,
-                      "& .MuiOutlinedInput-notchedOutline": { borderColor: "#cbd5e1" }
-                    }}
+                    sx={{ ...selectSx, minWidth: 120 }}
                   >
                     <MenuItem value="errors">All Errors</MenuItem>
                     <MenuItem value="duplicates">Duplicates</MenuItem>
@@ -711,7 +705,7 @@ export default function BulkUploadPage() {
                     >
                       <Typography fontSize={10} fontWeight={700}>&lt;</Typography>
                     </IconButton>
-                    
+
                     {Array.from({ length: totalErrPages }).map((_, i) => (
                       <Button
                         key={i}

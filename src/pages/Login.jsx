@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.jsx";
 import { loginThunk } from "../store/slices/authSlice";
+import { isValidEmail } from "../utils/validate";
 
 import {
   Box,
@@ -31,6 +32,7 @@ export default function Login() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({ email: "", password: "" });
   const [localError, setLocalError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -38,7 +40,13 @@ export default function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!email || !password) { setLocalError("Please enter email and password"); return; }
+    const fe = {};
+    if (!email.trim())            fe.email    = "Email is required";
+    else if (!isValidEmail(email)) fe.email   = "Enter a valid email address";
+    if (!password)                fe.password = "Password is required";
+    else if (password.length < 6) fe.password = "Password must be at least 6 characters";
+    if (Object.keys(fe).length > 0) { setFieldErrors(fe); return; }
+    setFieldErrors({ email: "", password: "" });
     setLocalError("");
     const result = await dispatch(loginThunk(email, password));
     if (result?.success) {
@@ -154,6 +162,8 @@ export default function Login() {
               onChange={(e) => setEmail(e.target.value)}
               autoComplete="email"
               size="medium"
+              error={!!fieldErrors.email}
+              helperText={fieldErrors.email}
             />
 
             {/* Password */}
@@ -166,6 +176,8 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
               size="medium"
+              error={!!fieldErrors.password}
+              helperText={fieldErrors.password}
               slotProps={{
                 input: {
                   endAdornment: (

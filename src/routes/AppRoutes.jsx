@@ -12,6 +12,9 @@ import AssetDisposal from "../pages/AssetDisposal";
 import BulkUploadPage from "../pages/BulkUploadPage";
 import AssetDetailPage from "../pages/AssetDetailPage";
 import UserDetailPage from "../pages/UserDetailPage";
+import TransferPage from "../pages/TransferPage";
+import ReportsPage from "../pages/ReportsPage";
+import Locations from "../pages/Locations";
 
 function ProtectedRoute({ children }) {
   const { isLoggedIn } = useSelector((s) => s.auth);
@@ -46,13 +49,20 @@ export default function AppRoutes() {
         <Route path="users/new" element={<RoleRoute allowedRoles={["admin"]}><UserFormPage /></RoleRoute>} />
         <Route path="users/edit/:id" element={<RoleRoute allowedRoles={["admin"]}><UserFormPage /></RoleRoute>} />
 
+        {/* Locations — admin + manager */}
+        <Route path="locations" element={<RoleRoute allowedRoles={["admin", "manager"]}><Locations /></RoleRoute>} />
+
         {/* Allocation — admin + manager */}
         <Route path="allocation" element={<RoleRoute allowedRoles={["admin", "manager"]}><AssetAllocation /></RoleRoute>} />
+
+        {/* Transfer — admin + manager */}
+        <Route path="transfer" element={<RoleRoute allowedRoles={["admin", "manager"]}><TransferPage /></RoleRoute>} />
 
         {/* Disposal — admin only */}
         <Route path="disposal" element={<RoleRoute allowedRoles={["admin"]}><AssetDisposal /></RoleRoute>} />
 
-        <Route path="reports" element={<h1>Reports</h1>} />
+        {/* Reports — all roles */}
+        <Route path="reports" element={<ReportsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" />} />

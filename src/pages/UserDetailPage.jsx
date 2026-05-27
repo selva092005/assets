@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Box, Button, Chip, CircularProgress, Typography, IconButton, Divider, Avatar, Table, TableBody, TableCell, TableRow } from "@mui/material";
 import { FaArrowLeft, FaEdit, FaEnvelope } from "react-icons/fa";
 import { useSelector } from "react-redux";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.jsx";
 
 import { getUserById } from "../services/users_service";
 import {

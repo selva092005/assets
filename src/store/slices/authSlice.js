@@ -17,7 +17,8 @@ const getRoleFromToken = (token) => {
 const getUserNameFromToken = (token) => {
   const p = decodePayload(token);
   if (!p) return "";
-  return p.name || p.username || p.sub || p.email || "";
+  const raw = p.userName || p.name || p.username || p.sub || p.email || "";
+  return raw.includes("@") ? raw.split("@")[0] : raw;
 };
 
 const token    = getToken();

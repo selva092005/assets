@@ -3,14 +3,16 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Box, Button, Chip, CircularProgress, Typography, IconButton, Divider, Modal, Table, TableBody, TableCell, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from "@mui/material";
 import { FaArrowLeft, FaEdit, FaBox, FaTrash, FaLayerGroup, FaPrint, FaMapMarkerAlt, FaExchangeAlt, FaTimes } from "react-icons/fa";
 import { useSelector } from "react-redux";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.jsx";
 
 import { getAssetById, getImageUrl } from "../services/assets_service";
 import { getAssetHistory, moveAsset } from "../services/location_history_service";
 import {
   COLORS,
   STATUS_COLORS,
-  CONDITION_COLORS
+  CONDITION_COLORS,
+  outlinedBtnSx,
+  primaryBtnSx
 } from "../theme/tokens";
 
 export default function AssetDetailPage() {
@@ -193,7 +195,7 @@ export default function AssetDetailPage() {
                   <Box sx={{ width: 50, height: 50, p: 0.5, border: "1px solid " + COLORS.borderLight, background: "#fff", borderRadius: "3px" }}>
                     <img src={"data:image/png;base64," + data.qrCode} alt="QR" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                   </Box>
-                  <Button variant="outlined" size="small" startIcon={<FaPrint size={8} />} onClick={handlePrintQR} sx={{ fontSize: "9px", py: "1px", px: 1, textTransform: "none", color: COLORS.textMuted, borderColor: COLORS.border, borderRadius: "3px" }}>Print</Button>
+                  <Button variant="outlined" size="small" startIcon={<FaPrint size={8} />} onClick={handlePrintQR} sx={{ ...outlinedBtnSx, color: COLORS.textMuted, borderColor: COLORS.border }}>Print</Button>
                 </Box>
               )}
             </Box>
@@ -204,23 +206,23 @@ export default function AssetDetailPage() {
             <Typography sx={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", mb: 0.75 }}>Actions</Typography>
             <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
               {canEdit && (
-                <Button variant="outlined" size="small" startIcon={<FaEdit size={10} />} onClick={handleEdit} disabled={isDisposed || isAssigned} sx={{ fontSize: 10, py: "2px", textTransform: "none", borderRadius: "3px", color: COLORS.primary, borderColor: COLORS.primary, justifyContent: "flex-start" }}>
+                <Button variant="outlined" size="small" startIcon={<FaEdit size={10} />} onClick={handleEdit} disabled={isDisposed || isAssigned} sx={{ ...outlinedBtnSx, color: COLORS.primary, borderColor: COLORS.primary, justifyContent: "flex-start", width: "100%" }}>
                   Edit Asset
                 </Button>
               )}
               {canAllocate && (
-                <Button variant="outlined" size="small" startIcon={<FaLayerGroup size={10} />} onClick={handleAllocate} disabled={isDisposed || isAssigned || isDamaged || isUnderMaintenance} sx={{ fontSize: 10, py: "2px", textTransform: "none", borderRadius: "3px", color: "#059669", borderColor: "#059669", justifyContent: "flex-start" }}>
+                <Button variant="outlined" size="small" startIcon={<FaLayerGroup size={10} />} onClick={handleAllocate} disabled={isDisposed || isAssigned || isDamaged || isUnderMaintenance} sx={{ ...outlinedBtnSx, color: "#059669", borderColor: "#059669", justifyContent: "flex-start", width: "100%" }}>
                   Allocate
                 </Button>
               )}
               {/* Transfer Location */}
               {canEdit && (
-                <Button variant="outlined" size="small" startIcon={<FaExchangeAlt size={10} />} onClick={() => setTransferOpen(true)} disabled={isDisposed} sx={{ fontSize: 10, py: "2px", textTransform: "none", borderRadius: "3px", color: "#3b82f6", borderColor: "#3b82f6", justifyContent: "flex-start" }}>
+                <Button variant="outlined" size="small" startIcon={<FaExchangeAlt size={10} />} onClick={() => setTransferOpen(true)} disabled={isDisposed} sx={{ ...outlinedBtnSx, color: "#3b82f6", borderColor: "#3b82f6", justifyContent: "flex-start", width: "100%" }}>
                   Transfer
                 </Button>
               )}
               {canDispose && (
-                <Button variant="outlined" size="small" startIcon={<FaTrash size={10} />} onClick={handleDispose} disabled={isDisposed} sx={{ fontSize: 10, py: "2px", textTransform: "none", borderRadius: "3px", color: "#dc2626", borderColor: "#dc2626", justifyContent: "flex-start" }}>
+                <Button variant="outlined" size="small" startIcon={<FaTrash size={10} />} onClick={handleDispose} disabled={isDisposed} sx={{ ...outlinedBtnSx, color: "#dc2626", borderColor: "#dc2626", justifyContent: "flex-start", width: "100%" }}>
                   Dispose
                 </Button>
               )}
@@ -360,13 +362,13 @@ export default function AssetDetailPage() {
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2, borderTop: "1px solid " + COLORS.borderLight, gap: 1 }}>
-          <Button onClick={() => setTransferOpen(false)} sx={{ textTransform: "none", fontSize: 11.5 }}>Cancel</Button>
+          <Button onClick={() => setTransferOpen(false)} sx={outlinedBtnSx}>Cancel</Button>
           <Button
             variant="contained"
             onClick={handleTransfer}
             disabled={transferSaving}
             startIcon={transferSaving ? <CircularProgress size={10} color="inherit" /> : <FaExchangeAlt size={10} />}
-            sx={{ textTransform: "none", fontSize: 11.5, fontWeight: 600, borderRadius: "4px", background: COLORS.primary, boxShadow: "none", "&:hover": { background: COLORS.primaryDark } }}
+            sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
           >
             {transferSaving ? "Transferring..." : "Transfer"}
           </Button>

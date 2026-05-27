@@ -1,5 +1,6 @@
-import { Table, TableHead, TableBody, TableRow, TableCell, Box, Typography, Avatar, Tooltip, Chip } from "@mui/material";
-import { FaEye, FaEdit, FaTrash, FaQrcode, FaHistory, FaExchangeAlt, FaLock, FaBoxes, FaBarcode } from "react-icons/fa";
+import { useState } from "react";
+import { Table, TableHead, TableBody, TableRow, TableCell, Box, Typography, Avatar, Tooltip, Chip, Dialog, DialogTitle, DialogContent } from "@mui/material";
+import { FaEye, FaEdit, FaTrash, FaQrcode, FaHistory, FaTimes, FaLock, FaBoxes } from "react-icons/fa";
 import { COLORS, STATUS_COLORS, CONDITION_COLORS } from "../../theme/tokens";
 import { getImageUrl } from "../../services/assets_service";
 import StatusPill from "../common/StatusPill";
@@ -7,10 +8,13 @@ import ActionBtn from "../common/ActionBtn";
 
 const HEADERS = ["ID", "Asset Name", "Asset Code", "Value", "Type", "Location", "Company", "Status", "Condition", "Actions"];
 
-export default function AssetTable({ assets, loading, userRole = "user", onView, onEdit, onDelete, onQR, onHistory, onMove }) {
+export default function AssetTable({ assets, loading, userRole = "user", page = 0, pageSize = 10, onView, onEdit, onDelete, onQR, onHistory }) {
   const canEdit = userRole === "admin" || userRole === "manager";
   const canDelete = userRole === "admin";
-  const canMove = userRole === "admin" || userRole === "manager";
+
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewSrc, setPreviewSrc] = useState("");
+  const [previewTitle, setPreviewTitle] = useState("");
 
   return (
     <Box sx={{
@@ -56,9 +60,9 @@ export default function AssetTable({ assets, loading, userRole = "user", onView,
           ) : assets.length > 0 ? assets.map((item, i) => {
             const isDisposed = item.status?.toUpperCase() === "DISPOSED";
             const isAssigned = item.status?.toUpperCase() === "ASSIGNED";
-            const isMoveDisabled = isDisposed || item.status?.toUpperCase() === "DAMAGED";
 
             const imageUrl = getImageUrl(item.imagePath);
+            const globalIndex = page * pageSize + i + 1;
 
             return (
               <TableRow key={i} sx={{
@@ -78,31 +82,42 @@ export default function AssetTable({ assets, loading, userRole = "user", onView,
               }}>
 
                 <TableCell sx={{ verticalAlign: "middle", fontFamily: "monospace", fontSize: 10, fontWeight: 700, color: "#94a3b8" }}>
-                  {String(i + 1).padStart(2, "0")}
+                  {String(globalIndex).padStart(2, "0")}
                 </TableCell>
 
                 <TableCell sx={{ verticalAlign: "middle" }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Avatar
-                      src={imageUrl}
-                      imgProps={{ style: { objectFit: "cover" } }}
-                      sx={{
-                        width: 24, height: 24, fontSize: 10, fontWeight: 700, flexShrink: 0,
-                        bgcolor: isDisposed ? "#fee2e2" : "#eff6ff",
-                        color: isDisposed ? "#ef4444" : "#2563eb",
-                        border: isDisposed ? "1.5px solid #fecaca" : "1.5px solid #bfdbfe",
-                      }}
-                    >
-                      {(item.assetName || "A")[0].toUpperCase()}
-                    </Avatar>
+                    {item.imagePath && (
+                      <Avatar
+                        src={imageUrl}
+                        onClick={() => {
+                          setPreviewSrc(imageUrl);
+                          setPreviewTitle(item.assetName);
+                          setPreviewOpen(true);
+                        }}
+                        sx={{
+                          width: 24, height: 24, flexShrink: 0,
+                          cursor: "pointer",
+                          bgcolor: isDisposed ? "#fee2e2" : "#eff6ff",
+                          color: isDisposed ? "#ef4444" : "#2563eb",
+                          border: isDisposed ? "1.5px solid #fecaca" : "1.5px solid #bfdbfe",
+                          "& img": { objectFit: "cover" },
+                          transition: "all 0.2s ease-in-out",
+                          "&:hover": {
+                            transform: "scale(1.2)",
+                            boxShadow: "0 4px 10px rgba(37,99,235,0.25)",
+                            borderColor: "#2563eb",
+                          }
+                        }}
+                      />
+                    )}
                     <Box>
                       <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#0f172a", whiteSpace: "nowrap", lineHeight: 1.25 }}>
                         {item.assetName}
                       </Typography>
-                      {isDisposed
-                        ? <Typography sx={{ fontSize: 9, color: "#ef4444", fontWeight: 500, lineHeight: 1 }}>Permanently Disposed</Typography>
-                        : <Typography sx={{ fontSize: 9, color: "#94a3b8", lineHeight: 1 }}>#{item.assetId}</Typography>
-                      }
+                      {isDisposed && (
+                        <Typography sx={{ fontSize: 9, color: "#ef4444", fontWeight: 500, lineHeight: 1 }}>Permanently Disposed</Typography>
+                      )}
                     </Box>
                   </Box>
                 </TableCell>
@@ -139,16 +154,6 @@ export default function AssetTable({ assets, loading, userRole = "user", onView,
                     <ActionBtn title="View" color="#2563eb" hoverBg="#eff6ff" onClick={() => onView(item)}><FaEye size={11} /></ActionBtn>
                     <ActionBtn title="QR Code" color="#7c3aed" hoverBg="#f5f3ff" onClick={() => onQR(item)}><FaQrcode size={11} /></ActionBtn>
                     <ActionBtn title="History" color="#0891b2" hoverBg="#f0f9ff" onClick={() => onHistory(item)}><FaHistory size={11} /></ActionBtn>
-
-                    {canMove && (
-                      <Tooltip title={isMoveDisabled ? (isDisposed ? "Cannot move a disposed asset" : "Cannot move a damaged asset") : "Move Asset"} arrow>
-                        <span>
-                          <ActionBtn color="#059669" hoverBg="#f0fdf4" onClick={() => !isMoveDisabled && onMove(item)} disabled={isMoveDisabled}>
-                            <FaExchangeAlt size={11} />
-                          </ActionBtn>
-                        </span>
-                      </Tooltip>
-                    )}
 
                     {canEdit && (
                       isAssigned ? (
@@ -199,6 +204,44 @@ export default function AssetTable({ assets, loading, userRole = "user", onView,
           )}
         </TableBody>
       </Table>
+
+      {/* Asset Image Preview Dialog */}
+      <Dialog
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        disableRestoreFocus
+      >
+        <DialogTitle sx={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          borderBottom: "1px solid #e2e8f0", pb: 1.5, pt: 2, px: 3,
+          background: "#f8fafc",
+        }}>
+          <Typography sx={{ fontWeight: 800, fontSize: 13.5, color: "#0f172a", fontFamily: "'Outfit', sans-serif" }}>
+            Asset Image: {previewTitle}
+          </Typography>
+          <Box onClick={() => setPreviewOpen(false)} sx={{ width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#64748b", "&:hover": { color: "#0f172a", background: "#e2e8f0" }, transition: "all 0.2s" }}>
+            <FaTimes size={11} />
+          </Box>
+        </DialogTitle>
+        <DialogContent sx={{ p: 2, display: "flex", justifyContent: "center", alignItems: "center", background: "#f8fafc" }}>
+          <Box
+            component="img"
+            src={previewSrc}
+            alt={previewTitle}
+            sx={{
+              width: "100%",
+              maxHeight: "70vh",
+              objectFit: "contain",
+              borderRadius: "8px",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)",
+              background: "#ffffff"
+            }}
+          />
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 }

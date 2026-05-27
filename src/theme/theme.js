@@ -10,32 +10,46 @@ export const theme = createTheme({
   },
   typography: {
     fontFamily: "'Inter', 'Segoe UI', 'Roboto', sans-serif",
-    fontSize: 10.5, // Reduce base size globally
-    h1: { fontFamily: "'Outfit', sans-serif", fontSize: "1.5rem", fontWeight: 700 },
-    h2: { fontFamily: "'Outfit', sans-serif", fontSize: "1.3rem", fontWeight: 700 },
-    h3: { fontFamily: "'Outfit', sans-serif", fontSize: "1.1rem", fontWeight: 700 },
-    h4: { fontFamily: "'Outfit', sans-serif", fontSize: "1rem", fontWeight: 600 },
-    h5: { fontFamily: "'Outfit', sans-serif", fontSize: "0.95rem", fontWeight: 600 },
-    h6: { fontFamily: "'Outfit', sans-serif", fontSize: "0.85rem", fontWeight: 600 },
-    subtitle1: { fontSize: "0.75rem", fontWeight: 600 },
-    subtitle2: { fontSize: "0.7rem", fontWeight: 600 },
-    body1: { fontSize: "0.75rem" },
-    body2: { fontSize: "0.7rem" },
-    button: { textTransform: "none", fontWeight: 600, fontSize: "0.75rem" },
-    caption: { fontSize: "0.65rem" },
+    fontSize: 10.5, // Base size
+    h1: { fontFamily: "'Outfit', sans-serif", fontSize: "14px", fontWeight: 700, color: COLORS.text },
+    h2: { fontFamily: "'Outfit', sans-serif", fontSize: "13px", fontWeight: 700, color: COLORS.text },
+    h3: { fontFamily: "'Outfit', sans-serif", fontSize: "12px", fontWeight: 700, color: COLORS.text },
+    h4: { fontFamily: "'Outfit', sans-serif", fontSize: "11px", fontWeight: 600, color: COLORS.text },
+    h5: { fontFamily: "'Outfit', sans-serif", fontSize: "10.5px", fontWeight: 600, color: COLORS.text },
+    h6: { fontFamily: "'Outfit', sans-serif", fontSize: "10px", fontWeight: 600, color: COLORS.text },
+    subtitle1: { fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 600, color: COLORS.text },
+    subtitle2: { fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 600, color: COLORS.textMuted },
+    body1: { fontFamily: "'Inter', sans-serif", fontSize: "11px", color: COLORS.text },
+    body2: { fontFamily: "'Inter', sans-serif", fontSize: "10px", color: COLORS.textMuted },
+    button: { fontFamily: "'Inter', sans-serif", textTransform: "none", fontWeight: 600, fontSize: "11px" },
+    caption: { fontFamily: "'Inter', sans-serif", fontSize: "9px", color: COLORS.textFaint },
   },
   shape: { borderRadius: 6 },
   components: {
+    MuiTypography: {
+      styleOverrides: {
+        root: {
+          "&.MuiTypography-h1, &.MuiTypography-h2, &.MuiTypography-h3, &.MuiTypography-h4, &.MuiTypography-h5, &.MuiTypography-h6": {
+            fontFamily: "'Outfit', sans-serif",
+          },
+        },
+      },
+    },
     MuiButton: {
       defaultProps: {
         size: "small",
+        disableRipple: true,
       },
       styleOverrides: {
         root: {
           textTransform: "none",
           fontWeight: 600,
-          padding: "2px 8px",
+          fontSize: "11px",
+          height: "26px",
+          borderRadius: "6px",
+          padding: "0 12px",
           minWidth: "auto",
+          boxSizing: "border-box",
         },
       },
     },
@@ -47,7 +61,7 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           "& .MuiInputBase-root": {
-            fontSize: "0.75rem",
+            fontSize: "11px",
             height: "30px",
           },
         },
@@ -56,7 +70,7 @@ export const theme = createTheme({
     MuiOutlinedInput: {
       styleOverrides: {
         root: {
-          fontSize: "0.75rem",
+          fontSize: "11px",
           height: "30px",
           borderRadius: "6px",
         },
@@ -68,7 +82,7 @@ export const theme = createTheme({
     MuiInputLabel: {
       styleOverrides: {
         root: {
-          fontSize: "0.75rem",
+          fontSize: "11px",
           transform: "translate(8px, 6px) scale(1)",
           "&.MuiInputLabel-shrink": {
             transform: "translate(8px, -6px) scale(0.85)",
@@ -81,16 +95,24 @@ export const theme = createTheme({
         size: "small",
       },
       styleOverrides: {
+        root: {
+          height: "26px",
+          fontSize: "11px",
+        },
         select: {
-          fontSize: "0.75rem",
-          padding: "4.5px 8px",
+          fontSize: "11px",
+          padding: "0 8px",
+          height: "24px",
+          lineHeight: "24px",
+          display: "flex",
+          alignItems: "center",
         },
       },
     },
     MuiMenuItem: {
       styleOverrides: {
         root: {
-          fontSize: "0.75rem",
+          fontSize: "11px",
           minHeight: "auto",
           padding: "4px 12px",
         },
@@ -99,12 +121,12 @@ export const theme = createTheme({
     MuiTableCell: {
       styleOverrides: {
         root: {
-          fontSize: "10.5px !important",
+          fontSize: "11px !important",
           padding: "4px 6px !important",
         },
         head: {
           fontWeight: 700,
-          fontSize: "10px !important",
+          fontSize: "10.5px !important",
           padding: "5px 6px !important",
         }
       }

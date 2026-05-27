@@ -59,3 +59,9 @@ export const downloadUserTemplate = async () => {
   const res = await API.get("/api/users/template", { responseType: "blob" });
   download(res.data, "user_upload_template.xlsx");
 };
+
+// GET /api/users/summary-stats → retrieves user role metric counts
+export const getUserSummaryStats = async () => {
+  const res = await API.get("/api/users/summary-stats");
+  return res.data?.data ?? res.data;
+};

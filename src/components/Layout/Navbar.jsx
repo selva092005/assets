@@ -2,14 +2,21 @@ import { useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  AppBar, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
+  AppBar, Avatar, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
   IconButton, List, ListItemButton, ListItemText, Toolbar, Typography,
+  Popover,
 } from "@mui/material";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import LogoutIcon from "@mui/icons-material/Logout";
-import MenuIcon from "@mui/icons-material/Menu";
+import {
+  KeyboardArrowDown as KeyboardArrowDownIcon,
+  AdminPanelSettings as AdminPanelSettingsIcon,
+  AccountCircle as AccountCircleIcon,
+  Logout as LogoutIcon,
+  Menu as MenuIcon,
+  AssignmentInd as AssignmentIndIcon,
+  SwapHoriz as SwapHorizIcon,
+  Delete as DeleteIcon,
+  UploadFile as UploadFileIcon,
+} from "@mui/icons-material";
 import { logoutUser } from "../../store/slices/authSlice";
 import amsLogo from "../../assets/ams_no_bg.png";
 
@@ -20,12 +27,55 @@ const navItems = [
     label: "Assets", path: "/home/assets", roles: ["admin", "manager", "user"],
     dropdown: [
       { label: "Allocation", path: "/home/allocation", roles: ["admin", "manager"] },
+      { label: "Transfer", path: "/home/transfer", roles: ["admin", "manager"] },
       { label: "Disposal", path: "/home/disposal", roles: ["admin"] },
+      { label: "Bulk Upload", path: "/home/assets/bulk-upload", roles: ["admin"] },
     ],
   },
   { label: "Users", path: "/home/users", roles: ["admin", "manager"] },
+  { label: "Locations", path: "/home/locations", roles: ["admin", "manager"] },
   { label: "Reports", path: "/home/reports", roles: ["admin", "manager", "user"] },
 ];
+
+const getDropdownMeta = (label) => {
+  switch (label) {
+    case "Allocation":
+      return {
+        icon: <AssignmentIndIcon sx={{ fontSize: 16 }} />,
+        color: "#2563eb",
+        bg: "rgba(37,99,235,0.04)",
+        subtitle: "Assign assets to employees",
+      };
+    case "Transfer":
+      return {
+        icon: <SwapHorizIcon sx={{ fontSize: 16 }} />,
+        color: "#10b981",
+        bg: "rgba(16,185,129,0.04)",
+        subtitle: "Relocate assets between sites",
+      };
+    case "Disposal":
+      return {
+        icon: <DeleteIcon sx={{ fontSize: 16 }} />,
+        color: "#f43f5e",
+        bg: "rgba(244,63,94,0.04)",
+        subtitle: "Retire, sell or scrap assets",
+      };
+    case "Bulk Upload":
+      return {
+        icon: <UploadFileIcon sx={{ fontSize: 16 }} />,
+        color: "#d97706",
+        bg: "rgba(217,119,6,0.04)",
+        subtitle: "Import assets via Excel template",
+      };
+    default:
+      return {
+        icon: null,
+        color: "#64748b",
+        bg: "rgba(241,245,249,0.04)",
+        subtitle: "",
+      };
+  }
+};
 
 const roleBadgeStyles = {
   manager: {
@@ -42,12 +92,36 @@ const roleBadgeStyles = {
   },
 };
 
+const rolePillTheme = {
+  admin: {
+    bg: "linear-gradient(135deg, rgba(180, 83, 9, 0.04) 0%, rgba(254, 243, 199, 0.4) 100%)",
+    hoverBg: "linear-gradient(135deg, rgba(180, 83, 9, 0.08) 0%, rgba(254, 243, 199, 0.6) 100%)",
+    border: "rgba(180, 83, 9, 0.16)",
+    hoverBorder: "rgba(180, 83, 9, 0.36)",
+    shadow: "0 0 14px rgba(180, 83, 9, 0.10)",
+  },
+  manager: {
+    bg: "linear-gradient(135deg, rgba(3, 105, 161, 0.04) 0%, rgba(224, 242, 254, 0.4) 100%)",
+    hoverBg: "linear-gradient(135deg, rgba(3, 105, 161, 0.08) 0%, rgba(224, 242, 254, 0.6) 100%)",
+    border: "rgba(3, 105, 161, 0.16)",
+    hoverBorder: "rgba(3, 105, 161, 0.36)",
+    shadow: "0 0 14px rgba(3, 105, 161, 0.10)",
+  },
+  user: {
+    bg: "linear-gradient(135deg, rgba(71, 85, 105, 0.04) 0%, rgba(241, 245, 249, 0.5) 100%)",
+    hoverBg: "linear-gradient(135deg, rgba(71, 85, 105, 0.08) 0%, rgba(241, 245, 249, 0.7) 100%)",
+    border: "rgba(71, 85, 105, 0.16)",
+    hoverBorder: "rgba(71, 85, 105, 0.36)",
+    shadow: "0 0 14px rgba(71, 85, 105, 0.10)",
+  }
+};
+
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
 
-  const { isLoggedIn, userRole } = useSelector((s) => s.auth);
+  const { isLoggedIn, userRole, userName } = useSelector((s) => s.auth);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
@@ -72,6 +146,7 @@ const Navbar = () => {
   const RoleIcon = isManager || isAdmin ? AdminPanelSettingsIcon : AccountCircleIcon;
   const roleStyle = isManager ? roleBadgeStyles.manager : isAdmin ? roleBadgeStyles.admin : roleBadgeStyles.user;
   const roleLabel = isManager ? "Manager" : isAdmin ? "Admin" : "User";
+  const pillTheme = isAdmin ? rolePillTheme.admin : isManager ? rolePillTheme.manager : rolePillTheme.user;
 
   // Filter nav items by current user role
   const visibleNavItems = navItems.filter((item) =>
@@ -157,59 +232,93 @@ const Navbar = () => {
                         onMouseLeave={closeDropdown}
                         sx={{
                           position: "absolute",
-                          top: "calc(100% + 6px)",
+                          top: "calc(100% + 4px)",
                           left: "50%",
+                          transform: "translateX(-50%)",
                           zIndex: 1400,
-                          minWidth: 160,
-                          borderRadius: "10px",
-                          background: "#fff",
-                          border: "1px solid #f1f5f9",
-                          boxShadow: "0 16px 48px rgba(15,23,42,0.12), 0 2px 8px rgba(15,23,42,0.06)",
-                          py: 1,
-                          animation: "simpleDrop 200ms cubic-bezier(.16,1,.3,1) both",
-                          "@keyframes simpleDrop": {
-                            "0%": { opacity: 0, transform: "translateX(-50%) translateY(-8px)" },
-                            "100%": { opacity: 1, transform: "translateX(-50%) translateY(0)" },
+                          minWidth: 150,
+                          borderRadius: "8px",
+                          background: "rgba(255, 255, 255, 0.94)",
+                          backdropFilter: "blur(12px)",
+                          border: "1px solid #cbd5e1",
+                          boxShadow: "0 10px 25px -5px rgba(15,23,42,0.12), 0 8px 16px -6px rgba(15,23,42,0.04)",
+                          p: "4px",
+                          animation: "premiumDrop 200ms cubic-bezier(.16,1,.3,1) both",
+                          "@keyframes premiumDrop": {
+                            "0%": { opacity: 0, transform: "translateX(-50%) translateY(-6px) scale(0.96)" },
+                            "100%": { opacity: 1, transform: "translateX(-50%) translateY(0) scale(1)" },
                           },
                           "&::before": {
-                            content: '""', position: "absolute", top: -6, left: "50%",
+                            content: '""', position: "absolute", top: -5, left: "50%",
                             transform: "translateX(-50%) rotate(45deg)",
-                            width: 11, height: 11,
-                            background: "#fff",
-                            border: "1px solid #f1f5f9",
+                            width: 8, height: 8,
+                            background: "rgba(255, 255, 255, 0.94)",
+                            border: "1px solid #cbd5e1",
                             borderBottom: "none", borderRight: "none",
                           },
                         }}
                       >
                         {visibleDropdown.map((d, i) => {
                           const isSelected = location.pathname.startsWith(d.path);
+                          const meta = getDropdownMeta(d.label);
                           return (
                             <Box
                               key={d.path}
                               component={Link} to={d.path}
                               onClick={() => setDropOpen(false)}
                               sx={{
-                                display: "flex", alignItems: "center", justifyContent: "space-between",
-                                px: 1.5, py: 0.7,
-                                mx: 0.5, borderRadius: "6px",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                                px: 1,
+                                py: "5px",
+                                my: "2px",
+                                borderRadius: "5px",
                                 textDecoration: "none",
-                                color: isSelected ? "#2563eb" : "#374151",
-                                fontWeight: isSelected ? 700 : 500,
-                                fontSize: 12,
-                                bgcolor: isSelected ? "#eff6ff" : "transparent",
-                                transition: "all 150ms ease",
-                                animation: `si 180ms ${i * 50}ms both`,
+                                color: isSelected ? "#2563eb" : "#475569",
+                                bgcolor: isSelected ? "rgba(37,99,235,0.08)" : "transparent",
+                                transition: "all 120ms ease",
+                                animation: `si 150ms ${i * 30}ms both`,
                                 "@keyframes si": {
-                                  "0%": { opacity: 0 },
-                                  "100%": { opacity: 1 },
+                                  "0%": { opacity: 0, transform: "translateY(2px)" },
+                                  "100%": { opacity: 1, transform: "translateY(0)" },
                                 },
-                                "&:hover": { bgcolor: "#f8fafc", color: "#2563eb" },
+                                "&:hover": {
+                                  bgcolor: "rgba(37,99,235,0.06)",
+                                  color: "#2563eb",
+                                  "& .dropdown-icon": {
+                                    color: "#2563eb",
+                                    transform: "scale(1.05)",
+                                  }
+                                },
                               }}
                             >
-                              {d.label}
-                              {isSelected && (
-                                <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "#2563eb", flexShrink: 0 }} />
+                              {/* Small Icon */}
+                              {meta.icon && (
+                                <Box
+                                  className="dropdown-icon"
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    color: isSelected ? "#2563eb" : "#64748b",
+                                    transition: "all 150ms ease",
+                                    flexShrink: 0,
+                                    "& svg": { fontSize: "13px !important" }
+                                  }}
+                                >
+                                  {meta.icon}
+                                </Box>
                               )}
+                              <Typography
+                                sx={{
+                                  fontSize: "11px",
+                                  fontWeight: isSelected ? 700 : 600,
+                                  lineHeight: 1.2,
+                                }}
+                              >
+                                {d.label}
+                              </Typography>
                             </Box>
                           );
                         })}
@@ -229,6 +338,7 @@ const Navbar = () => {
 
           {/* Right side */}
           <Box sx={{ alignItems: "center", display: "flex", gap: 1 }}>
+
             {/* Mobile hamburger */}
             <IconButton aria-label="Open navigation menu" onClick={() => setMenuOpen(true)} size="small"
               sx={{ border: "1px solid #e5e7eb", display: { xs: "inline-flex", md: "none" }, p: 0.5, "&:hover": { bgcolor: "#eff6ff" } }}>
@@ -237,12 +347,111 @@ const Navbar = () => {
 
             {isLoggedIn ? (
               <>
-                {/* Role badge */}
-                <Box sx={{ alignItems: "center", background: roleStyle.bg, borderRadius: "6px", color: roleStyle.color, display: "flex", gap: 0.75, px: 1, py: "3px" }} title={`${roleLabel} logged in`}>
-                  <RoleIcon sx={{ fontSize: 13 }} />
-                  <Typography component="span" sx={{ display: { xs: "none", sm: "inline" }, fontSize: 10.5, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase" }}>
-                    {roleLabel}
-                  </Typography>
+                {/* Ultra-Premium 3D Coin-Spin Reveal Morph Profile Capsule */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    height: 32,
+                    minWidth: 32,
+                    borderRadius: "16px",
+                    background: roleStyle.bg,
+                    color: roleStyle.color,
+                    border: `1.5px solid ${roleStyle.color}22`,
+                    pl: 0.5,
+                    pr: 0.5,
+                    cursor: "pointer",
+                    boxShadow: "0 1px 3px rgba(15, 23, 42, 0.04)",
+                    transition: "all 380ms cubic-bezier(0.4, 0, 0.2, 1)",
+                    overflow: "hidden",
+                    "&:hover": {
+                      pl: 0.75,
+                      pr: 1.5,
+                      boxShadow: `0 4px 14px ${roleStyle.color}20`,
+                      borderColor: `${roleStyle.color}45`,
+                      "& .icon-rotator": {
+                        transform: "rotate(360deg)",
+                      },
+                      "& .role-letter": {
+                        opacity: 0,
+                        transform: "scale(0) rotate(-180deg)",
+                      },
+                      "& .role-icon-reveal": {
+                        opacity: 1,
+                        transform: "scale(1) rotate(0)",
+                      },
+                      "& .username-reveal": {
+                        maxWidth: 160,
+                        opacity: 1,
+                        transform: "translateX(0)",
+                        pl: 0.75,
+                      }
+                    }
+                  }}
+                  title={`${roleLabel} Account: ${userName || "Guest"}`}
+                >
+                  {/* Left Side: Coin-Spinning Icon / Letter Stack */}
+                  <Box
+                    className="icon-rotator"
+                    sx={{
+                      position: "relative",
+                      width: 20,
+                      height: 20,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexShrink: 0,
+                      transition: "transform 420ms cubic-bezier(0.4, 0, 0.2, 1)",
+                    }}
+                  >
+                    {/* Role Letter */}
+                    <Box
+                      className="role-letter"
+                      sx={{
+                        position: "absolute",
+                        fontSize: 12,
+                        fontWeight: 900,
+                        fontFamily: '"Outfit", "Inter", sans-serif',
+                        textTransform: "uppercase",
+                        opacity: 1,
+                        transform: "scale(1) rotate(0)",
+                        transition: "all 350ms cubic-bezier(0.4, 0, 0.2, 1)",
+                      }}
+                    >
+                      {roleLabel[0].toUpperCase()}
+                    </Box>
+
+                    {/* Role Icon */}
+                    <RoleIcon
+                      className="role-icon-reveal"
+                      sx={{
+                        position: "absolute",
+                        fontSize: 13,
+                        opacity: 0,
+                        transform: "scale(0) rotate(180deg)",
+                        transition: "all 350ms cubic-bezier(0.4, 0, 0.2, 1)",
+                      }}
+                    />
+                  </Box>
+
+                  {/* Right Side: Wipe-revealed Username */}
+                  <Box
+                    className="username-reveal"
+                    sx={{
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      fontFamily: '"Outfit", "Inter", sans-serif',
+                      letterSpacing: "0.2px",
+                      whiteSpace: "nowrap",
+                      maxWidth: 0,
+                      opacity: 0,
+                      transform: "translateX(-8px)",
+                      transition: "all 380ms cubic-bezier(0.4, 0, 0.2, 1)",
+                      pl: 0,
+                    }}
+                  >
+                    {userName || "Guest"}
+                  </Box>
                 </Box>
 
                 <Button onClick={() => setLogoutConfirmOpen(true)} startIcon={<LogoutIcon sx={{ fontSize: "13px !important" }} />}
@@ -273,13 +482,13 @@ const Navbar = () => {
                     <ListItemButton component={Link} to={item.path}
                       onClick={() => setMobileAssetsOpen((p) => !p)}
                       sx={{ bgcolor: active ? "#eff6ff" : "transparent", borderBottom: "1px solid #f3f4f6", color: active ? "#1d4ed8" : "#111827", px: 1.25, py: 0.75, "&:hover": { bgcolor: "#eff6ff" } }}>
-                      <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 13, fontWeight: active ? 700 : 500 }} />
+                      <ListItemText primary={<Typography sx={{ fontSize: 13, fontWeight: active ? 700 : 500 }}>{item.label}</Typography>} />
                       <KeyboardArrowDownIcon sx={{ fontSize: 15, transition: "transform 160ms ease", transform: mobileAssetsOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
                     </ListItemButton>
                     {mobileAssetsOpen && visibleDropdown.map((d) => (
                       <ListItemButton key={d.path} component={Link} to={d.path} onClick={() => { setMenuOpen(false); setMobileAssetsOpen(false); }}
                         sx={{ bgcolor: location.pathname.startsWith(d.path) ? "#eff6ff" : "#f8fafc", borderBottom: "1px solid #f3f4f6", color: location.pathname.startsWith(d.path) ? "#1d4ed8" : "#374151", pl: 3, py: 0.6, "&:hover": { bgcolor: "#eff6ff" } }}>
-                        <ListItemText primary={d.label} primaryTypographyProps={{ fontSize: 12, fontWeight: 500 }} />
+                        <ListItemText primary={<Typography sx={{ fontSize: 12, fontWeight: 500 }}>{d.label}</Typography>} />
                       </ListItemButton>
                     ))}
                   </Box>
@@ -288,7 +497,7 @@ const Navbar = () => {
               return (
                 <ListItemButton key={item.path} component={Link} to={item.path} onClick={() => setMenuOpen(false)}
                   sx={{ bgcolor: active ? "#eff6ff" : "transparent", borderBottom: "1px solid #f3f4f6", color: active ? "#1d4ed8" : "#111827", px: 1.25, py: 0.75, "&:hover": { bgcolor: "#eff6ff" }, "&:last-child": { borderBottom: 0 } }}>
-                  <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 13, fontWeight: active ? 700 : 500 }} />
+                  <ListItemText primary={<Typography sx={{ fontSize: 13, fontWeight: active ? 700 : 500 }}>{item.label}</Typography>} />
                 </ListItemButton>
               );
             })}
@@ -298,9 +507,9 @@ const Navbar = () => {
 
       {/* ── Logout confirm ───────────────────────────── */}
       <Dialog open={logoutConfirmOpen} onClose={() => setLogoutConfirmOpen(false)}
-        slotProps={{ 
-          paper: { sx: { borderRadius: "10px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", maxWidth: 280, width: "calc(100% - 24px)", p: 0 } }, 
-          backdrop: { sx: { backdropFilter: "blur(4px)", bgcolor: "rgba(15, 23, 42, 0.6)" } } 
+        slotProps={{
+          paper: { sx: { borderRadius: "10px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", maxWidth: 280, width: "calc(100% - 24px)", p: 0 } },
+          backdrop: { sx: { backdropFilter: "blur(4px)", bgcolor: "rgba(15, 23, 42, 0.6)" } }
         }}>
         <Box sx={{ p: 2, pb: 1.5 }}>
           <Typography sx={{ color: "#0f172a", fontSize: 14, fontWeight: 700, mb: 0.5, fontFamily: "'Outfit', sans-serif" }}>
@@ -311,7 +520,7 @@ const Navbar = () => {
           </Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1, px: 2, pb: 2, justifyContent: "flex-end" }}>
-          <Button onClick={() => setLogoutConfirmOpen(false)} 
+          <Button onClick={() => setLogoutConfirmOpen(false)}
             sx={{ color: "#64748b", fontSize: 11, fontWeight: 600, py: 0.5, px: 1.5, textTransform: "none", borderRadius: "6px", minWidth: 0, "&:hover": { bgcolor: "#f1f5f9" } }}>
             Cancel
           </Button>

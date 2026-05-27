@@ -5,16 +5,16 @@ import {
   Box, Button, Select, MenuItem, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions,
   Typography, LinearProgress,
-  IconButton,
+  IconButton, InputAdornment,
 } from "@mui/material";
-import { FaFilter, FaFileExport, FaPlus, FaUpload, FaDownload, FaFileExcel, FaTimes } from "react-icons/fa";
-import toast from "react-hot-toast";
+import { FaFilter, FaFileExport, FaPlus, FaUpload, FaDownload, FaFileExcel, FaTimes, FaUsers, FaUserShield, FaUserTie, FaUser } from "react-icons/fa";
+import toast from "../utils/toast.jsx";
 import {
   fetchUsers,
   setUserPage, setUserSearch, setUserFilter, resetUserFilters,
 } from "../store/slices/userSlice";
-import { deleteUser, getUserById, bulkUploadUsers, exportUsers, downloadUserTemplate } from "../services/users_service";
-import { COLORS } from "../theme/tokens";
+import { deleteUser, getUserById, bulkUploadUsers, exportUsers, downloadUserTemplate, getUserSummaryStats } from "../services/users_service";
+import { COLORS, outlinedBtnSx, primaryBtnSx, selectSx } from "../theme/tokens";
 
 import PageHeader from "../components/common/PageHeader";
 import SearchBar from "../components/common/SearchBar";
@@ -22,6 +22,7 @@ import TableCard from "../components/common/TableCard";
 import TablePagination from "../components/common/TablePagination";
 import UserTable from "../components/users/UserTable";
 import ConfirmDialog from "../components/common/ConfirmDialog";
+import StatCard from "../components/common/StatCard";
 
 export default function UsersPage() {
   const dispatch = useDispatch();
@@ -38,6 +39,7 @@ export default function UsersPage() {
   const [bulkFile, setBulkFile] = useState(null);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkResult, setBulkResult] = useState(null);
+  const [stats, setStats] = useState(null);
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
@@ -48,10 +50,23 @@ export default function UsersPage() {
     }
   }, [page, showCount, filterRole, dispatch, userRole]);
 
+  // Fetch summary counts once on mount
+  useEffect(() => {
+    if (userRole === "manager" || userRole === "admin") {
+      getUserSummaryStats()
+        .then((res) => setStats(res))
+        .catch(() => {});
+    }
+  }, [userRole]);
+
   if (userRole !== "admin" && userRole !== "manager") return <Navigate to="/home" replace />;
 
-  const reload = () =>
+  const reload = () => {
     dispatch(fetchUsers({ keyword: search, page, size: showCount, role: filterRole || undefined }));
+    getUserSummaryStats()
+      .then((res) => setStats(res))
+      .catch(() => {});
+  };
 
   const handleSearch = () => {
     dispatch(setUserPage(0));
@@ -149,36 +164,38 @@ export default function UsersPage() {
         actions={
           <>
             {/* Show count — triggers backend re-fetch */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
               Showing
               <Select
                 value={showCount}
                 onChange={(e) => handleShowCountChange(e.target.value)}
                 size="small"
-                sx={{ fontSize: 12, borderRadius: "6px", height: 26, "& .MuiOutlinedInput-notchedOutline": { borderColor: COLORS.border } }}
+                sx={selectSx}
               >
                 {[5, 10, 20, 50].map((n) => (
-                  <MenuItem key={n} value={n} sx={{ fontSize: 12 }}>{n}</MenuItem>
+                  <MenuItem key={n} value={n} sx={{ fontSize: 11 }}>{n}</MenuItem>
                 ))}
               </Select>
             </Box>
 
             {/* Filter by role — delegates filtering to backend */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, border: `1px solid ${COLORS.border}`, borderRadius: "6px", px: 1.25, py: "3px", background: COLORS.surface }}>
-              <FaFilter size={11} />
-              <Select
-                value={filterRole}
-                onChange={(e) => handleFilterChange(e.target.value)}
-                displayEmpty
-                size="small"
-                sx={{ fontSize: 12, border: "none", "& .MuiOutlinedInput-notchedOutline": { border: "none" }, height: 22, "& .MuiSelect-select": { p: 0, fontSize: 12, color: COLORS.textMuted } }}
-              >
-                <MenuItem value="" sx={{ fontSize: 12 }}>All Roles</MenuItem>
-                {["ADMIN", "MANAGER", "USER"].map((r) => (
-                  <MenuItem key={r} value={r} sx={{ fontSize: 12 }}>{r}</MenuItem>
-                ))}
-              </Select>
-            </Box>
+            <Select
+              value={filterRole}
+              onChange={(e) => handleFilterChange(e.target.value)}
+              displayEmpty
+              size="small"
+              sx={selectSx}
+              startAdornment={
+                <InputAdornment position="start" sx={{ mr: 0.25, pl: 0.5 }}>
+                  <FaFilter size={9} color={COLORS.textMuted} />
+                </InputAdornment>
+              }
+            >
+              <MenuItem value="" sx={{ fontSize: 11 }}>All Roles</MenuItem>
+              {["ADMIN", "MANAGER", "USER"].map((r) => (
+                <MenuItem key={r} value={r} sx={{ fontSize: 11 }}>{r}</MenuItem>
+              ))}
+            </Select>
 
             {/* Bulk Upload — admin only */}
             {isAdmin && (
@@ -186,7 +203,7 @@ export default function UsersPage() {
                 variant="outlined"
                 startIcon={<FaUpload size={12} />}
                 onClick={() => setBulkDialog(true)}
-                sx={{ textTransform: "none", fontSize: 12, borderColor: "#4caf50", color: "#2e7d32", borderRadius: "6px", py: "4px", px: 1.25 }}
+                sx={{ ...outlinedBtnSx, borderColor: "#2e7d32", color: "#2e7d32" }}
               >
                 Bulk Upload
               </Button>
@@ -197,7 +214,7 @@ export default function UsersPage() {
                 variant="outlined"
                 startIcon={<FaFileExport size={12} />}
                 onClick={handleExport}
-                sx={{ textTransform: "none", fontSize: 12, borderColor: COLORS.border, color: COLORS.textMuted, borderRadius: "6px", py: "4px", px: 1.25 }}
+                sx={outlinedBtnSx}
               >
                 Export
               </Button>
@@ -208,7 +225,7 @@ export default function UsersPage() {
                 variant="contained"
                 startIcon={<FaPlus size={11} />}
                 onClick={() => navigate("/home/users/new")}
-                sx={{ textTransform: "none", fontSize: 12, fontWeight: 600, borderRadius: "6px", py: "5px", px: 1.5, background: COLORS.primary, boxShadow: "none", "&:hover": { background: COLORS.primaryDark, boxShadow: "none" } }}
+                sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
               >
                 Add New User
               </Button>
@@ -216,6 +233,27 @@ export default function UsersPage() {
           </>
         }
       />
+
+      {/* ── User Stat Ribbon (4 Symmetrical Columns with Clean Top Color Accents) ── */}
+      <Box sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "repeat(2, 1fr)",
+          sm: "repeat(4, 1fr)"
+        },
+        gap: 2,
+        mb: 2,
+        animation: "fadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "@keyframes fadeUp": {
+          from: { opacity: 0, transform: "translateY(10px)" },
+          to: { opacity: 1, transform: "translateY(0)" }
+        }
+      }}>
+        <StatCard label="Total Users" value={stats?.total ?? 0} icon={<FaUsers />} iconColor="#3949ab" />
+        <StatCard label="Administrators" value={stats?.adminCount ?? 0} icon={<FaUserShield />} iconColor="#2563eb" />
+        <StatCard label="Managers" value={stats?.managerCount ?? 0} icon={<FaUserTie />} iconColor="#10b981" />
+        <StatCard label="Regular Users" value={stats?.userCount ?? 0} icon={<FaUser />} iconColor="#d97706" />
+      </Box>
 
       <SearchBar
         value={search}
@@ -360,11 +398,11 @@ export default function UsersPage() {
         </DialogContent>
 
         <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-          <Button onClick={closeBulkDialog} sx={{ textTransform: "none", fontSize: 13 }}>Close</Button>
+          <Button onClick={closeBulkDialog} sx={outlinedBtnSx}>Close</Button>
           <Button variant="contained"
             startIcon={bulkLoading ? <CircularProgress size={12} color="inherit" /> : <FaUpload size={11} />}
             onClick={handleBulkUpload} disabled={!bulkFile || bulkLoading}
-            sx={{ textTransform: "none", fontSize: 13, fontWeight: 600, borderRadius: "8px", background: "#2e7d32", "&:hover": { background: "#1b5e20" } }}>
+            sx={{ ...primaryBtnSx, background: "#2e7d32", borderColor: "#1b5e20", "&:hover": { background: "#1b5e20" } }}>
             {bulkLoading ? "Uploading..." : "Upload"}
           </Button>
         </DialogActions>

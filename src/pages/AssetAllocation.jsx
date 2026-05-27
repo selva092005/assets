@@ -11,11 +11,11 @@ import {
 import {
   FaPlus, FaUndo, FaTimes, FaBoxOpen, FaSearch,
   FaEye, FaExclamationTriangle, FaDownload,
-  FaLayerGroup, FaCheckCircle, FaBoxes, FaClock,
+  FaLayerGroup, FaCheckCircle, FaBoxes, FaClock, FaCalendarAlt,
 } from "react-icons/fa";
 import { MdRefresh } from "react-icons/md";
 import { getUsers } from "../services/users_service";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.jsx";
 
 import {
   allocateAsset, getAllAllocations, getAllocationById, returnAsset, getAllocationOverview,
@@ -26,7 +26,10 @@ import PageHeader from "../components/common/PageHeader";
 import TableCard from "../components/common/TableCard";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import ActionBtn from "../components/common/ActionBtn";
-import { COLORS } from "../theme/tokens";
+import PremiumCard from "../components/common/PremiumCard";
+import StatCard from "../components/common/StatCard";
+import { COLORS, outlinedBtnSx, primaryBtnSx, selectSx, inputSx, premiumDialogPaperSx, premiumDialogTitleSx, premiumFormGroupSx } from "../theme/tokens";
+import { required, isValidDate, isDateAfter, extractFieldErrors } from "../utils/validate";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 const StatusBadge = ({ status }) => {
@@ -169,129 +172,82 @@ function AssetOverview({ stats, loading, recentAllocations }) {
     <Box sx={{ display: "flex", gap: 1.5, mb: 2, flexWrap: "wrap" }}>
 
       {/* ── Left: Donut overview ── */}
-      <Box sx={{
-        flex: "1 1 280px",
-        background: "#fff",
-        borderRadius: "10px",
-        border: `1px solid ${COLORS.border}`,
-        boxShadow: COLORS.shadow,
-        p: "12px",
-      }}>
-        <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#aaa", letterSpacing: "0.07em", textTransform: "uppercase", mb: 1.5 }}>
-          Asset Overview
-        </Typography>
+      <Box sx={{ flex: "1 1 280px" }}>
+        <PremiumCard
+          title="Asset Overview"
+          subtitle="Assignment breakdowns"
+          icon={<FaBoxes />}
+        >
+          {loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}><CircularProgress size={20} /></Box>
+          ) : (
+            <>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1.5 }}>
+                <DonutChart segments={segments} total={total} />
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, flex: 1 }}>
+                  {legend.map((item) => (
+                    <Box key={item.label} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                      <Box sx={{ width: 8, height: 8, borderRadius: "2px", background: item.dot, flexShrink: 0 }} />
+                      <Typography sx={{ fontSize: 11, color: "#777", flex: 1 }}>{item.label}</Typography>
+                      <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#1a1a2e", minWidth: 18, textAlign: "right" }}>{item.value}</Typography>
+                      <Typography sx={{ fontSize: 10, color: item.text, minWidth: 34, textAlign: "right" }}>{pct(item.value)}</Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
 
-        {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}><CircularProgress size={20} /></Box>
-        ) : (
-          <>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1.5 }}>
-              <DonutChart segments={segments} total={total} />
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75, flex: 1 }}>
-                {legend.map((item) => (
-                  <Box key={item.label} sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                    <Box sx={{ width: 8, height: 8, borderRadius: "2px", background: item.dot, flexShrink: 0 }} />
-                    <Typography sx={{ fontSize: 11, color: "#777", flex: 1 }}>{item.label}</Typography>
-                    <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#1a1a2e", minWidth: 18, textAlign: "right" }}>{item.value}</Typography>
-                    <Typography sx={{ fontSize: 10, color: item.text, minWidth: 34, textAlign: "right" }}>{pct(item.value)}</Typography>
+              <Box sx={{ borderTop: "1px solid #f5f5f5", mb: 1.5 }} />
+
+              <Box sx={{ display: "flex", gap: 1 }}>
+                {miniCards.map((c) => (
+                  <Box key={c.label} sx={{
+                    flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 0.4,
+                    p: "8px 4px 6px",
+                    background: "#fafafa", borderRadius: "10px", border: "1px solid #f0f0f0",
+                    textAlign: "center",
+                  }}>
+                    <Box sx={{ width: 26, height: 26, borderRadius: "7px", background: c.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {c.icon}
+                    </Box>
+                    <Typography sx={{ fontSize: 15, fontWeight: 800, color: "#1a1a2e", lineHeight: 1 }}>{c.value}</Typography>
+                    <Typography sx={{ fontSize: 9, fontWeight: 600, color: "#888", letterSpacing: "0.03em" }}>{c.label}</Typography>
                   </Box>
                 ))}
               </Box>
-            </Box>
-
-            <Box sx={{ borderTop: "1px solid #f5f5f5", mb: 1.5 }} />
-
-            <Box sx={{ display: "flex", gap: 1 }}>
-              {miniCards.map((c) => (
-                <Box key={c.label} sx={{
-                  flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 0.4,
-                  p: "8px 4px 6px",
-                  background: "#fafafa", borderRadius: "10px", border: "1px solid #f0f0f0",
-                  textAlign: "center",
-                }}>
-                  <Box sx={{ width: 26, height: 26, borderRadius: "7px", background: c.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {c.icon}
-                  </Box>
-                  <Typography sx={{ fontSize: 15, fontWeight: 800, color: "#1a1a2e", lineHeight: 1 }}>{c.value}</Typography>
-                  <Typography sx={{ fontSize: 9, fontWeight: 600, color: "#888", letterSpacing: "0.03em" }}>{c.label}</Typography>
-                </Box>
-              ))}
-            </Box>
-          </>
-        )}
+            </>
+          )}
+        </PremiumCard>
       </Box>
 
       {/* ── Right: Recent Activities (live from backend) ── */}
-      <Box sx={{
-        flex: "1 1 280px",
-        background: "#fff",
-        borderRadius: "10px",
-        border: `1px solid ${COLORS.border}`,
-        boxShadow: COLORS.shadow,
-        p: "12px",
-        display: "flex", flexDirection: "column",
-      }}>
-        <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#aaa", letterSpacing: "0.07em", textTransform: "uppercase", mb: 1 }}>
-          Recent Activities
-        </Typography>
-
-        {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}><CircularProgress size={20} /></Box>
-        ) : recent.length === 0 ? (
-          <Box sx={{ textAlign: "center", py: 4, color: "#ccc" }}>
-            <FaBoxOpen size={22} style={{ marginBottom: 6, opacity: 0.3 }} />
-            <Typography sx={{ fontSize: 11, color: "#ccc" }}>No recent activities</Typography>
-          </Box>
-        ) : (
-          <Box>
-            {recent.map((row, i) => (
-              <ActivityItem key={row.allocationId} row={row} isLast={i === recent.length - 1} />
-            ))}
-          </Box>
-        )}
+      <Box sx={{ flex: "1 1 280px" }}>
+        <PremiumCard
+          title="Recent Activities"
+          subtitle="Real-time ledger updates"
+          icon={<FaClock />}
+        >
+          {loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}><CircularProgress size={20} /></Box>
+          ) : recent.length === 0 ? (
+            <Box sx={{ textAlign: "center", py: 4, color: "#ccc" }}>
+              <FaBoxOpen size={22} style={{ marginBottom: 6, opacity: 0.3 }} />
+              <Typography sx={{ fontSize: 11, color: "#ccc" }}>No recent activities</Typography>
+            </Box>
+          ) : (
+            <Box>
+              {recent.map((row, i) => (
+                <ActivityItem key={row.allocationId} row={row} isLast={i === recent.length - 1} />
+              ))}
+            </Box>
+          )}
+        </PremiumCard>
       </Box>
 
     </Box>
   );
 }
 
-// ── Stat Card ─────────────────────────────────────────────────────────────────
-const StatCard = ({ label, value, icon, gradient, iconBg, iconColor, borderColor, delay = "0ms" }) => (
-  <Box sx={{
-    flex: 1, minWidth: 120,
-    background: gradient || "rgba(255, 255, 255, 0.9)",
-    backdropFilter: "blur(8px)",
-    border: `1px solid ${borderColor || "rgba(255, 255, 255, 0.5)"}`,
-    borderRadius: "12px",
-    p: "12px 16px",
-    display: "flex", alignItems: "center", gap: 1.5,
-    boxShadow: "0 4px 16px rgba(0,0,0,0.03)",
-    animation: "statCardFadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
-    animationDelay: delay,
-    "@keyframes statCardFadeUp": {
-      from: { opacity: 0, transform: "translateY(12px) scale(0.96)" },
-      to: { opacity: 1, transform: "translateY(0) scale(1)" },
-    },
-    transition: "all 300ms ease",
-    "&:hover": {
-      transform: "translateY(-3px)",
-      boxShadow: "0 10px 24px rgba(0,0,0,0.06)",
-    }
-  }}>
-    <Box sx={{
-      width: 36, height: 36, borderRadius: "8px",
-      background: iconBg || "#f0f0ff",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      flexShrink: 0,
-    }}>
-      {icon}
-    </Box>
-    <Box>
-      <Typography fontSize={11} fontWeight={600} color={COLORS.textMuted}>{label}</Typography>
-      <Typography fontSize={20} fontWeight={800} color={COLORS.text} lineHeight={1.1}>{value}</Typography>
-    </Box>
-  </Box>
-);
+
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function today() { return new Date().toISOString().split("T")[0]; }
@@ -341,6 +297,7 @@ export default function AssetAllocationPage() {
     assetId: "", assignedTo: "", assignedBy: userName || "",
     assignedDate: today(), expectedReturnDate: "", remarks: "",
   });
+  const [errors, setErrors] = useState({});
   const [adminUsers, setAdminUsers] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [userSearch, setUserSearch] = useState("");
@@ -480,8 +437,9 @@ export default function AssetAllocationPage() {
 
   const openAllocate = async (preselectedAssetId = null) => {
     await loadAvailableAssets();
-    setForm({ assetId: preselectedAssetId || "", assignedTo: "", assignedBy: "", assignedDate: today(), expectedReturnDate: "", remarks: "" });
+    setForm({ assetId: preselectedAssetId || "", assignedTo: "", assignedBy: userName || "", assignedDate: today(), expectedReturnDate: "", remarks: "" });
     setUserSearch(""); setAssignedToSearch(""); setAssetSearch("");
+    setErrors({});
     try {
       const res = await getUsers({ page: 0, size: 200 });
       const all = extractList(res);
@@ -501,18 +459,32 @@ export default function AssetAllocationPage() {
   }, []);
 
   const handleAllocate = async () => {
-    if (!form.assetId) { toast.error("Select an asset"); return; }
-    if (!form.assignedTo) { toast.error("Enter employee name"); return; }
-    if (!form.assignedBy) { toast.error("Enter assigned-by name"); return; }
-    if (!form.assignedDate) { toast.error("Select assigned date"); return; }
-    if (form.expectedReturnDate && form.expectedReturnDate < form.assignedDate) {
-      toast.error("Expected return date must be on or after the assigned date"); return;
+    const e = {};
+    const assignedByVal = form.assignedBy || userName;
+    if (!form.assetId) e.assetId = "Select an asset to allocate";
+    if (!form.assignedTo) e.assignedTo = "Employee name is required";
+    else if (form.assignedTo === userName) e.assignedTo = "You cannot allocate an asset to yourself";
+    if (!assignedByVal) e.assignedBy = "Assigned-by name is required";
+    if (!form.assignedDate) e.assignedDate = "Assigned date is required";
+    else if (!isValidDate(form.assignedDate)) e.assignedDate = "Enter a valid date";
+    if (form.expectedReturnDate) {
+      if (!isValidDate(form.expectedReturnDate)) e.expectedReturnDate = "Enter a valid date";
+      else if (!isDateAfter(form.assignedDate, form.expectedReturnDate)) {
+        e.expectedReturnDate = "Expected return date must be on or after the assigned date";
+      }
     }
+    if (Object.keys(e).length > 0) {
+      setErrors(e);
+      toast.error("Please fix the highlighted fields");
+      return;
+    }
+    setErrors({});
     setSaving(true);
     try {
       await allocateAsset({
         assetId: Number(form.assetId),
-        assignedTo: form.assignedTo, assignedBy: form.assignedBy,
+        assignedTo: form.assignedTo,
+        assignedBy: assignedByVal,
         assignedDate: form.assignedDate,
         expectedReturnDate: form.expectedReturnDate || null,
         remarks: form.remarks || null,
@@ -523,8 +495,18 @@ export default function AssetAllocationPage() {
       loadOverview();
       loadRecentActivities();
       dispatch(fetchAssets({ page: 0, size: 10 }));
-    } catch (e) {
-      toast.error(e.response?.data?.message || "Allocation failed");
+    } catch (err) {
+      if (err.response?.status === 400) {
+        const fe = extractFieldErrors(err);
+        if (Object.keys(fe).length > 0) {
+          setErrors(fe);
+          toast.error("Please fix the highlighted fields");
+        } else {
+          toast.error(err.response?.data?.message || "Allocation failed");
+        }
+      } else {
+        toast.error(err.response?.data?.message || "Allocation failed");
+      }
     } finally { setSaving(false); }
   };
 
@@ -564,7 +546,7 @@ export default function AssetAllocationPage() {
                 variant="outlined"
                 startIcon={<FaDownload size={11} />}
                 onClick={exportCSV}
-                sx={{ textTransform: "none", fontSize: 12, borderRadius: "6px", py: "4px", px: 1.25, borderColor: COLORS.border, color: COLORS.textMuted }}
+                sx={outlinedBtnSx}
               >
                 Export CSV
               </Button>
@@ -572,7 +554,7 @@ export default function AssetAllocationPage() {
                 variant="contained"
                 startIcon={<FaPlus size={11} />}
                 onClick={openAllocate}
-                sx={{ textTransform: "none", fontSize: 12, fontWeight: 600, borderRadius: "6px", py: "5px", px: 1.5, background: COLORS.primary, boxShadow: "none", "&:hover": { background: COLORS.primaryDark, boxShadow: "none" } }}
+                sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
               >
                 Allocate Asset
               </Button>
@@ -582,11 +564,24 @@ export default function AssetAllocationPage() {
       />
 
       {/* ── Stat Cards ──────────────────────────────────────────────────── */}
-      <Box sx={{ display: "flex", gap: 1.5, mb: 2, flexWrap: "wrap" }}>
-        <StatCard label="Total Records" value={totalElements} icon={<FaBoxes size={15} color="#1976d2" />} iconBg="#dbeafe" borderColor="#bfdbfe" delay="0ms" />
-        <StatCard label="Active" value={activeCount} icon={<FaCheckCircle size={15} color="#2e7d32" />} iconBg="#dcfce7" borderColor="#a5d6a7" delay="100ms" />
-        <StatCard label="Returned" value={returnedCount} icon={<FaLayerGroup size={15} color="#6b7280" />} iconBg="#e5e7eb" borderColor="#d1d5db" delay="200ms" />
-        <StatCard label="Overdue" value={overdueCount} icon={<FaClock size={15} color="#b45309" />} iconBg="#fef3c7" borderColor="#fcd34d" delay="300ms" />
+      <Box sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "repeat(2, 1fr)",
+          sm: "repeat(4, 1fr)"
+        },
+        gap: 2,
+        mb: 2,
+        animation: "fadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "@keyframes fadeUp": {
+          from: { opacity: 0, transform: "translateY(10px)" },
+          to: { opacity: 1, transform: "translateY(0)" }
+        }
+      }}>
+        <StatCard label="Total Records" value={totalElements} icon={<FaBoxes size={15} />} iconBg="#e8eaf6" iconColor="#3949ab" />
+        <StatCard label="Active" value={activeCount} icon={<FaCheckCircle size={15} />} iconBg="#ecfdf5" iconColor="#10b981" />
+        <StatCard label="Returned" value={returnedCount} icon={<FaLayerGroup size={15} />} iconBg="#eff6ff" iconColor="#2563eb" />
+        <StatCard label="Overdue" value={overdueCount} icon={<FaClock size={15} />} iconBg="#fffbeb" iconColor="#d97706" />
       </Box>
 
       {/* (AssetOverview moved below the table) */}
@@ -603,7 +598,7 @@ export default function AssetAllocationPage() {
         />
         <Select
           size="small" value={statusFilter} onChange={handleStatusChange} displayEmpty
-          sx={{ minWidth: 130, fontSize: 11.5, borderRadius: "6px", height: 30 }}
+          sx={{ ...selectSx, minWidth: 130 }}
         >
           <MenuItem value="">All Status</MenuItem>
           <MenuItem value="ACTIVE">Active</MenuItem>
@@ -774,27 +769,40 @@ export default function AssetAllocationPage() {
       </Box>
 
       {/* ── Allocate Modal (UNCHANGED) ───────────────────────────────────── */}
-      <Dialog open={allocateOpen} onClose={() => setAllocateOpen(false)} maxWidth="sm" fullWidth slotProps={{ paper: { sx: { borderRadius: "12px" } } }}>
-        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
-          <Typography fontWeight={700} fontSize={16}>Allocate Asset</Typography>
-          <IconButton size="small" onClick={() => setAllocateOpen(false)}><FaTimes size={14} /></IconButton>
+      <Dialog open={allocateOpen} onClose={() => setAllocateOpen(false)} maxWidth="sm" fullWidth slotProps={{ paper: { sx: premiumDialogPaperSx } }}>
+        <DialogTitle sx={premiumDialogTitleSx}>
+          <span>Allocate Asset</span>
+          <IconButton size="small" onClick={() => setAllocateOpen(false)} sx={{ color: COLORS.textFaint }}><FaTimes size={13} /></IconButton>
         </DialogTitle>
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "12px !important" }}>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.75, pt: "18px !important", pb: 2 }}>
           {/* Asset */}
-          <FormControl fullWidth size="small">
-            <InputLabel shrink sx={{ fontSize: 13 }}>Asset *</InputLabel>
-            <OutlinedInput readOnly notched label="Asset *" size="small"
+          <FormControl fullWidth size="small" error={!!errors.assetId}>
+            <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: errors.assetId ? "#c62828" : COLORS.textMuted, mb: 0.5, display: "flex", alignItems: "center", gap: 0.5 }}>
+              Asset *
+            </Typography>
+            <OutlinedInput readOnly notched={false} label="" size="small"
               value={availableAssets.find((a) => a.assetId === form.assetId)
                 ? `${availableAssets.find((a) => a.assetId === form.assetId).assetName}${availableAssets.find((a) => a.assetId === form.assetId).assetCode ? ` (${availableAssets.find((a) => a.assetId === form.assetId).assetCode})` : ""}`
                 : ""}
-              placeholder="Select asset..." onClick={(e) => setAssetAnchor(e.currentTarget)}
-              endAdornment={<InputAdornment position="end"><Typography fontSize={12} color="#aaa">▾</Typography></InputAdornment>}
-              sx={{ fontSize: 13, borderRadius: "8px", cursor: "pointer", caretColor: "transparent" }}
+              placeholder="Select asset to allocate..." onClick={(e) => setAssetAnchor(e.currentTarget)}
+              error={!!errors.assetId}
+              endAdornment={<InputAdornment position="end"><Typography fontSize={11} color="#aaa">▾</Typography></InputAdornment>}
+              sx={{
+                ...inputSx["& .MuiOutlinedInput-root"],
+                fontSize: 11.5,
+                height: 30,
+                cursor: "pointer",
+                caretColor: "transparent",
+                background: "#f8fafc",
+                borderColor: errors.assetId ? "#c62828" : "#cbd5e1",
+                "& fieldset": { border: "1px solid", borderColor: errors.assetId ? "#c62828 !important" : "#cbd5e1" }
+              }}
             />
+            {errors.assetId && <Typography color="error" sx={{ fontSize: 10.5, mt: 0.25 }}>{errors.assetId}</Typography>}
             <Popover open={Boolean(assetAnchor)} anchorEl={assetAnchor}
               onClose={() => { setAssetAnchor(null); setAssetSearch(""); }}
               anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-              slotProps={{ paper: { sx: { width: assetAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } } }}>
+              slotProps={{ paper: { sx: { width: assetAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column", borderRadius: "10px", boxShadow: "0 10px 25px rgba(0,0,0,0.08)", border: "1px solid #e2e8f0" } } }}>
               <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
                 <TextField autoFocus size="small" fullWidth placeholder="Search asset..."
                   value={assetSearch} onChange={(e) => setAssetSearch(e.target.value)}
@@ -808,25 +816,42 @@ export default function AssetAllocationPage() {
                   return filtered.length > 0 ? filtered.map((a) => (
                     <ListItemButton key={a.assetId} selected={form.assetId === a.assetId}
                       onClick={() => { f("assetId", a.assetId); setAssetAnchor(null); setAssetSearch(""); }} sx={{ py: 0.5 }}>
-                      <ListItemText primary={a.assetName} secondary={a.assetCode || ""} primaryTypographyProps={{ fontSize: 13 }} secondaryTypographyProps={{ fontSize: 11 }} />
+                      <ListItemText
+                        primary={<Typography sx={{ fontSize: 13 }}>{a.assetName}</Typography>}
+                        secondary={<Typography sx={{ fontSize: 11, color: "#64748b" }}>{a.assetCode || ""}</Typography>}
+                      />
                     </ListItemButton>
-                  )) : <ListItemButton disabled><ListItemText primary="No assets found" primaryTypographyProps={{ fontSize: 13 }} /></ListItemButton>;
+                  )) : <ListItemButton disabled><ListItemText primary={<Typography sx={{ fontSize: 13 }}>No assets found</Typography>} /></ListItemButton>;
                 })()}
               </List>
             </Popover>
           </FormControl>
+
           {/* Assigned To */}
-          <FormControl fullWidth size="small">
-            <InputLabel shrink sx={{ fontSize: 13 }}>Assigned To *</InputLabel>
-            <OutlinedInput readOnly notched label="Assigned To *" size="small"
+          <FormControl fullWidth size="small" error={!!errors.assignedTo}>
+            <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: errors.assignedTo ? "#c62828" : COLORS.textMuted, mb: 0.5 }}>
+              Assigned To *
+            </Typography>
+            <OutlinedInput readOnly notched={false} label="" size="small"
               value={form.assignedTo || ""} placeholder="Select employee..." onClick={(e) => setAssignedToAnchor(e.currentTarget)}
-              endAdornment={<InputAdornment position="end"><Typography fontSize={12} color="#aaa">▾</Typography></InputAdornment>}
-              sx={{ fontSize: 13, borderRadius: "8px", cursor: "pointer", caretColor: "transparent" }}
+              error={!!errors.assignedTo}
+              endAdornment={<InputAdornment position="end"><Typography fontSize={11} color="#aaa">▾</Typography></InputAdornment>}
+              sx={{
+                ...inputSx["& .MuiOutlinedInput-root"],
+                fontSize: 11.5,
+                height: 30,
+                cursor: "pointer",
+                caretColor: "transparent",
+                background: "#f8fafc",
+                borderColor: errors.assignedTo ? "#c62828" : "#cbd5e1",
+                "& fieldset": { border: "1px solid", borderColor: errors.assignedTo ? "#c62828 !important" : "#cbd5e1" }
+              }}
             />
+            {errors.assignedTo && <Typography color="error" sx={{ fontSize: 10.5, mt: 0.25 }}>{errors.assignedTo}</Typography>}
             <Popover open={Boolean(assignedToAnchor)} anchorEl={assignedToAnchor}
               onClose={() => { setAssignedToAnchor(null); setAssignedToSearch(""); }}
               anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-              slotProps={{ paper: { sx: { width: assignedToAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } } }}>
+              slotProps={{ paper: { sx: { width: assignedToAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column", borderRadius: "10px", boxShadow: "0 10px 25px rgba(0,0,0,0.08)", border: "1px solid #e2e8f0" } } }}>
               <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
                 <TextField autoFocus size="small" fullWidth placeholder="Search employee..."
                   value={assignedToSearch} onChange={(e) => setAssignedToSearch(e.target.value)}
@@ -836,85 +861,124 @@ export default function AssetAllocationPage() {
               <List dense sx={{ overflowY: "auto", flex: 1 }}>
                 {(() => {
                   const q = assignedToSearch.toLowerCase();
-                  const filtered = allUsers.filter((u) => !q || u.userName?.toLowerCase().includes(q) || u.userEmail?.toLowerCase().includes(q));
+                  const filtered = allUsers.filter((u) => u.userName !== userName && (!q || u.userName?.toLowerCase().includes(q) || u.userEmail?.toLowerCase().includes(q)));
                   return filtered.length > 0 ? filtered.map((u) => (
                     <ListItemButton key={u.userId} selected={form.assignedTo === u.userName}
                       onClick={() => { f("assignedTo", u.userName); setAssignedToAnchor(null); setAssignedToSearch(""); }} sx={{ py: 0.5 }}>
-                      <ListItemText primary={u.userName} secondary={u.userEmail} primaryTypographyProps={{ fontSize: 13 }} secondaryTypographyProps={{ fontSize: 11 }} />
+                      <ListItemText
+                        primary={
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                            <Typography sx={{ fontSize: 13, fontWeight: 500 }}>{u.userName}</Typography>
+                            {u.userRole && (
+                              <Chip
+                                label={u.userRole}
+                                size="small"
+                                sx={{
+                                  height: 16,
+                                  fontSize: 8,
+                                  fontWeight: 700,
+                                  borderRadius: "4px",
+                                  background: u.userRole === "ADMIN" ? "#fee2e2" : u.userRole === "MANAGER" ? "#fef3c7" : "#e0f2fe",
+                                  color: u.userRole === "ADMIN" ? "#991b1b" : u.userRole === "MANAGER" ? "#92400e" : "#0369a1",
+                                  "& .MuiChip-label": { px: 0.75 }
+                                }}
+                              />
+                            )}
+                          </Box>
+                        }
+                        secondary={<Typography sx={{ fontSize: 11, color: "#64748b" }}>{u.userEmail}</Typography>}
+                      />
                     </ListItemButton>
-                  )) : <ListItemButton disabled><ListItemText primary="No users found" primaryTypographyProps={{ fontSize: 13 }} /></ListItemButton>;
+                  )) : <ListItemButton disabled><ListItemText primary={<Typography sx={{ fontSize: 13 }}>No users found</Typography>} /></ListItemButton>;
                 })()}
               </List>
             </Popover>
           </FormControl>
+
           {/* Assigned By */}
           <FormControl fullWidth size="small">
-            <InputLabel shrink sx={{ fontSize: 13 }}>Assigned By *</InputLabel>
-            <OutlinedInput readOnly notched label="Assigned By *" size="small"
-              value={form.assignedBy || ""} placeholder="Select user..." onClick={(e) => setAnchorEl(e.currentTarget)}
-              endAdornment={<InputAdornment position="end"><Typography fontSize={12} color="#aaa">▾</Typography></InputAdornment>}
-              sx={{ fontSize: 13, borderRadius: "8px", cursor: "pointer", caretColor: "transparent" }}
+            <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.textMuted, mb: 0.5 }}>
+              Assigned By
+            </Typography>
+            <OutlinedInput
+              disabled
+              notched={false}
+              label=""
+              size="small"
+              value={form.assignedBy || userName || ""}
+              sx={{
+                ...inputSx["& .MuiOutlinedInput-root"],
+                fontSize: 11.5,
+                height: 30,
+                bgcolor: "#f8fafc",
+                "& .MuiOutlinedInput-input.Mui-disabled": {
+                  WebkitTextFillColor: "#475569",
+                }
+              }}
             />
-            <Popover open={Boolean(anchorEl)} anchorEl={anchorEl}
-              onClose={() => { setAnchorEl(null); setUserSearch(""); }}
-              anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-              slotProps={{ paper: { sx: { width: anchorEl?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } } }}>
-              <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
-                <TextField autoFocus size="small" fullWidth placeholder="Search user..."
-                  value={userSearch} onChange={(e) => setUserSearch(e.target.value)}
-                  slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }} />
-              </Box>
-              <List dense sx={{ overflowY: "auto", flex: 1 }}>
-                {(() => {
-                  const q = userSearch.toLowerCase();
-                  const filtered = adminUsers.filter((u) => !q || u.userName?.toLowerCase().includes(q) || u.userEmail?.toLowerCase().includes(q));
-                  return filtered.length > 0 ? filtered.map((u) => (
-                    <ListItemButton key={u.userId} selected={form.assignedBy === u.userName}
-                      onClick={() => { f("assignedBy", u.userName); setAnchorEl(null); setUserSearch(""); }} sx={{ py: 0.5 }}>
-                      <ListItemText primary={u.userName} secondary={u.userEmail} primaryTypographyProps={{ fontSize: 13 }} secondaryTypographyProps={{ fontSize: 11 }} />
-                    </ListItemButton>
-                  )) : <ListItemButton disabled><ListItemText primary="No users found" primaryTypographyProps={{ fontSize: 13 }} /></ListItemButton>;
-                })()}
-              </List>
-            </Popover>
           </FormControl>
+
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-            <TextField label="Assigned Date *" type="date" size="small" fullWidth
-              value={form.assignedDate} onChange={(e) => f("assignedDate", e.target.value)}
-              slotProps={{ inputLabel: { shrink: true } }}
-              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }} />
-            <TextField label="Expected Return Date" type="date" size="small" fullWidth
-              value={form.expectedReturnDate} onChange={(e) => f("expectedReturnDate", e.target.value)}
-              slotProps={{ inputLabel: { shrink: true } }}
-              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }} />
+            <Box>
+              <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: errors.assignedDate ? "#c62828" : COLORS.textMuted, mb: 0.5 }}>
+                Assigned Date *
+              </Typography>
+              <TextField type="date" size="small" fullWidth
+                value={form.assignedDate} onChange={(e) => f("assignedDate", e.target.value)}
+                error={!!errors.assignedDate} helperText={errors.assignedDate || ""}
+                sx={{
+                  ...inputSx,
+                  "& .MuiOutlinedInput-root": { ...inputSx["& .MuiOutlinedInput-root"], height: 30, fontSize: 11.5 }
+                }} />
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: errors.expectedReturnDate ? "#c62828" : COLORS.textMuted, mb: 0.5 }}>
+                Expected Return Date
+              </Typography>
+              <TextField type="date" size="small" fullWidth
+                value={form.expectedReturnDate} onChange={(e) => f("expectedReturnDate", e.target.value)}
+                error={!!errors.expectedReturnDate} helperText={errors.expectedReturnDate || ""}
+                sx={{
+                  ...inputSx,
+                  "& .MuiOutlinedInput-root": { ...inputSx["& .MuiOutlinedInput-root"], height: 30, fontSize: 11.5 }
+                }} />
+            </Box>
           </Box>
-          <TextField label="Remarks" size="small" fullWidth multiline rows={2}
-            value={form.remarks} onChange={(e) => f("remarks", e.target.value)}
-            slotProps={{ htmlInput: { maxLength: 250 } }}
-            sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }} />
+
+          <Box>
+            <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.textMuted, mb: 0.5 }}>
+              Remarks
+            </Typography>
+            <TextField placeholder="Add any details or notes..." size="small" fullWidth multiline rows={2}
+              value={form.remarks} onChange={(e) => f("remarks", e.target.value)}
+              slotProps={{ htmlInput: { maxLength: 250 } }}
+              sx={{
+                ...inputSx,
+                "& .MuiOutlinedInput-root": { ...inputSx["& .MuiOutlinedInput-root"], height: "auto", fontSize: 11.5, py: "6px !important" }
+              }} />
+          </Box>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-          <Button onClick={() => setAllocateOpen(false)} sx={{ textTransform: "none", fontSize: 13 }}>Cancel</Button>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1, borderTop: "1px solid #f1f5f9", pt: 1.5 }}>
+          <Button onClick={() => setAllocateOpen(false)} sx={outlinedBtnSx}>Cancel</Button>
           <Button variant="contained" onClick={handleAllocate} disabled={saving}
             startIcon={saving ? <CircularProgress size={12} color="inherit" /> : <FaPlus size={11} />}
-            sx={{ textTransform: "none", fontSize: 13, fontWeight: 600, borderRadius: "8px", background: COLORS.primary, boxShadow: "none", "&:hover": { background: COLORS.primaryDark } }}>
+            sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}>
             {saving ? "Allocating..." : "Allocate"}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* ── View Details Modal ───────────────────────────────────────────── */}
-      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} maxWidth="sm" fullWidth slotProps={{ paper: { sx: { borderRadius: "6px" } } }}>
-        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1, borderBottom: "1px solid " + COLORS.borderLight }}>
-          <Typography fontWeight={700} fontSize={14} sx={{ textTransform: "uppercase", letterSpacing: "0.05em" }}>Allocation Details</Typography>
-          <IconButton size="small" onClick={() => setViewOpen(false)}><FaTimes size={13} /></IconButton>
+      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} maxWidth="sm" fullWidth slotProps={{ paper: { sx: premiumDialogPaperSx } }}>
+        <DialogTitle sx={premiumDialogTitleSx}>
+          <span>Allocation Details</span>
+          <IconButton size="small" onClick={() => setViewOpen(false)} sx={{ color: COLORS.textFaint }}><FaTimes size={13} /></IconButton>
         </DialogTitle>
-        <DialogContent sx={{ pt: "16px !important", pb: 2 }}>
+        <DialogContent sx={{ pt: "18px !important", pb: 2 }}>
           {viewLoading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}><CircularProgress size={24} /></Box>
           ) : viewData ? (
-            <Box sx={{ display: "flex", flexDirection: "column" }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
               {[
                 ["Allocation ID", viewData.allocationId],
                 ["Asset", `${viewData.assetName} (${viewData.assetCode || "—"})`],
@@ -932,13 +996,20 @@ export default function AssetAllocationPage() {
                   justifyContent: "space-between",
                   alignItems: "center",
                   py: 1,
-                  borderBottom: "1px dashed " + COLORS.borderLight,
-                  "&:last-child": { borderBottom: "none" }
+                  px: 1.5,
+                  borderRadius: "6px",
+                  background: "#fbfcfd",
+                  border: "1px solid #f1f5f9",
+                  transition: "all 0.15s ease",
+                  "&:hover": {
+                    background: "#f8fafc",
+                    borderColor: "#e2e8f0"
+                  }
                 }}>
-                  <Typography sx={{ fontSize: 11, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                  <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.03em" }}>
                     {label}
                   </Typography>
-                  <Typography sx={{ fontSize: 12.5, fontWeight: 600, color: "text.primary", textAlign: "right" }}>
+                  <Typography sx={{ fontSize: 11.5, fontWeight: 600, color: "text.primary", textAlign: "right" }}>
                     {String(value || "—")}
                   </Typography>
                 </Box>
@@ -946,8 +1017,8 @@ export default function AssetAllocationPage() {
             </Box>
           ) : null}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, borderTop: "1px solid " + COLORS.borderLight }}>
-          <Button onClick={() => setViewOpen(false)} variant="outlined" size="small" sx={{ textTransform: "none", fontSize: 11.5, color: COLORS.textMuted, borderColor: COLORS.border, "&:hover": { borderColor: "#bbb", background: "#f9fafb" } }}>Close</Button>
+        <DialogActions sx={{ px: 3, pb: 2, borderTop: "1px solid " + COLORS.borderLight, pt: 1.5 }}>
+          <Button onClick={() => setViewOpen(false)} sx={outlinedBtnSx}>Close</Button>
         </DialogActions>
       </Dialog>
 

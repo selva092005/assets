@@ -1,4 +1,5 @@
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from "@mui/material";
+import { outlinedBtnSx, primaryBtnSx } from "../../theme/tokens";
 
 export default function ConfirmDialog({
   open,
@@ -24,12 +25,11 @@ export default function ConfirmDialog({
         {message}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
-        <Button onClick={handleCancel} variant="outlined"
-          sx={{ textTransform: "none", fontSize: 13, borderColor: "#e0e0e0", color: "#555", borderRadius: "8px" }}>
+        <Button onClick={handleCancel} variant="outlined" sx={outlinedBtnSx}>
           {cancelLabel}
         </Button>
         <Button onClick={onConfirm} variant="contained"
-          sx={{ textTransform: "none", fontSize: 13, fontWeight: 600, borderRadius: "8px", background: "#ef4444", boxShadow: "none", "&:hover": { background: "#dc2626" } }}>
+          sx={{ ...primaryBtnSx, background: "#ef4444", borderColor: "#dc2626", "&:hover": { background: "#dc2626" } }}>
           {confirmLabel}
         </Button>
       </DialogActions>

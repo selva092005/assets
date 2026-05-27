@@ -4,20 +4,20 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   Box, Button, Select, MenuItem, CircularProgress,
   Typography, Chip,
-  Tooltip, IconButton,
+  Tooltip, IconButton, InputAdornment,
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
 } from "@mui/material";
-import { FaFilter, FaFileExport, FaPlus, FaUpload } from "react-icons/fa";
-import toast from "react-hot-toast";
+import { FaFilter, FaFileExport, FaPlus, FaUpload, FaBoxes, FaCheckCircle, FaExclamationTriangle, FaWrench, FaTools } from "react-icons/fa";
+import toast from "../utils/toast.jsx";
 import {
   fetchAssets,
   setAssetPage, setAssetSearch, setAssetFilter, setAssetStatusFilter, resetAssetFilters,
 } from "../store/slices/assetSlice";
 import {
   getAssetTypes, deleteAsset, getAssetById,
-  exportAssets,
+  exportAssets, getDashboard, createAssetType,
 } from "../services/assets_service";
-import { moveAsset } from "../services/location_history_service";
-import { COLORS } from "../theme/tokens";
+import { COLORS, primaryBtnSx, outlinedBtnSx, selectSx, inputSx } from "../theme/tokens";
 
 import PageHeader from "../components/common/PageHeader";
 import SearchBar from "../components/common/SearchBar";
@@ -25,9 +25,9 @@ import TableCard from "../components/common/TableCard";
 import TablePagination from "../components/common/TablePagination";
 import AssetTable from "../components/assets/AssetTable";
 import AssetQR from "../components/assets/AssetQR";
-import MoveAssetModal from "../components/assets/MoveAssetModal";
 import LocationHistoryModal from "../components/assets/LocationHistoryModal";
 import ConfirmDialog from "../components/common/ConfirmDialog";
+import StatCard from "../components/common/StatCard";
 
 export default function AssetsPage() {
   const dispatch = useDispatch();
@@ -44,12 +44,36 @@ export default function AssetsPage() {
   const [qrAsset, setQrAsset] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
-  const [moveModal, setMoveModal] = useState(false);
-  const [moveAssetData, setMoveAssetData] = useState(null);
   const [historyModal, setHistoryModal] = useState(false);
   const [historyAsset, setHistoryAsset] = useState(null);
 
+  const [stats, setStats] = useState(null);
   const [exportLoading, setExportLoading] = useState(false);
+
+  const [typeDialogOpen, setTypeDialogOpen] = useState(false);
+  const [newTypeName, setNewTypeName] = useState("");
+  const [typeDialogLoading, setTypeDialogLoading] = useState(false);
+
+  const handleAddType = async () => {
+    if (!newTypeName.trim()) {
+      toast.error("Type name cannot be empty");
+      return;
+    }
+    setTypeDialogLoading(true);
+    try {
+      const res = await createAssetType(newTypeName.trim());
+      toast.success("Asset type created successfully");
+      const r = await getAssetTypes();
+      const updatedTypes = getAssetTypeList(r);
+      setTypes(updatedTypes);
+      setTypeDialogOpen(false);
+      setNewTypeName("");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to create asset type");
+    } finally {
+      setTypeDialogLoading(false);
+    }
+  };
 
   const navigate = useNavigate();
   const location = useLocation();
@@ -77,6 +101,11 @@ export default function AssetsPage() {
         setTypes([]);
         setTypesLoaded(true); // still mark loaded so fetch proceeds
       });
+
+    // Fetch dashboard stats for ribbon
+    getDashboard()
+      .then((res) => setStats(res))
+      .catch(() => { });
   }, []);
 
   // ── Re-fetch whenever page / filterType / filterStatus / showCount changes ───
@@ -89,6 +118,9 @@ export default function AssetsPage() {
   const reload = () => {
     const typeName = resolveTypeName(filterType, types);
     dispatch(fetchAssets({ keyword: search, page, size: showCount, type: typeName, status: filterStatus }));
+    getDashboard()
+      .then((res) => setStats(res))
+      .catch(() => { });
   };
 
   const handleSearch = () => {
@@ -103,9 +135,12 @@ export default function AssetsPage() {
   };
 
   const handleFilterChange = (value) => {
+    if (value === "ADD_NEW") {
+      setTypeDialogOpen(true);
+      return;
+    }
     dispatch(setAssetFilter(value));
     dispatch(setAssetPage(0));
-    // useEffect will fire from filterType + page change
   };
 
   const handleStatusChange = (value) => {
@@ -122,7 +157,6 @@ export default function AssetsPage() {
 
   const handleEdit = (item) => navigate(`/home/assets/edit/${item.assetId}`);
   const handleDelete = (id) => { setDeleteId(id); setConfirmOpen(true); };
-  const handleMove = (item) => { setMoveAssetData(item); setMoveModal(true); };
   const handleHistory = (item) => { setHistoryAsset(item); setHistoryModal(true); };
 
   const confirmDelete = async () => {
@@ -152,16 +186,7 @@ export default function AssetsPage() {
     }
   };
 
-  const confirmMove = async ({ fromLocation, newLocation, reason }) => {
-    try {
-      await moveAsset({ assetId: moveAssetData.assetId, fromLocation: fromLocation || null, newLocation, movedBy: userName || "Admin", reason });
-      toast.success("Asset moved successfully");
-      reload();
-      setMoveModal(false);
-    } catch (e) {
-      toast.error(e.response?.data?.message || "Failed to move asset");
-    }
-  };
+
 
   // ── EXPORT ──────────────────────────────────────────────────────────────────
   const handleExport = async () => {
@@ -194,51 +219,62 @@ export default function AssetsPage() {
             }
           }}>
             {/* Show count */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, fontSize: 12, color: COLORS.textMuted }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
               Showing
               <Select
                 value={showCount}
                 onChange={(e) => handleShowCountChange(e.target.value)}
                 size="small"
-                sx={{ fontSize: 12, borderRadius: "6px", height: 26, "& .MuiOutlinedInput-notchedOutline": { borderColor: COLORS.border } }}
+                sx={selectSx}
               >
                 {[5, 10, 20, 50].map((n) => (
-                  <MenuItem key={n} value={n} sx={{ fontSize: 12 }}>{n}</MenuItem>
+                  <MenuItem key={n} value={n} sx={{ fontSize: 11 }}>{n}</MenuItem>
                 ))}
               </Select>
             </Box>
 
             {/* Filter by type */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, border: `1px solid ${COLORS.border}`, borderRadius: "6px", px: 1.25, py: "3px", background: COLORS.surface }}>
-              <FaFilter size={11} />
-              <Select
-                value={filterType}
-                onChange={(e) => handleFilterChange(e.target.value)}
-                displayEmpty
-                size="small"
-                sx={{ fontSize: 12, border: "none", "& .MuiOutlinedInput-notchedOutline": { border: "none" }, height: 22, "& .MuiSelect-select": { p: 0, fontSize: 12, color: COLORS.textMuted } }}
-              >
-                <MenuItem value="" sx={{ fontSize: 12 }}>All Types</MenuItem>
-                {types.map((t) => (
-                  <MenuItem key={t.typeId} value={t.typeId} sx={{ fontSize: 12 }}>{t.typeName}</MenuItem>
-                ))}
-              </Select>
-            </Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, border: `1px solid ${COLORS.border}`, borderRadius: "6px", px: 1.25, py: "3px", background: COLORS.surface }}>
-              <FaFilter size={11} />
-              <Select
-                value={filterStatus}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                displayEmpty
-                size="small"
-                sx={{ fontSize: 12, border: "none", "& .MuiOutlinedInput-notchedOutline": { border: "none" }, height: 22, "& .MuiSelect-select": { p: 0, fontSize: 12, color: COLORS.textMuted } }}
-              >
-                <MenuItem value="" sx={{ fontSize: 12 }}>All Statuses</MenuItem>
-                {['AVAILABLE', 'ASSIGNED', 'DAMAGED', 'DISPOSED', 'UNDER_MAINTENANCE'].map((status) => (
-                  <MenuItem key={status} value={status} sx={{ fontSize: 12 }}>{status}</MenuItem>
-                ))}
-              </Select>
-            </Box>
+            <Select
+              value={filterType}
+              onChange={(e) => handleFilterChange(e.target.value)}
+              displayEmpty
+              size="small"
+              sx={selectSx}
+              startAdornment={
+                <InputAdornment position="start" sx={{ mr: 0.25, pl: 0.5 }}>
+                  <FaFilter size={9} color={COLORS.textMuted} />
+                </InputAdornment>
+              }
+            >
+              <MenuItem value="" sx={{ fontSize: 11 }}>All Types</MenuItem>
+              {types.map((t) => (
+                <MenuItem key={t.typeId} value={t.typeId} sx={{ fontSize: 11 }}>{t.typeName}</MenuItem>
+              ))}
+              {canWrite && (
+                <MenuItem value="ADD_NEW" sx={{ fontSize: 11, color: "#2563eb", fontWeight: 600, borderTop: "1px solid #e2e8f0", mt: 0.5 }}>
+                  + Add New Type...
+                </MenuItem>
+              )}
+            </Select>
+
+            {/* Filter by status */}
+            <Select
+              value={filterStatus}
+              onChange={(e) => handleStatusChange(e.target.value)}
+              displayEmpty
+              size="small"
+              sx={selectSx}
+              startAdornment={
+                <InputAdornment position="start" sx={{ mr: 0.25, pl: 0.5 }}>
+                  <FaFilter size={9} color={COLORS.textMuted} />
+                </InputAdornment>
+              }
+            >
+              <MenuItem value="" sx={{ fontSize: 11 }}>All Statuses</MenuItem>
+              {['AVAILABLE', 'ASSIGNED', 'DAMAGED', 'DISPOSED', 'UNDER_MAINTENANCE'].map((status) => (
+                <MenuItem key={status} value={status} sx={{ fontSize: 11 }}>{status}</MenuItem>
+              ))}
+            </Select>
 
             {/* Export — admin + manager */}
             {canExport && (
@@ -246,10 +282,10 @@ export default function AssetsPage() {
                 <span>
                   <Button
                     variant="outlined"
-                    startIcon={exportLoading ? <CircularProgress size={12} /> : <FaFileExport size={12} />}
+                    startIcon={exportLoading ? <CircularProgress size={11} /> : <FaFileExport size={11} />}
                     onClick={handleExport}
                     disabled={exportLoading}
-                    sx={{ textTransform: "none", fontSize: 12, borderColor: COLORS.border, color: COLORS.textMuted, borderRadius: "6px", py: "4px", px: 1.25 }}
+                    sx={outlinedBtnSx}
                   >
                     Export
                   </Button>
@@ -261,9 +297,9 @@ export default function AssetsPage() {
             {canBulk && (
               <Button
                 variant="outlined"
-                startIcon={<FaUpload size={12} />}
+                startIcon={<FaUpload size={11} />}
                 onClick={() => navigate("/home/assets/bulk-upload")}
-                sx={{ textTransform: "none", fontSize: 12, borderColor: "#4caf50", color: "#2e7d32", borderRadius: "6px", py: "4px", px: 1.25 }}
+                sx={{ ...outlinedBtnSx, borderColor: "#4caf50", color: "#2e7d32", "&:hover": { borderColor: "#388e3c", background: "rgba(76, 175, 80, 0.04)" } }}
               >
                 Bulk Upload
               </Button>
@@ -273,9 +309,9 @@ export default function AssetsPage() {
             {canWrite && (
               <Button
                 variant="contained"
-                startIcon={<FaPlus size={11} />}
+                startIcon={<FaPlus size={10} />}
                 onClick={() => navigate("/home/assets/new")}
-                sx={{ textTransform: "none", fontSize: 12, fontWeight: 600, borderRadius: "6px", py: "5px", px: 1.5, background: COLORS.primary, boxShadow: "none", "&:hover": { background: COLORS.primaryDark, boxShadow: "none" } }}
+                sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
               >
                 Add New Asset
               </Button>
@@ -283,6 +319,29 @@ export default function AssetsPage() {
           </Box>
         }
       />
+
+      {/* ── Stat Ribbon (5 Symmetrical Columns with Clean Top Color Accents) ── */}
+      <Box sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "repeat(2, 1fr)",
+          sm: "repeat(3, 1fr)",
+          md: "repeat(5, 1fr)"
+        },
+        gap: 2,
+        mb: 2,
+        animation: "fadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "@keyframes fadeUp": {
+          from: { opacity: 0, transform: "translateY(10px)" },
+          to: { opacity: 1, transform: "translateY(0)" }
+        }
+      }}>
+        <StatCard label="Total Assets" value={stats?.totalAssets ?? 0} icon={<FaBoxes />} iconColor="#3949ab" />
+        <StatCard label="Available" value={stats?.available ?? 0} icon={<FaCheckCircle />} iconColor="#10b981" />
+        <StatCard label="Assigned" value={stats?.assigned ?? 0} icon={<FaTools />} iconColor="#2563eb" />
+        <StatCard label="Maintenance" value={stats?.underMaintenance ?? 0} icon={<FaWrench />} iconColor="#d97706" />
+        <StatCard label="Damaged" value={stats?.damaged ?? 0} icon={<FaExclamationTriangle />} iconColor="#f43f5e" />
+      </Box>
 
       <SearchBar
         value={inputValue}
@@ -295,20 +354,13 @@ export default function AssetsPage() {
       <TableCard>
         {loading
           ? <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
-          : <AssetTable assets={assets} loading={false} userRole={userRole} onView={handleView} onEdit={handleEdit} onDelete={handleDelete} onQR={handleQR} onHistory={handleHistory} onMove={handleMove} />
+          : <AssetTable assets={assets} loading={false} userRole={userRole} page={page} pageSize={showCount} onView={handleView} onEdit={handleEdit} onDelete={handleDelete} onQR={handleQR} onHistory={handleHistory} />
         }
         <TablePagination page={page} totalPages={totalPages} onPageChange={(pg) => dispatch(setAssetPage(pg))} />
       </TableCard>
 
-      {/* ── QR / Move / History Modals ── */}
+      {/* ── QR / History Modals ── */}
       <AssetQR open={qrModal} asset={qrAsset} onClose={() => setQrModal(false)} />
-      <MoveAssetModal
-        open={moveModal}
-        asset={moveAssetData}
-        locations={[]}
-        onMove={confirmMove}
-        onClose={() => setMoveModal(false)}
-      />
       <LocationHistoryModal
         open={historyModal}
         asset={historyAsset}
@@ -323,6 +375,65 @@ export default function AssetsPage() {
         confirmLabel="Delete"
       />
 
+      {/* ── Dialog to add new type ── */}
+      <Dialog 
+        open={typeDialogOpen} 
+        onClose={() => { if (!typeDialogLoading) setTypeDialogOpen(false); }}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "12px",
+              padding: 1,
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "space-between", 
+          pb: 1, 
+          fontWeight: 700, 
+          fontSize: 15, 
+          color: COLORS.text,
+          borderBottom: `1px solid ${COLORS.borderLight || "#f1f5f9"}`
+        }}>
+          Add Asset Type
+        </DialogTitle>
+        <DialogContent sx={{ pt: "16px !important", pb: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
+          <Typography sx={{ fontSize: 11.5, color: COLORS.textFaint, mb: 0.5 }}>Type Name *</Typography>
+          <TextField
+            autoFocus
+            placeholder="e.g. Server, Projector, Tablet"
+            value={newTypeName}
+            onChange={(e) => setNewTypeName(e.target.value)}
+            size="small"
+            fullWidth
+            disabled={typeDialogLoading}
+            sx={inputSx}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 1.5, gap: 1 }}>
+          <Button 
+            variant="outlined" 
+            onClick={() => { setTypeDialogOpen(false); setNewTypeName(""); }} 
+            disabled={typeDialogLoading}
+            sx={outlinedBtnSx}
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="contained" 
+            onClick={handleAddType} 
+            disabled={typeDialogLoading}
+            sx={{ ...primaryBtnSx, px: 2.5 }}
+          >
+            {typeDialogLoading ? <CircularProgress size={16} sx={{ color: "#fff" }} /> : "Add Type"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
     </Box>
   );

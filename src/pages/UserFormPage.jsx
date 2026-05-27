@@ -10,8 +10,9 @@ import {
   FaCheckCircle, FaEdit, FaHome, FaChevronRight, FaUserPlus,
 } from "react-icons/fa";
 import { MdManageAccounts } from "react-icons/md";
-import toast from "react-hot-toast";
+import toast from "../utils/toast.jsx";
 import { inputSx, selectSx, primaryBtnSx, outlinedBtnSx, COLORS } from "../theme/tokens";
+import { required, isValidEmail, isStrongPassword, extractFieldErrors } from "../utils/validate";
 import { addUser, updateUser, getUserById } from "../services/users_service";
 import { fetchUsers } from "../store/slices/userSlice";
 
@@ -25,8 +26,10 @@ function Section({ icon, title, index }) {
       animation: `sIn .4s ease ${index * 60}ms both`,
       "@keyframes sIn": { from: { opacity: 0, transform: "translateX(-8px)" }, to: { opacity: 1, transform: "translateX(0)" } },
     }}>
-      <Box sx={{ width: 20, height: 20, borderRadius: "4px", background: COLORS.primaryLight,
-        display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.primary, flexShrink: 0 }}>
+      <Box sx={{
+        width: 20, height: 20, borderRadius: "4px", background: COLORS.primaryLight,
+        display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.primary, flexShrink: 0
+      }}>
         {icon}
       </Box>
       <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.text, textTransform: "uppercase", letterSpacing: "0.07em" }}>
@@ -49,16 +52,17 @@ const adorn = (icon) => (
 );
 
 export default function UserFormPage() {
-  const { id }     = useParams();
-  const navigate   = useNavigate();
-  const dispatch   = useDispatch();
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { page, search } = useSelector((s) => s.users);
-  const isEdit     = !!id;
+  const isEdit = !!id;
 
-  const [form,     setForm]     = useState(EMPTY);
-  const [saving,   setSaving]   = useState(false);
-  const [loading,  setLoading]  = useState(isEdit);
+  const [form, setForm] = useState(EMPTY);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(isEdit);
   const [showPass, setShowPass] = useState(false);
+  const [errors, setErrors] = useState({});
 
   const onChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
@@ -67,11 +71,11 @@ export default function UserFormPage() {
       getUserById(id).then((res) => {
         const d = res.data ?? res;
         setForm({
-          userId:       d.userId ?? d.id,
-          userName:     d.userName  || "",
-          userEmail:    d.userEmail || "",
+          userId: d.userId ?? d.id,
+          userName: d.userName || "",
+          userEmail: d.userEmail || "",
           userPassword: "",
-          userRole:     d.userRole  || "USER",
+          userRole: d.userRole || "USER",
         });
         setLoading(false);
       }).catch(() => { toast.error("Failed to load user"); navigate("/home/users"); });
@@ -79,27 +83,48 @@ export default function UserFormPage() {
   }, [id]);
 
   const handleSave = async () => {
-    if (!form.userName.trim())  { toast.error("Username is required");  return; }
-    if (!form.userEmail.trim()) { toast.error("Email is required");     return; }
-    if (!isEdit && !form.userPassword.trim()) { toast.error("Password is required"); return; }
-
+    const e = {};
+    if (!required(form.userName) || form.userName.trim().length < 2)
+      e.userName = "Username is required (min 2 characters)";
+    if (!required(form.userEmail))
+      e.userEmail = "Email is required";
+    else if (!isValidEmail(form.userEmail))
+      e.userEmail = "Enter a valid email address";
+    if (!isEdit) {
+      if (!required(form.userPassword))
+        e.userPassword = "Password is required";
+      else if (!isStrongPassword(form.userPassword))
+        e.userPassword = "Min 8 chars with uppercase, lowercase, number & special char (@$!%*?&)";
+    } else if (form.userPassword && !isStrongPassword(form.userPassword)) {
+      e.userPassword = "Min 8 chars with uppercase, lowercase, number & special char (@$!%*?&)";
+    }
+    if (Object.keys(e).length > 0) {
+      setErrors(e);
+      toast.error("Please fix the highlighted fields");
+      return;
+    }
+    setErrors({});
     setSaving(true);
     try {
       const payload = {
-        userName:     form.userName,
-        userEmail:    form.userEmail,
-        userRole:     form.userRole,
+        userName: form.userName,
+        userEmail: form.userEmail,
+        userRole: form.userRole,
         ...(form.userPassword ? { userPassword: form.userPassword } : {}),
       };
       if (isEdit) { await updateUser(form.userId, payload); toast.success("User updated successfully"); }
-      else        { await addUser(payload);                 toast.success("User created successfully"); }
+      else { await addUser(payload); toast.success("User created successfully"); }
       dispatch(fetchUsers({ keyword: search, page, size: 10 }));
       navigate("/home/users");
-    } catch (e) {
-      if (e.response?.status === 409) {
-        toast.error(e.response.data.message);
+    } catch (err) {
+      if (err.response?.status === 409) {
+        toast.error(err.response.data.message);
+      } else if (err.response?.status === 400) {
+        const fe = extractFieldErrors(err);
+        if (Object.keys(fe).length > 0) { setErrors(fe); toast.error("Please fix the highlighted fields"); }
+        else toast.error(err.response?.data?.message || "Failed to save user");
       } else {
-        toast.error(e.response?.data?.message || "Failed to save user");
+        toast.error(err.response?.data?.message || "Failed to save user");
       }
     } finally { setSaving(false); }
   };
@@ -134,7 +159,7 @@ export default function UserFormPage() {
         </Box>
         <Button variant="outlined" startIcon={<FaArrowLeft size={10} />}
           onClick={() => navigate("/home/users")}
-          sx={{ ...outlinedBtnSx, fontSize: 11, py: "3px" }}>
+          sx={outlinedBtnSx}>
           Back to Users
         </Button>
       </Box>
@@ -169,8 +194,13 @@ export default function UserFormPage() {
 
         {/* ── Card ── */}
         <Box sx={{
-          background: "#fff", borderRadius: "4px", border: `1px solid ${COLORS.borderLight}`,
-          boxShadow: "0 2px 10px rgba(0,0,0,0.04)", p: 1.25,
+          background: "rgba(255, 255, 255, 0.98)",
+          borderRadius: "14px",
+          border: `1px solid rgba(226, 232, 240, 0.8)`,
+          boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04)",
+          p: 2,
+          position: "relative",
+          overflow: "hidden",
           animation: "cardIn .45s cubic-bezier(.22,1,.36,1) .08s both",
           "@keyframes cardIn": { from: { opacity: 0, transform: "translateY(20px)" }, to: { opacity: 1, transform: "translateY(0)" } },
         }}>
@@ -179,15 +209,17 @@ export default function UserFormPage() {
           <Section icon={<MdManageAccounts size={15} />} title="Account Information" index={0} />
           <Grid container spacing={1}>
             <Grid size={6} sx={anim(0)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Username *</Typography>
+              <Typography sx={{ fontSize: 11, color: errors.userName ? "#c62828" : COLORS.textFaint, mb: 0.25 }}>Username *</Typography>
               <TextField name="userName" placeholder="e.g. john_doe" value={form.userName} onChange={onChange}
                 size="small" fullWidth sx={inputSx}
+                error={!!errors.userName} helperText={errors.userName || ""}
                 slotProps={{ input: { startAdornment: adorn(<FaUser size={12} />) } }} />
             </Grid>
             <Grid size={6} sx={anim(1)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Email Address *</Typography>
+              <Typography sx={{ fontSize: 11, color: errors.userEmail ? "#c62828" : COLORS.textFaint, mb: 0.25 }}>Email Address *</Typography>
               <TextField name="userEmail" placeholder="user@example.com" type="email" value={form.userEmail} onChange={onChange}
                 size="small" fullWidth sx={inputSx}
+                error={!!errors.userEmail} helperText={errors.userEmail || ""}
                 slotProps={{ input: { startAdornment: adorn(<FaEnvelope size={12} />) } }} />
             </Grid>
           </Grid>
@@ -196,7 +228,7 @@ export default function UserFormPage() {
           <Section icon={<FaLock size={12} />} title="Security" index={1} />
           <Grid container spacing={1}>
             <Grid size={12} sx={anim(2)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>
+              <Typography sx={{ fontSize: 11, color: errors.userPassword ? "#c62828" : COLORS.textFaint, mb: 0.25 }}>
                 Password {isEdit && <Box component="span" sx={{ color: "#bbb" }}>(leave blank to keep current)</Box>}
               </Typography>
               <TextField
@@ -205,18 +237,23 @@ export default function UserFormPage() {
                 type={showPass ? "text" : "password"}
                 value={form.userPassword} onChange={onChange}
                 size="small" fullWidth sx={inputSx}
-                slotProps={{ input: {
-                  startAdornment: adorn(<FaLock size={12} />),
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <Box component="span" onClick={() => setShowPass((p) => !p)}
-                        sx={{ fontSize: 11, color: COLORS.primary, cursor: "pointer", fontWeight: 600,
-                          userSelect: "none", "&:hover": { textDecoration: "underline" } }}>
-                        {showPass ? "Hide" : "Show"}
-                      </Box>
-                    </InputAdornment>
-                  ),
-                }}} />
+                error={!!errors.userPassword} helperText={errors.userPassword || ""}
+                slotProps={{
+                  input: {
+                    startAdornment: adorn(<FaLock size={12} />),
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <Box component="span" onClick={() => setShowPass((p) => !p)}
+                          sx={{
+                            fontSize: 11, color: COLORS.primary, cursor: "pointer", fontWeight: 600,
+                            userSelect: "none", "&:hover": { textDecoration: "underline" }
+                          }}>
+                          {showPass ? "Hide" : "Show"}
+                        </Box>
+                      </InputAdornment>
+                    ),
+                  }
+                }} />
             </Grid>
           </Grid>
 
@@ -227,9 +264,9 @@ export default function UserFormPage() {
               <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>User Role</Typography>
               <Select name="userRole" value={form.userRole} onChange={onChange} size="small" fullWidth sx={selectSx}>
                 {[
-                  { v: "ADMIN",   label: "Admin",   desc: "Full access" },
+                  { v: "ADMIN", label: "Admin", desc: "Full access" },
                   { v: "MANAGER", label: "Manager", desc: "Manage users & assets" },
-                  { v: "USER",    label: "User",    desc: "View only" },
+                  { v: "USER", label: "User", desc: "View only" },
                 ].map(({ v, label }) => (
                   <MenuItem key={v} value={v} sx={{ fontSize: 13 }}>{label}</MenuItem>
                 ))}

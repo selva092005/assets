@@ -157,3 +157,16 @@ View details — click a row to see full allocation details in a modal
 Export CSV — download allocation list
 Send email reminder — for overdue allocations
 Allocation count cards — show Total / Active / Returned / Overdue counts at top of page
+
+
+
+Card 2: Capital Recovered (Global Sum)
+Formula: SOLD + SCRAPPED + DONATED
+Calculation: ₹10,000 + ₹5,000 + ₹3,000 = ₹18,000
+Card 3: Recycled/Sold Value (Resale/Scrap Only)
+Formula: SOLD + SCRAPPED (Donations are ignored)
+Calculation: ₹10,000 + ₹5,000 = ₹15,000
+
+1.auto assigned by
+2.table no
+3.add types

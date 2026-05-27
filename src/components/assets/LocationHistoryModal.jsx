@@ -6,7 +6,7 @@ import { FaTimes, FaHistory, FaMapMarkerAlt, FaArrowRight } from "react-icons/fa
 import { useEffect, useState } from "react";
 import { getAssetHistory } from "../../services/location_history_service";
 import { COLORS, outlinedBtnSx } from "../../theme/tokens";
-import toast from "react-hot-toast";
+import toast from "../../utils/toast.jsx";
 
 function formatDateTime(dt) {
   if (!dt) return "—";

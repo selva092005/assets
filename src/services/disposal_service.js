@@ -7,8 +7,8 @@ export const disposeAsset = async (data) => {
 };
 
 // Get all disposal records
-export const getAllDisposals = async () => {
-  const res = await API.get("/api/disposals");
+export const getAllDisposals = async (params) => {
+  const res = await API.get("/api/disposals", { params });
   return res.data;
 };
 

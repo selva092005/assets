@@ -97,3 +97,9 @@ export const downloadTemplate = async () => {
   const res = await API.get("/api/assets/template", { responseType: "blob" });
   download(res.data, "asset_upload_template.xlsx");
 };
+
+// POST /api/types → create new asset type
+export const createAssetType = async (typeName) => {
+  const res = await API.post("/api/types", { typeName });
+  return res.data;
+};

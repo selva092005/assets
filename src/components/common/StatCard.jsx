@@ -1,44 +1,50 @@
+import { useState, useEffect } from "react";
 import { Paper, Box, Typography } from "@mui/material";
+import { statCardSx, getThemeConfig } from "../../theme/tokens";
 
-export default function StatCard({ icon, label, value, iconBg, iconColor }) {
+export default function StatCard({ icon, label, value, iconColor }) {
+  const [styleMode, setStyleMode] = useState(() => localStorage.getItem("ams_card_style") || "AURORA");
+
+  useEffect(() => {
+    const handleStyleChange = (e) => {
+      if (e.detail) {
+        setStyleMode(e.detail);
+      }
+    };
+    window.addEventListener("ams-card-style-changed", handleStyleChange);
+    return () => window.removeEventListener("ams-card-style-changed", handleStyleChange);
+  }, []);
+
+  const theme = getThemeConfig(iconColor, styleMode);
+
   return (
     <Paper
       elevation={0}
-      sx={{
-        borderRadius: "8px",
-        p: "8px 12px",
-        background: "#fff",
-        border: "1px solid #f1f5f9",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04)",
-        display: "flex",
-        alignItems: "center",
-        gap: 1,
-        cursor: "default",
-        transition: "transform 200ms ease, box-shadow 200ms ease",
-        "&:hover": {
-          transform: "translateY(-2px)",
-          boxShadow: "0 6px 18px rgba(0,0,0,0.07)",
-        },
-        animation: "fadeUp 300ms ease both",
-        "@keyframes fadeUp": {
-          from: { opacity: 0, transform: "translateY(10px)" },
-          to:   { opacity: 1, transform: "translateY(0)" },
-        },
-      }}
+      sx={statCardSx(iconColor, styleMode)}
     >
-      <Box sx={{
-        width: 32, height: 32, borderRadius: "6px",
-        background: iconBg,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        flexShrink: 0,
-      }}>
-        <Box sx={{ color: iconColor, display: "flex", fontSize: 13 }}>{icon}</Box>
+      <Box
+        className="stat-card-icon-box"
+        sx={{
+          width: 32,
+          height: 32,
+          borderRadius: "6px",
+          background: theme.iconBg,
+          border: `1px solid ${theme.border}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          boxShadow: `0 2px 8px ${theme.shadow}`,
+          transition: "all 300ms cubic-bezier(0.16, 1, 0.3, 1)",
+        }}
+      >
+        <Box sx={{ color: theme.iconColor, display: "flex", fontSize: 13 }}>{icon}</Box>
       </Box>
-      <Box>
-        <Typography sx={{ fontSize: 9.5, color: "#94a3b8", fontWeight: 500, mb: 0.25, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+      <Box sx={{ zIndex: 1 }}>
+        <Typography sx={{ fontSize: 8.5, color: theme.label, fontWeight: 800, mb: 0.15, textTransform: "uppercase", letterSpacing: "0.06em" }}>
           {label}
         </Typography>
-        <Typography sx={{ fontSize: 18, fontWeight: 800, color: "#0f172a", lineHeight: 1 }}>
+        <Typography sx={{ fontSize: 18, fontWeight: 950, color: theme.text, lineHeight: 1 }}>
           {value}
         </Typography>
       </Box>
