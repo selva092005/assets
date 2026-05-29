@@ -66,7 +66,6 @@ export default function UserDetailPage() {
   return (
     <Box sx={{
       p: 0,
-      fontFamily: "'Inter','Segoe UI',sans-serif",
     }}>
       {/* Navigation header */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
@@ -154,7 +153,26 @@ export default function UserDetailPage() {
             </TableBody>
           </Table>
 
-          {/* Section 2: Access & Permission */}
+          {/* Section 2: Professional Details */}
+          <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.primary, mb: 0.75, textTransform: "uppercase", letterSpacing: "0.05em" }}>Professional Details</Typography>
+          <Table size="small" sx={{ mb: 2, border: "1px solid " + COLORS.borderLight }}>
+            <TableBody>
+              <TableRow sx={{ background: "#fcfcfd" }}>
+                <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted, width: "20%" }}>Employee ID</TableCell>
+                <TableCell sx={denseCellSx}>{data.employeeId || "—"}</TableCell>
+                <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted, width: "20%" }}>Phone Number</TableCell>
+                <TableCell sx={denseCellSx}>{data.phoneNumber || "—"}</TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted, width: "20%" }}>Department</TableCell>
+                <TableCell sx={denseCellSx}>{data.department || "—"}</TableCell>
+                <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted, width: "20%" }}>Designation</TableCell>
+                <TableCell sx={denseCellSx}>{data.designation || "—"}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+
+          {/* Section 3: Access & Permission */}
           <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.primary, mb: 0.75, textTransform: "uppercase", letterSpacing: "0.05em" }}>Access Configuration</Typography>
           <Table size="small" sx={{ mb: 2, border: "1px solid " + COLORS.borderLight }}>
             <TableBody>

@@ -143,7 +143,6 @@ export default function AssetDetailPage() {
 
       <Box sx={{
         p: 0,
-        fontFamily: "'Inter','Segoe UI',sans-serif",
       }}>
         {/* Navigation header */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>

@@ -201,7 +201,7 @@ export default function Locations() {
   const uniqueCompanies = new Set(locations.map((l) => l?.companyId).filter((id) => id != null)).size;
 
   return (
-    <Box sx={{ p: 0, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <Box sx={{ p: 0 }}>
 
       <PageHeader
         title="Office Locations"

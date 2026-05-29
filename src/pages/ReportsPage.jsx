@@ -191,7 +191,7 @@ export default function ReportsPage() {
   ];
 
   return (
-    <Box sx={{ fontFamily: "'Inter','Segoe UI',sans-serif", p: 0, pb: 2 }}>
+    <Box sx={{ p: 0, pb: 2 }}>
       <PageHeader
         title="Reports & Analytics"
         subtitle="Aggregated system telemetry and premium exports hub"

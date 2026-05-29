@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography } from "@mui/material";
 import { QRCodeCanvas } from "qrcode.react";
 import { FaTimes, FaDownload, FaQrcode } from "react-icons/fa";
-import { STATUS_COLORS, CONDITION_COLORS, outlinedBtnSx, primaryBtnSx } from "../../theme/tokens";
+import { STATUS_COLORS, CONDITION_COLORS, outlinedBtnSx, primaryBtnSx, FONT_FAMILIES } from "../../theme/tokens";
 
 export default function AssetQR({ open, asset, onClose }) {
   const canvasRef = useRef();
@@ -51,7 +51,7 @@ export default function AssetQR({ open, asset, onClose }) {
           <Box sx={{ width: 28, height: 28, borderRadius: "6px", background: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <FaQrcode size={14} color="#ffffff" />
           </Box>
-          <Typography sx={{ fontWeight: 800, fontSize: 13.5, color: "#0f172a", fontFamily: "'Outfit', sans-serif" }}>
+          <Typography sx={{ fontWeight: 800, fontSize: 13.5, color: "#0f172a", fontFamily: FONT_FAMILIES.header }}>
             Asset QR Code
           </Typography>
         </Box>

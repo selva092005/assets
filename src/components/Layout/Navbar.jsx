@@ -19,6 +19,7 @@ import {
 } from "@mui/icons-material";
 import { logoutUser } from "../../store/slices/authSlice";
 import amsLogo from "../../assets/ams_no_bg.png";
+import { FONT_FAMILIES } from "../../theme/tokens";
 
 // ── Nav items — role restrictions defined here ─────────────────────────────
 const navItems = [
@@ -411,7 +412,7 @@ const Navbar = () => {
                         position: "absolute",
                         fontSize: 12,
                         fontWeight: 900,
-                        fontFamily: '"Outfit", "Inter", sans-serif',
+                        fontFamily: FONT_FAMILIES.header,
                         textTransform: "uppercase",
                         opacity: 1,
                         transform: "scale(1) rotate(0)",
@@ -440,7 +441,7 @@ const Navbar = () => {
                     sx={{
                       fontSize: 11.5,
                       fontWeight: 700,
-                      fontFamily: '"Outfit", "Inter", sans-serif',
+                      fontFamily: FONT_FAMILIES.header,
                       letterSpacing: "0.2px",
                       whiteSpace: "nowrap",
                       maxWidth: 0,
@@ -512,7 +513,7 @@ const Navbar = () => {
           backdrop: { sx: { backdropFilter: "blur(4px)", bgcolor: "rgba(15, 23, 42, 0.6)" } }
         }}>
         <Box sx={{ p: 2, pb: 1.5 }}>
-          <Typography sx={{ color: "#0f172a", fontSize: 14, fontWeight: 700, mb: 0.5, fontFamily: "'Outfit', sans-serif" }}>
+          <Typography sx={{ color: "#0f172a", fontSize: 14, fontWeight: 700, mb: 0.5, fontFamily: FONT_FAMILIES.header }}>
             Sign Out
           </Typography>
           <Typography sx={{ color: "#475569", fontSize: 12, lineHeight: 1.4 }}>

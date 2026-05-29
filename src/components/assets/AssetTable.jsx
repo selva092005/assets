@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Table, TableHead, TableBody, TableRow, TableCell, Box, Typography, Avatar, Tooltip, Chip, Dialog, DialogTitle, DialogContent } from "@mui/material";
 import { FaEye, FaEdit, FaTrash, FaQrcode, FaHistory, FaTimes, FaLock, FaBoxes } from "react-icons/fa";
-import { COLORS, STATUS_COLORS, CONDITION_COLORS } from "../../theme/tokens";
+import { COLORS, STATUS_COLORS, CONDITION_COLORS, FONT_FAMILIES } from "../../theme/tokens";
 import { getImageUrl } from "../../services/assets_service";
 import StatusPill from "../common/StatusPill";
 import ActionBtn from "../common/ActionBtn";
@@ -218,7 +218,7 @@ export default function AssetTable({ assets, loading, userRole = "user", page = 
           borderBottom: "1px solid #e2e8f0", pb: 1.5, pt: 2, px: 3,
           background: "#f8fafc",
         }}>
-          <Typography sx={{ fontWeight: 800, fontSize: 13.5, color: "#0f172a", fontFamily: "'Outfit', sans-serif" }}>
+          <Typography sx={{ fontWeight: 800, fontSize: 13.5, color: "#0f172a", fontFamily: FONT_FAMILIES.header }}>
             Asset Image: {previewTitle}
           </Typography>
           <Box onClick={() => setPreviewOpen(false)} sx={{ width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#64748b", "&:hover": { color: "#0f172a", background: "#e2e8f0" }, transition: "all 0.2s" }}>

@@ -13,6 +13,7 @@ import PageHeader from "../components/common/PageHeader";
 import TableCard from "../components/common/TableCard";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import StatCard from "../components/common/StatCard";
+import TablePagination from "../components/common/TablePagination";
 import { COLORS, primaryBtnSx, outlinedBtnSx, inputSx, selectSx, chipSx, tabSx, premiumDialogPaperSx, premiumDialogTitleSx, premiumFormGroupSx } from "../theme/tokens";
 import { required, extractFieldErrors } from "../utils/validate";
 import {
@@ -230,7 +231,7 @@ export default function TransferPage() {
   });
 
   return (
-    <Box sx={{ p: 0, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <Box sx={{ p: 0 }}>
 
       <PageHeader
         title="Asset Transfers"
@@ -356,18 +357,7 @@ export default function TransferPage() {
             </Table>
           </Box>
         )}
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 0.5, p: 1.25 }}>
-            {Array.from({ length: totalPages }, (_, i) => (
-              <Button key={i} size="small"
-                onClick={() => { setPage(i); load(i); }}
-                sx={pageBtnSx(i === page)}>
-                {i + 1}
-              </Button>
-            ))}
-          </Box>
-        )}
+        <TablePagination page={page} totalPages={totalPages} onPageChange={(pg) => { setPage(pg); load(pg); }} />
       </TableCard>
 
       {/* ── Request Transfer Modal ──────────────────────────────────────── */}

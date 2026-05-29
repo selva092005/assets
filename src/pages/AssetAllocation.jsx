@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import {
   FaPlus, FaUndo, FaTimes, FaBoxOpen, FaSearch,
-  FaEye, FaExclamationTriangle, FaDownload,
+  FaEye, FaExclamationTriangle, FaDownload, FaFileExport,
   FaLayerGroup, FaCheckCircle, FaBoxes, FaClock, FaCalendarAlt,
 } from "react-icons/fa";
 import { MdRefresh } from "react-icons/md";
@@ -21,6 +21,7 @@ import {
   allocateAsset, getAllAllocations, getAllocationById, returnAsset, getAllocationOverview,
 } from "../services/allocation_service";
 import { getAssets } from "../services/assets_service";
+import { exportAllocations } from "../services/report_service";
 import { fetchAssets } from "../store/slices/assetSlice";
 import PageHeader from "../components/common/PageHeader";
 import TableCard from "../components/common/TableCard";
@@ -81,8 +82,8 @@ function DonutChart({ segments, total }) {
           style={{ transition: "stroke-dasharray 0.5s ease" }}
         />
       ))}
-      <text x={CX} y={CY - 4} textAnchor="middle" fontSize={9} fill="#888" fontFamily="Inter,sans-serif">Total</text>
-      <text x={CX} y={CY + 10} textAnchor="middle" fontSize={17} fontWeight={800} fill="#1a1a2e" fontFamily="Inter,sans-serif">{total}</text>
+      <text x={CX} y={CY - 4} textAnchor="middle" fontSize={9} fill="#888" fontFamily="inherit">Total</text>
+      <text x={CX} y={CY + 10} textAnchor="middle" fontSize={17} fontWeight={800} fill="#1a1a2e" fontFamily="inherit">{total}</text>
     </svg>
   );
 }
@@ -410,21 +411,14 @@ export default function AssetAllocationPage() {
     } finally { setViewLoading(false); }
   };
 
-  // ── Export CSV ────────────────────────────────────────────────────────────
-  const exportCSV = () => {
-    const headers = ["ID", "Asset", "Code", "Assigned To", "Assigned By", "Date", "Expected Return", "Return Date", "Status", "Remarks"];
-    const rows = allocations.map((r) => [
-      r.allocationId, r.assetName, r.assetCode || "",
-      r.assignedTo, r.assignedBy,
-      r.assignedDate || "", r.expectedReturnDate || "", r.returnDate || "",
-      r.status, r.remarks || "",
-    ]);
-    const csv = [headers, ...rows].map((r) => r.join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = "allocations.csv"; a.click();
-    URL.revokeObjectURL(url);
+  // ── Export Excel ──────────────────────────────────────────
+  const handleExportExcel = async () => {
+    try {
+      await exportAllocations();
+      toast.success("Export downloaded successfully");
+    } catch {
+      toast.error("Export failed. Please try again.");
+    }
   };
 
   // ── Open allocate modal ───────────────────────────────────────────────────
@@ -534,7 +528,7 @@ export default function AssetAllocationPage() {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <Box sx={{ p: 0, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <Box sx={{ p: 0 }}>
 
       {/* ── Page Header with reset hook ──────────────────────────────────── */}
       <PageHeader
@@ -544,11 +538,11 @@ export default function AssetAllocationPage() {
             <Box sx={{ display: "flex", gap: 1 }}>
               <Button
                 variant="outlined"
-                startIcon={<FaDownload size={11} />}
-                onClick={exportCSV}
+                startIcon={<FaFileExport size={11} />}
+                onClick={handleExportExcel}
                 sx={outlinedBtnSx}
               >
-                Export CSV
+                Export
               </Button>
               <Button
                 variant="contained"

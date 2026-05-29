@@ -103,15 +103,27 @@ export const selectSx = {
 };
 
 export const pageBtnSx = (active) => ({
-  minWidth: 0, px: "6px", py: "2px",
-  border: `1px solid ${active ? COLORS.primary : COLORS.border}`,
-  borderRadius: "4px",
-  background: active ? COLORS.primary : COLORS.surface,
-  color: active ? "#fff" : COLORS.textMuted,
-  fontSize: 10, fontWeight: active ? 700 : 400,
+  minWidth: 28,
+  width: 28,
+  height: 28,
+  p: 0,
+  borderRadius: "8px",
+  border: active ? "none" : `1px solid ${COLORS.border}`,
+  background: active ? `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.primaryDark} 100%)` : "#ffffff",
+  color: active ? "#ffffff" : COLORS.textMuted,
+  fontSize: 11,
+  fontWeight: active ? 700 : 500,
   textTransform: "none",
-  "&:hover": { background: active ? COLORS.primaryDark : "#f5f5f5" },
-  "&.Mui-disabled": { background: COLORS.surface, color: "#ccc", borderColor: COLORS.border },
+  transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+  boxShadow: active ? `0 3px 8px rgba(37,99,235,0.22)` : "none",
+  "&:hover": {
+    background: active ? `linear-gradient(135deg, ${COLORS.primary} 0%, ${COLORS.primaryDark} 100%)` : "#f8fafc",
+    borderColor: active ? "none" : COLORS.primary,
+    color: active ? "#ffffff" : COLORS.primary,
+    transform: "translateY(-1px)",
+    boxShadow: active ? `0 4px 12px rgba(37,99,235,0.3)` : "0 2px 6px rgba(0,0,0,0.04)",
+  },
+  "&.Mui-disabled": { background: COLORS.surface, color: "#ccc", borderColor: COLORS.border, transform: "none", boxShadow: "none" },
 });
 
 export const chipSx = (s = { bg: "#f5f5f5", color: "#555" }) => ({
@@ -536,6 +548,15 @@ export const premiumFormGroupSx = {
     borderColor: "#000000",
   }
 };
+
+// ─────────────────────────────────────────────
+//  Centralized Font Families (Google Fonts)
+// ─────────────────────────────────────────────
+export const FONT_FAMILIES = {
+  header: "'Plus Jakarta Sans', sans-serif",
+  content: "'Plus Jakarta Sans', sans-serif"
+};
+
 
 
 

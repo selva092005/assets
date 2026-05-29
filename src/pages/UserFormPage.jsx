@@ -8,6 +8,7 @@ import {
 import {
   FaArrowLeft, FaUser, FaEnvelope, FaLock, FaUserTag,
   FaCheckCircle, FaEdit, FaHome, FaChevronRight, FaUserPlus,
+  FaIdCard, FaBuilding, FaPhone, FaBriefcase,
 } from "react-icons/fa";
 import { MdManageAccounts } from "react-icons/md";
 import toast from "../utils/toast.jsx";
@@ -16,7 +17,7 @@ import { required, isValidEmail, isStrongPassword, extractFieldErrors } from "..
 import { addUser, updateUser, getUserById } from "../services/users_service";
 import { fetchUsers } from "../store/slices/userSlice";
 
-const EMPTY = { userId: null, userName: "", userEmail: "", userPassword: "", userRole: "USER" };
+const EMPTY = { userId: null, userName: "", userEmail: "", userPassword: "", userRole: "USER", employeeId: "", department: "", phoneNumber: "", designation: "" };
 
 const ROLE_COLORS = { ADMIN: "#7c3aed", MANAGER: "#1976d2", USER: "#2e7d32" };
 function Section({ icon, title, index }) {
@@ -76,6 +77,10 @@ export default function UserFormPage() {
           userEmail: d.userEmail || "",
           userPassword: "",
           userRole: d.userRole || "USER",
+          employeeId: d.employeeId || "",
+          department: d.department || "",
+          phoneNumber: d.phoneNumber || "",
+          designation: d.designation || "",
         });
         setLoading(false);
       }).catch(() => { toast.error("Failed to load user"); navigate("/home/users"); });
@@ -110,6 +115,10 @@ export default function UserFormPage() {
         userName: form.userName,
         userEmail: form.userEmail,
         userRole: form.userRole,
+        employeeId: form.employeeId || null,
+        department: form.department || null,
+        phoneNumber: form.phoneNumber || null,
+        designation: form.designation || null,
         ...(form.userPassword ? { userPassword: form.userPassword } : {}),
       };
       if (isEdit) { await updateUser(form.userId, payload); toast.success("User updated successfully"); }
@@ -136,7 +145,7 @@ export default function UserFormPage() {
   );
 
   return (
-    <Box sx={{ p: 0, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <Box sx={{ p: 0 }}>
 
       {/* ── Top bar ── */}
       <Box sx={{
@@ -257,10 +266,39 @@ export default function UserFormPage() {
             </Grid>
           </Grid>
 
+          {/* Professional Profile */}
+          <Section icon={<FaBriefcase size={12} />} title="Professional Profile" index={2} />
+          <Grid container spacing={1} sx={{ mb: 1.5 }}>
+            <Grid size={6} sx={anim(4)}>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Employee ID</Typography>
+              <TextField name="employeeId" placeholder="e.g. EMP-0123" value={form.employeeId} onChange={onChange}
+                size="small" fullWidth sx={inputSx}
+                slotProps={{ input: { startAdornment: adorn(<FaIdCard size={12} />) } }} />
+            </Grid>
+            <Grid size={6} sx={anim(5)}>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Phone Number</Typography>
+              <TextField name="phoneNumber" placeholder="e.g. +91 9876543210" value={form.phoneNumber} onChange={onChange}
+                size="small" fullWidth sx={inputSx}
+                slotProps={{ input: { startAdornment: adorn(<FaPhone size={12} />) } }} />
+            </Grid>
+            <Grid size={6} sx={anim(6)}>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Department</Typography>
+              <TextField name="department" placeholder="e.g. Engineering" value={form.department} onChange={onChange}
+                size="small" fullWidth sx={inputSx}
+                slotProps={{ input: { startAdornment: adorn(<FaBuilding size={12} />) } }} />
+            </Grid>
+            <Grid size={6} sx={anim(7)}>
+              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Designation</Typography>
+              <TextField name="designation" placeholder="e.g. Software Engineer" value={form.designation} onChange={onChange}
+                size="small" fullWidth sx={inputSx}
+                slotProps={{ input: { startAdornment: adorn(<FaBriefcase size={12} />) } }} />
+            </Grid>
+          </Grid>
+
           {/* Role */}
-          <Section icon={<FaUserTag size={12} />} title="Role & Permissions" index={2} />
+          <Section icon={<FaUserTag size={12} />} title="Role & Permissions" index={3} />
           <Grid container spacing={1}>
-            <Grid size={12} sx={anim(3)}>
+            <Grid size={12} sx={anim(8)}>
               <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>User Role</Typography>
               <Select name="userRole" value={form.userRole} onChange={onChange} size="small" fullWidth sx={selectSx}>
                 {[
@@ -271,8 +309,6 @@ export default function UserFormPage() {
                   <MenuItem key={v} value={v} sx={{ fontSize: 13 }}>{label}</MenuItem>
                 ))}
               </Select>
-
-              {/* Role badge preview */}
             </Grid>
           </Grid>
 

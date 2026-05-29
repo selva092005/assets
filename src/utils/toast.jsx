@@ -1,6 +1,7 @@
 import toast from "react-hot-toast";
 import React from "react";
 import { FaCheck, FaTimes, FaExclamation, FaInfo, FaSpinner, FaDownload, FaTrash } from "react-icons/fa";
+import { FONT_FAMILIES } from "../theme/tokens";
 
 // Inject keyframes for progress bar, spinner, elastic bounce, and icon pulse animation
 if (typeof document !== "undefined") {
@@ -187,7 +188,7 @@ const createToast = (t, type, title, msg, duration = 4000, actionText = null, on
         position: "relative",
         overflow: "hidden",
         boxShadow: c.boxShadow, // Clean floating shadows
-        fontFamily: "'Inter', 'Segoe UI', sans-serif",
+        fontFamily: FONT_FAMILIES.content,
         animation: t.visible
           ? "toast-bounce-in-anim 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both"
           : "toast-fade-out-anim 0.2s ease-in both",

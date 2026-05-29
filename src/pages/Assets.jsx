@@ -204,7 +204,7 @@ export default function AssetsPage() {
 
 
   return (
-    <Box sx={{ p: 0, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <Box sx={{ p: 0 }}>
 
       <PageHeader
         title="Assets"

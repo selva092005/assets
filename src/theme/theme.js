@@ -1,5 +1,5 @@
 import { createTheme } from "@mui/material/styles";
-import { COLORS } from "./tokens";
+import { COLORS, FONT_FAMILIES } from "./tokens";
 
 export const theme = createTheme({
   palette: {
@@ -9,20 +9,20 @@ export const theme = createTheme({
     text: { primary: COLORS.text, secondary: COLORS.textMuted, disabled: COLORS.textFaint },
   },
   typography: {
-    fontFamily: "'Inter', 'Segoe UI', 'Roboto', sans-serif",
+    fontFamily: `${FONT_FAMILIES.content}, 'Segoe UI', 'Roboto', sans-serif`,
     fontSize: 10.5, // Base size
-    h1: { fontFamily: "'Outfit', sans-serif", fontSize: "14px", fontWeight: 700, color: COLORS.text },
-    h2: { fontFamily: "'Outfit', sans-serif", fontSize: "13px", fontWeight: 700, color: COLORS.text },
-    h3: { fontFamily: "'Outfit', sans-serif", fontSize: "12px", fontWeight: 700, color: COLORS.text },
-    h4: { fontFamily: "'Outfit', sans-serif", fontSize: "11px", fontWeight: 600, color: COLORS.text },
-    h5: { fontFamily: "'Outfit', sans-serif", fontSize: "10.5px", fontWeight: 600, color: COLORS.text },
-    h6: { fontFamily: "'Outfit', sans-serif", fontSize: "10px", fontWeight: 600, color: COLORS.text },
-    subtitle1: { fontFamily: "'Inter', sans-serif", fontSize: "11px", fontWeight: 600, color: COLORS.text },
-    subtitle2: { fontFamily: "'Inter', sans-serif", fontSize: "10px", fontWeight: 600, color: COLORS.textMuted },
-    body1: { fontFamily: "'Inter', sans-serif", fontSize: "11px", color: COLORS.text },
-    body2: { fontFamily: "'Inter', sans-serif", fontSize: "10px", color: COLORS.textMuted },
-    button: { fontFamily: "'Inter', sans-serif", textTransform: "none", fontWeight: 600, fontSize: "11px" },
-    caption: { fontFamily: "'Inter', sans-serif", fontSize: "9px", color: COLORS.textFaint },
+    h1: { fontFamily: FONT_FAMILIES.header, fontSize: "14px", fontWeight: 700, color: COLORS.text },
+    h2: { fontFamily: FONT_FAMILIES.header, fontSize: "13px", fontWeight: 700, color: COLORS.text },
+    h3: { fontFamily: FONT_FAMILIES.header, fontSize: "12px", fontWeight: 700, color: COLORS.text },
+    h4: { fontFamily: FONT_FAMILIES.header, fontSize: "11px", fontWeight: 600, color: COLORS.text },
+    h5: { fontFamily: FONT_FAMILIES.header, fontSize: "10.5px", fontWeight: 600, color: COLORS.text },
+    h6: { fontFamily: FONT_FAMILIES.header, fontSize: "10px", fontWeight: 600, color: COLORS.text },
+    subtitle1: { fontFamily: FONT_FAMILIES.content, fontSize: "11px", fontWeight: 600, color: COLORS.text },
+    subtitle2: { fontFamily: FONT_FAMILIES.content, fontSize: "10px", fontWeight: 600, color: COLORS.textMuted },
+    body1: { fontFamily: FONT_FAMILIES.content, fontSize: "11px", color: COLORS.text },
+    body2: { fontFamily: FONT_FAMILIES.content, fontSize: "10px", color: COLORS.textMuted },
+    button: { fontFamily: FONT_FAMILIES.content, textTransform: "none", fontWeight: 600, fontSize: "11px" },
+    caption: { fontFamily: FONT_FAMILIES.content, fontSize: "9px", color: COLORS.textFaint },
   },
   shape: { borderRadius: 6 },
   components: {
@@ -30,7 +30,7 @@ export const theme = createTheme({
       styleOverrides: {
         root: {
           "&.MuiTypography-h1, &.MuiTypography-h2, &.MuiTypography-h3, &.MuiTypography-h4, &.MuiTypography-h5, &.MuiTypography-h6": {
-            fontFamily: "'Outfit', sans-serif",
+            fontFamily: FONT_FAMILIES.header,
           },
         },
       },
@@ -134,7 +134,7 @@ export const theme = createTheme({
     MuiCssBaseline: {
       styleOverrides: {
         body: {
-          fontFamily: "'Inter', 'Segoe UI', 'Roboto', sans-serif !important",
+          fontFamily: `${FONT_FAMILIES.content}, 'Segoe UI', 'Roboto', sans-serif !important`,
           fontSize: "11px !important",
           background: "#f4f6fb",
         },

@@ -267,7 +267,7 @@ export default function AssetFormPage() {
   );
 
   return (
-    <Box sx={{ p: 0, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <Box sx={{ p: 0 }}>
 
       {/* ── Top bar ── */}
       <Box sx={{

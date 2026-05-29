@@ -41,13 +41,14 @@ export default function AppRoutes() {
         <Route path="assets/view/:id" element={<RoleRoute allowedRoles={["admin", "manager", "user"]}><AssetDetailPage /></RoleRoute>} />
         <Route path="assets/new" element={<RoleRoute allowedRoles={["admin", "manager"]}><AssetFormPage /></RoleRoute>} />
         <Route path="assets/edit/:id" element={<RoleRoute allowedRoles={["admin", "manager"]}><AssetFormPage /></RoleRoute>} />
-        <Route path="assets/bulk-upload" element={<RoleRoute allowedRoles={["admin"]}><BulkUploadPage /></RoleRoute>} />
+        <Route path="assets/bulk-upload" element={<RoleRoute allowedRoles={["admin"]}><BulkUploadPage mode="assets" /></RoleRoute>} />
 
         {/* Users — admin+manager can view; only admin can create/edit */}
         <Route path="users" element={<RoleRoute allowedRoles={["admin", "manager"]}><Users /></RoleRoute>} />
         <Route path="users/view/:id" element={<RoleRoute allowedRoles={["admin", "manager"]}><UserDetailPage /></RoleRoute>} />
         <Route path="users/new" element={<RoleRoute allowedRoles={["admin"]}><UserFormPage /></RoleRoute>} />
         <Route path="users/edit/:id" element={<RoleRoute allowedRoles={["admin"]}><UserFormPage /></RoleRoute>} />
+        <Route path="users/bulk-upload" element={<RoleRoute allowedRoles={["admin"]}><BulkUploadPage mode="users" /></RoleRoute>} />
 
         {/* Locations — admin + manager */}
         <Route path="locations" element={<RoleRoute allowedRoles={["admin", "manager"]}><Locations /></RoleRoute>} />

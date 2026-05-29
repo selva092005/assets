@@ -3,7 +3,7 @@ import { FaEye, FaEdit, FaTrash } from "react-icons/fa";
 import { COLORS, ROLE_COLORS } from "../../theme/tokens";
 import ActionBtn from "../common/ActionBtn";
 
-const HEADERS = ["User Name ↕", "User ID ↕", "Email ↕", "Role ↕", "Created At ↕", "Actions ↕"];
+const HEADERS = ["User Name ↕", "Emp ID ↕", "Department ↕", "Designation ↕", "Email ↕", "Role ↕", "Joined Date ↕", "Actions ↕"];
 
 export default function UserTable({ users, loading, currentUserName, userRole = "manager", onView, onEdit, onDelete }) {
   const canManage = userRole === "admin"; // only admin can edit/delete users
@@ -14,7 +14,7 @@ export default function UserTable({ users, loading, currentUserName, userRole = 
   };
 
   return (
-    <Table size="small" sx={{ minWidth: 600 }}>
+    <Table size="small" sx={{ minWidth: 900 }}>
       <TableHead>
         <TableRow sx={{ background: "#f8f9fc" }}>
           {HEADERS.map((h) => (
@@ -27,7 +27,7 @@ export default function UserTable({ users, loading, currentUserName, userRole = 
 
       <TableBody>
         {loading ? (
-          <TableRow><TableCell colSpan={6} sx={{ textAlign: "center", py: 5, color: "#aaa" }}>Loading...</TableCell></TableRow>
+          <TableRow><TableCell colSpan={8} sx={{ textAlign: "center", py: 5, color: "#aaa" }}>Loading...</TableCell></TableRow>
         ) : users.length > 0 ? users.map((item, i) => (
           <TableRow key={i} sx={{ borderBottom: `1px solid ${COLORS.borderLight}`, "&:hover": { background: "#fafbff" } }}>
             <TableCell sx={{ color: "#333" }}>
@@ -38,7 +38,9 @@ export default function UserTable({ users, loading, currentUserName, userRole = 
                 <Typography sx={{ fontWeight: 500, fontSize: 11 }}>{item.userName}</Typography>
               </Box>
             </TableCell>
-            <TableCell sx={{ color: COLORS.textFaint, fontFamily: "monospace", fontSize: 11 }}>#{item.userId || item.id}</TableCell>
+            <TableCell sx={{ color: COLORS.textFaint, fontFamily: "monospace", fontSize: 11 }}>{item.employeeId || "—"}</TableCell>
+            <TableCell sx={{ color: "#333", fontSize: 11 }}>{item.department || "—"}</TableCell>
+            <TableCell sx={{ color: "#333", fontSize: 11 }}>{item.designation || "—"}</TableCell>
             <TableCell sx={{ color: "#333", fontSize: 11 }}>{item.userEmail || "—"}</TableCell>
             <TableCell><Typography sx={{ fontSize: 11, fontWeight: 600, color: ROLE_COLORS[item.userRole]?.color || COLORS.text }}>{item.userRole}</Typography></TableCell>
             <TableCell sx={{ fontSize: 11 }}>{formatDate(item.createdAt)}</TableCell>
@@ -65,7 +67,7 @@ export default function UserTable({ users, loading, currentUserName, userRole = 
             </TableCell>
           </TableRow>
         )) : (
-          <TableRow><TableCell colSpan={6} sx={{ textAlign: "center", py: 5, color: "#aaa" }}>No users found</TableCell></TableRow>
+          <TableRow><TableCell colSpan={8} sx={{ textAlign: "center", py: 5, color: "#aaa" }}>No users found</TableCell></TableRow>
         )}
       </TableBody>
     </Table>

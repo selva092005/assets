@@ -103,3 +103,9 @@ export const createAssetType = async (typeName) => {
   const res = await API.post("/api/types", { typeName });
   return res.data;
 };
+
+// GET /api/assets/upload-history → returns list of upload histories
+export const getBulkUploadHistory = async () => {
+  const res = await API.get("/api/assets/upload-history");
+  return res.data?.data ?? res.data;
+};

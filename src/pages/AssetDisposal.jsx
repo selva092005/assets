@@ -13,7 +13,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from "recharts";
-import { FaTrash, FaTimes, FaRecycle, FaSearch, FaEye, FaFileExcel, FaDownload, FaCoins, FaExclamationTriangle, FaTrashAlt, FaHandHoldingUsd, FaPlus, FaChartPie, FaChartBar } from "react-icons/fa";
+import { FaTrash, FaTimes, FaRecycle, FaSearch, FaEye, FaFileExcel, FaDownload, FaCoins, FaExclamationTriangle, FaTrashAlt, FaHandHoldingUsd, FaPlus, FaChartPie, FaChartBar, FaFileExport } from "react-icons/fa";
 import { MdRefresh } from "react-icons/md";
 import { getUsers } from "../services/users_service";
 import toast from "../utils/toast.jsx";
@@ -283,9 +283,9 @@ export default function AssetDisposalPage() {
     setExporting(true);
     try {
       await exportDisposals();
-      toast.success("Excel report downloaded successfully");
+      toast.success("Export downloaded successfully");
     } catch {
-      toast.error("Failed to export Excel report");
+      toast.error("Export failed. Please try again.");
     } finally {
       setExporting(false);
     }
@@ -319,7 +319,7 @@ export default function AssetDisposalPage() {
   }
 
   return (
-    <Box sx={{ p: 0, fontFamily: "'Inter','Segoe UI',sans-serif" }}>
+    <Box sx={{ p: 0 }}>
 
       <PageHeader
         title="Asset Disposal"
@@ -327,12 +327,12 @@ export default function AssetDisposalPage() {
           <Box sx={{ display: "flex", gap: 1 }}>
             <Button
               variant="outlined"
-              startIcon={exporting ? <CircularProgress size={11} color="inherit" /> : <FaFileExcel size={11} />}
+              startIcon={exporting ? <CircularProgress size={11} color="inherit" /> : <FaFileExport size={11} />}
               onClick={handleExportExcel}
               disabled={exporting}
               sx={outlinedBtnSx}
             >
-              {exporting ? "Exporting..." : "Export Excel"}
+              Export
             </Button>
             {canDispose && (
               <Button
