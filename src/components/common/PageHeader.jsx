@@ -1,7 +1,7 @@
 import { Box, Typography } from "@mui/material";
 import { COLORS } from "../../theme/tokens";
 
-export default function PageHeader({ title, actions }) {
+export default function PageHeader({ title, subtitle, actions }) {
   return (
     <Box
       sx={{
@@ -20,9 +20,16 @@ export default function PageHeader({ title, actions }) {
     >
       <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
         <Box sx={{ width: 3, height: 16, borderRadius: 999, bgcolor: COLORS.primary, flexShrink: 0 }} />
-        <Typography sx={{ fontWeight: 700, fontSize: 15, color: COLORS.text }}>
-          {title}
-        </Typography>
+        <Box>
+          <Typography sx={{ fontWeight: 700, fontSize: 15, color: COLORS.text, lineHeight: 1.2 }}>
+            {title}
+          </Typography>
+          {subtitle && (
+            <Typography sx={{ fontSize: 10.5, color: COLORS.textMuted, mt: 0.25 }}>
+              {subtitle}
+            </Typography>
+          )}
+        </Box>
       </Box>
       {actions && (
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>

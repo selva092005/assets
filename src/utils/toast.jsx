@@ -173,21 +173,21 @@ const createToast = (t, type, title, msg, duration = 4000, actionText = null, on
     <div
       style={{
         display: "flex",
-        alignItems: "center", // Centered vertically for single-row alignment
-        gap: "6px",
-        padding: "0 22px 0 8px", // Compact horizontal padding
-        width: "280px", // Compact fixed width
-        height: "34px", // Compact fixed height
-        boxSizing: "border-box", // Ensure border does not add to size
-        borderRadius: "30px", // Sleek pill shape
-        border: `1.2px solid ${c.borderColor}`, // Subtle variant-colored glass border
-        fontSize: "11px", // Font size
-        background: c.gradient, // Rich full-width light gradient card background
-        backdropFilter: "blur(12px)", // Glassmorphism
+        alignItems: "center",
+        gap: "10px",
+        padding: "8px 24px 8px 12px", // Generous padding, leaving space on the right for close button
+        minWidth: "260px",
+        maxWidth: "340px",
+        boxSizing: "border-box",
+        borderRadius: "10px", // Professional rounded card
+        border: `1.2px solid ${c.borderColor}`,
+        fontSize: "11px",
+        background: c.gradient,
+        backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
         position: "relative",
         overflow: "hidden",
-        boxShadow: c.boxShadow, // Clean floating shadows
+        boxShadow: c.boxShadow,
         fontFamily: FONT_FAMILIES.content,
         animation: t.visible
           ? "toast-bounce-in-anim 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both"
@@ -199,8 +199,8 @@ const createToast = (t, type, title, msg, duration = 4000, actionText = null, on
         <div
           className="toast-icon-pulse"
           style={{
-            width: "18px",
-            height: "18px",
+            width: "20px",
+            height: "20px",
             borderRadius: "50%",
             display: "flex",
             alignItems: "center",
@@ -210,7 +210,7 @@ const createToast = (t, type, title, msg, duration = 4000, actionText = null, on
             background: `linear-gradient(135deg, rgba(${c.rgb}, 0.2), rgba(${c.rgb}, 0.05))`,
             color: c.iconColor,
             fontWeight: 700,
-            fontSize: "8.5px",
+            fontSize: "9px",
           }}
         >
           {avatarText}
@@ -218,8 +218,8 @@ const createToast = (t, type, title, msg, duration = 4000, actionText = null, on
       ) : (
         <div
           style={{
-            width: "18px",
-            height: "18px",
+            width: "20px",
+            height: "20px",
             borderRadius: "50%",
             display: "flex",
             alignItems: "center",
@@ -234,9 +234,9 @@ const createToast = (t, type, title, msg, duration = 4000, actionText = null, on
         </div>
       )}
 
-      {/* Body text styled for single-line inline layout */}
-      <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: "4px" }}>
-        <span style={{ fontWeight: 600, fontSize: "11px", color: c.titleColor, whiteSpace: "nowrap" }}>
+      {/* Body text styled for multi-line layout to prevent text clipping */}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: "2px", paddingRight: "6px" }}>
+        <span style={{ fontWeight: 600, fontSize: "11px", color: c.titleColor, lineHeight: "1.2", wordBreak: "break-word" }}>
           {finalTitle}
         </span>
         {finalMsg && (
@@ -244,13 +244,12 @@ const createToast = (t, type, title, msg, duration = 4000, actionText = null, on
             style={{
               fontSize: "10px",
               color: c.msgColor,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
               opacity: 0.9,
+              lineHeight: "1.2",
+              wordBreak: "break-word"
             }}
           >
-            · {finalMsg}
+            {finalMsg}
           </span>
         )}
       </div>
@@ -289,7 +288,7 @@ const createToast = (t, type, title, msg, duration = 4000, actionText = null, on
           opacity: 0.4,
           fontSize: "11px",
           fontWeight: 700,
-          color: c.titleColor, // Matches high-contrast dark text
+          color: c.titleColor,
           display: "flex",
           alignItems: "center",
           position: "absolute",
@@ -312,6 +311,7 @@ const createToast = (t, type, title, msg, duration = 4000, actionText = null, on
             position: "absolute",
             bottom: 0,
             left: 0,
+            width: "100%",
             height: "1.5px",
             background: c.progressColor,
             borderRadius: "0 0 10px 10px",
@@ -324,36 +324,92 @@ const createToast = (t, type, title, msg, duration = 4000, actionText = null, on
 };
 
 export const showToast = {
-  success: (title, msg) => {
-    return toast.custom((t) => createToast(t, "success", title, msg, 4000), { duration: 4000 });
+  success: (title, msg, options = {}) => {
+    let finalMsg = msg;
+    let opt = { duration: 2000 };
+    if (typeof msg === "object" && msg !== null && !React.isValidElement(msg) && !(msg instanceof Error)) {
+      opt = { ...opt, ...msg };
+      finalMsg = "";
+    }
+    opt = { ...opt, ...options };
+    return toast.custom((t) => createToast(t, "success", title, finalMsg, opt.duration), opt);
   },
 
-  error: (title, msg) => {
-    return toast.custom((t) => createToast(t, "error", title, msg, 4500), { duration: 4500 });
+  error: (title, msg, options = {}) => {
+    let finalMsg = msg;
+    let opt = { duration: 2500 };
+    if (typeof msg === "object" && msg !== null && !React.isValidElement(msg) && !(msg instanceof Error)) {
+      opt = { ...opt, ...msg };
+      finalMsg = "";
+    }
+    opt = { ...opt, ...options };
+    return toast.custom((t) => createToast(t, "error", title, finalMsg, opt.duration), opt);
   },
 
-  warning: (title, msg) => {
-    return toast.custom((t) => createToast(t, "warning", title, msg, 4500), { duration: 4500 });
+  warning: (title, msg, options = {}) => {
+    let finalMsg = msg;
+    let opt = { duration: 2500 };
+    if (typeof msg === "object" && msg !== null && !React.isValidElement(msg) && !(msg instanceof Error)) {
+      opt = { ...opt, ...msg };
+      finalMsg = "";
+    }
+    opt = { ...opt, ...options };
+    return toast.custom((t) => createToast(t, "warning", title, finalMsg, opt.duration), opt);
   },
 
-  info: (title, msg) => {
-    return toast.custom((t) => createToast(t, "info", title, msg, 4500), { duration: 4500 });
+  info: (title, msg, options = {}) => {
+    let finalMsg = msg;
+    let opt = { duration: 2500 };
+    if (typeof msg === "object" && msg !== null && !React.isValidElement(msg) && !(msg instanceof Error)) {
+      opt = { ...opt, ...msg };
+      finalMsg = "";
+    }
+    opt = { ...opt, ...options };
+    return toast.custom((t) => createToast(t, "info", title, finalMsg, opt.duration), opt);
   },
 
-  loading: (title, msg) => {
-    return toast.custom((t) => createToast(t, "loading", title, msg), { id: "loading-toast-id" });
+  loading: (title, msg, options = {}) => {
+    let finalMsg = msg;
+    let opt = { id: "loading-toast-id" };
+    if (typeof msg === "object" && msg !== null && !React.isValidElement(msg) && !(msg instanceof Error)) {
+      opt = { ...opt, ...msg };
+      finalMsg = "";
+    }
+    opt = { ...opt, ...options };
+    return toast.custom((t) => createToast(t, "loading", title, finalMsg), opt);
   },
 
-  message: (avatar, title, msg, actionText, onActionClick) => {
-    return toast.custom((t) => createToast(t, "message", title, msg, 4500, actionText, onActionClick, avatar), { duration: 4500 });
+  message: (avatar, title, msg, actionText, onActionClick, options = {}) => {
+    let finalMsg = msg;
+    let opt = { duration: 2500 };
+    if (typeof msg === "object" && msg !== null && !React.isValidElement(msg) && !(msg instanceof Error)) {
+      opt = { ...opt, ...msg };
+      finalMsg = "";
+    }
+    opt = { ...opt, ...options };
+    return toast.custom((t) => createToast(t, "message", title, finalMsg, opt.duration, actionText, onActionClick, avatar), opt);
   },
 
-  update: (title, msg, actionText, onActionClick) => {
-    return toast.custom((t) => createToast(t, "update", title, msg, 4500, actionText, onActionClick), { duration: 4500 });
+  update: (title, msg, actionText, onActionClick, options = {}) => {
+    let finalMsg = msg;
+    let opt = { duration: 2500 };
+    if (typeof msg === "object" && msg !== null && !React.isValidElement(msg) && !(msg instanceof Error)) {
+      opt = { ...opt, ...msg };
+      finalMsg = "";
+    }
+    opt = { ...opt, ...options };
+    return toast.custom((t) => createToast(t, "update", title, finalMsg, opt.duration, actionText, onActionClick), opt);
   },
 
-  deleted: (title, msg, actionText, onActionClick) => {
-    return toast.custom((t) => createToast(t, "deleted", title, msg, 5000, actionText, onActionClick), { duration: 5000 });
+  deleted: (title, msg, actionText, onActionClick, options = {}) => {
+    let finalMsg = msg;
+    let opt = { duration: 2500 };
+    if (typeof msg === "object" && msg !== null && !React.isValidElement(msg) && !(msg instanceof Error)) {
+      opt = { ...opt, ...msg };
+      finalMsg = "";
+    }
+    opt = { ...opt, ...options };
+    return toast.custom((t) => createToast(t, "deleted", title, finalMsg, opt.duration, actionText, onActionClick), opt);
   },
 
   dismiss: (id) => {

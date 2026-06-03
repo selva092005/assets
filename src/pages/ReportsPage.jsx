@@ -33,16 +33,17 @@ const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     return (
       <Box sx={{
-        background: "rgba(15, 23, 42, 0.95)",
-        border: "none",
-        borderRadius: "6px",
+        bgcolor: "#ffffff",
         p: "6px 10px",
-        boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+        borderRadius: "6px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
+        border: "1px solid #e2e8f0",
+        pointerEvents: "none"
       }}>
-        <Typography sx={{ fontSize: "9.5px", fontWeight: 700, color: "#ffffff", mb: 0.25 }}>
+        <Typography sx={{ fontSize: "9.5px", fontWeight: 700, color: "#1e293b", mb: 0.25 }}>
           {payload[0].name}
         </Typography>
-        <Typography sx={{ fontSize: "10px", fontWeight: 800, color: "#38bdf8" }}>
+        <Typography sx={{ fontSize: "10px", fontWeight: 800, color: "#4f46e5" }}>
           Count: {payload[0].value}
         </Typography>
       </Box>
@@ -58,19 +59,19 @@ const CustomPieLegend = ({ data, colors }) => {
       display: "flex",
       flexWrap: "wrap",
       justifyContent: "center",
-      gap: 1,
+      gap: 1.5,
       mt: 1.5,
       px: 0.5
     }}>
       {data.map((item, index) => (
         <Box key={item.name} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
           <Box sx={{
-            width: 6,
-            height: 6,
+            width: 7,
+            height: 7,
             borderRadius: "50%",
             background: colors[index % colors.length]
           }} />
-          <Typography sx={{ fontSize: "9px", fontWeight: 600, color: "#64748b" }}>
+          <Typography sx={{ fontSize: "10px", fontWeight: 600, color: "#64748b" }}>
             {item.name} ({item.value})
           </Typography>
         </Box>
@@ -329,7 +330,7 @@ export default function ReportsPage() {
           icon={<FaLaptop />}
         >
           <Box sx={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center" }}>
-            <Box sx={{ position: "relative", width: "100%", height: 115 }}>
+            <Box sx={{ position: "relative", width: "100%", height: 150 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -351,8 +352,8 @@ export default function ReportsPage() {
               </ResponsiveContainer>
               {/* Center Text Summary */}
               <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center", pointerEvents: "none" }}>
-                <Typography sx={{ fontSize: "16px", fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{d.totalAssets ?? 0}</Typography>
-                <Typography sx={{ fontSize: "7px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", mt: 0.25 }}>Assets</Typography>
+                <Typography sx={{ fontSize: "20px", fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{d.totalAssets ?? 0}</Typography>
+                <Typography sx={{ fontSize: "9.5px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", mt: 0.25 }}>Assets</Typography>
               </Box>
             </Box>
             {byType.length > 0 ? (
@@ -372,7 +373,7 @@ export default function ReportsPage() {
           icon={<FaBuilding />}
         >
           <Box sx={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center" }}>
-            <Box sx={{ position: "relative", width: "100%", height: 115 }}>
+            <Box sx={{ position: "relative", width: "100%", height: 150 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -394,7 +395,7 @@ export default function ReportsPage() {
               </ResponsiveContainer>
               {/* Center Corporate Icon */}
               <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", color: "#94a3b8" }}>
-                <FaBuilding size={14} />
+                <FaBuilding size={20} />
               </Box>
             </Box>
             {byCompany.length > 0 ? (
@@ -414,7 +415,7 @@ export default function ReportsPage() {
           icon={<FaMapMarkerAlt />}
         >
           <Box sx={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center" }}>
-            <Box sx={{ position: "relative", width: "100%", height: 115 }}>
+            <Box sx={{ position: "relative", width: "100%", height: 150 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -436,7 +437,7 @@ export default function ReportsPage() {
               </ResponsiveContainer>
               {/* Center Location Icon */}
               <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", color: "#f59e0b" }}>
-                <FaMapMarkerAlt size={14} />
+                <FaMapMarkerAlt size={20} />
               </Box>
             </Box>
             {byLocation.length > 0 ? (
@@ -479,22 +480,22 @@ export default function ReportsPage() {
                     alignItems: "center",
                     justifyContent: "space-between",
                     bgcolor: item.bg,
-                    p: "2.5px 6px",
+                    p: "4px 8px",
                     borderRadius: "6px",
                     border: "1px solid #f8fafc"
                   }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                      <Box sx={{ width: 5, height: 5, borderRadius: "50%", bgcolor: item.color }} />
-                      <Typography sx={{ fontSize: "8.5px", fontWeight: 700, color: item.color }}>{item.label}</Typography>
+                      <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: item.color }} />
+                      <Typography sx={{ fontSize: "10px", fontWeight: 700, color: item.color }}>{item.label}</Typography>
                     </Box>
-                    <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#0f172a" }}>{item.value}</Typography>
+                    <Typography sx={{ fontSize: "11.5px", fontWeight: 900, color: "#0f172a" }}>{item.value}</Typography>
                   </Box>
                 ))}
               </Box>
 
               {/* Right Mini Graph Column */}
-              <Box sx={{ flex: 0.8, display: "flex", justifyContent: "center", alignItems: "center", minWidth: 70 }}>
-                <Box sx={{ width: "100%", height: 70, position: "relative" }}>
+              <Box sx={{ flex: 0.8, display: "flex", justifyContent: "center", alignItems: "center", minWidth: 80 }}>
+                <Box sx={{ width: "100%", height: 95, position: "relative" }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -509,8 +510,8 @@ export default function ReportsPage() {
                         }
                         cx="50%"
                         cy="50%"
-                        innerRadius={16}
-                        outerRadius={26}
+                        innerRadius={22}
+                        outerRadius={34}
                         paddingAngle={
                           (Number(d.activeAllocations ?? 0) + Number(d.returnedAllocations ?? 0) + Number(d.overdueAllocations ?? 0)) > 0
                             ? 2
@@ -533,8 +534,8 @@ export default function ReportsPage() {
                     </PieChart>
                   </ResponsiveContainer>
                   <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center", pointerEvents: "none" }}>
-                    <Typography sx={{ fontSize: "9.5px", fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{d.totalAllocations ?? 0}</Typography>
-                    <Typography sx={{ fontSize: "5.5px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", mt: 0.1 }}>Total</Typography>
+                    <Typography sx={{ fontSize: "12px", fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{d.totalAllocations ?? 0}</Typography>
+                    <Typography sx={{ fontSize: "7.5px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", mt: 0.1 }}>Total</Typography>
                   </Box>
                 </Box>
               </Box>
@@ -559,22 +560,22 @@ export default function ReportsPage() {
                     alignItems: "center",
                     justifyContent: "space-between",
                     bgcolor: item.bg,
-                    p: "2.5px 6px",
+                    p: "4px 8px",
                     borderRadius: "6px",
                     border: "1px solid #f8fafc"
                   }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                      <Box sx={{ width: 5, height: 5, borderRadius: "50%", bgcolor: item.color }} />
-                      <Typography sx={{ fontSize: "8.5px", fontWeight: 700, color: item.color }}>{item.label}</Typography>
+                      <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: item.color }} />
+                      <Typography sx={{ fontSize: "10px", fontWeight: 700, color: item.color }}>{item.label}</Typography>
                     </Box>
-                    <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#0f172a" }}>{item.value}</Typography>
+                    <Typography sx={{ fontSize: "11.5px", fontWeight: 900, color: "#0f172a" }}>{item.value}</Typography>
                   </Box>
                 ))}
               </Box>
 
               {/* Right Mini Graph Column */}
-              <Box sx={{ flex: 0.8, display: "flex", justifyContent: "center", alignItems: "center", minWidth: 70 }}>
-                <Box sx={{ width: "100%", height: 70, position: "relative" }}>
+              <Box sx={{ flex: 0.8, display: "flex", justifyContent: "center", alignItems: "center", minWidth: 80 }}>
+                <Box sx={{ width: "100%", height: 95, position: "relative" }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
@@ -589,8 +590,8 @@ export default function ReportsPage() {
                         }
                         cx="50%"
                         cy="50%"
-                        innerRadius={16}
-                        outerRadius={26}
+                        innerRadius={22}
+                        outerRadius={34}
                         paddingAngle={
                           (Number(d.approvedTransfers ?? 0) + Number(d.pendingTransfers ?? 0) + Number(d.rejectedTransfers ?? 0)) > 0
                             ? 2
@@ -613,8 +614,8 @@ export default function ReportsPage() {
                     </PieChart>
                   </ResponsiveContainer>
                   <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center", pointerEvents: "none" }}>
-                    <Typography sx={{ fontSize: "9.5px", fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{d.totalTransfers ?? 0}</Typography>
-                    <Typography sx={{ fontSize: "5.5px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", mt: 0.1 }}>Total</Typography>
+                    <Typography sx={{ fontSize: "12px", fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{d.totalTransfers ?? 0}</Typography>
+                    <Typography sx={{ fontSize: "7.5px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", mt: 0.1 }}>Total</Typography>
                   </Box>
                 </Box>
               </Box>
@@ -629,9 +630,9 @@ export default function ReportsPage() {
             <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 0.5 }}>
               {/* Left Stats Column */}
               <Box sx={{ flex: 1.2, display: "flex", flexDirection: "column", gap: 0.35 }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", p: "2.5px 6px", bg: "#f8fafc", borderRadius: "6px", mb: 0.35, border: "1px solid #f1f5f9" }}>
-                  <Typography sx={{ fontSize: "8.5px", fontWeight: 800, color: "#64748b", textTransform: "uppercase" }}>Retired Items</Typography>
-                  <Typography sx={{ fontSize: "10.5px", fontWeight: 950, color: "#0f172a" }}>{d.totalDisposals ?? 0}</Typography>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", p: "4px 8px", bg: "#f8fafc", borderRadius: "6px", mb: 0.35, border: "1px solid #f1f5f9" }}>
+                  <Typography sx={{ fontSize: "10px", fontWeight: 800, color: "#64748b", textTransform: "uppercase" }}>Retired Items</Typography>
+                  <Typography sx={{ fontSize: "12px", fontWeight: 950, color: "#0f172a" }}>{d.totalDisposals ?? 0}</Typography>
                 </Box>
                 {byMethod.length > 0 ? (
                   byMethod.slice(0, 2).map((item, idx) => (
@@ -640,33 +641,33 @@ export default function ReportsPage() {
                       alignItems: "center",
                       justifyContent: "space-between",
                       bgcolor: "#f8fafc",
-                      p: "2.5px 6px",
+                      p: "4px 8px",
                       borderRadius: "6px",
                       border: "1px solid #f1f5f9"
                     }}>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, overflow: "hidden" }}>
-                        <Box sx={{ width: 5, height: 5, borderRadius: "50%", bgcolor: CHART_COLORS[(idx + 4) % CHART_COLORS.length] }} />
-                        <Typography sx={{ fontSize: "8.0px", fontWeight: 700, color: "#475569", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{item.name}</Typography>
+                        <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: CHART_COLORS[(idx + 4) % CHART_COLORS.length] }} />
+                        <Typography sx={{ fontSize: "9.5px", fontWeight: 700, color: "#475569", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{item.name}</Typography>
                       </Box>
-                      <Typography sx={{ fontSize: "9.5px", fontWeight: 900, color: "#0f172a" }}>{item.value}</Typography>
+                      <Typography sx={{ fontSize: "11px", fontWeight: 900, color: "#0f172a" }}>{item.value}</Typography>
                     </Box>
                   ))
                 ) : (
-                  <Typography fontSize={8.5} color={COLORS.textFaint} py={2} textAlign="center">No method breakdown</Typography>
+                  <Typography fontSize={10} color={COLORS.textFaint} py={2} textAlign="center">No method breakdown</Typography>
                 )}
               </Box>
 
               {/* Right Mini Graph Column */}
-              <Box sx={{ flex: 0.8, display: "flex", justifyContent: "center", alignItems: "center", minWidth: 70 }}>
-                <Box sx={{ width: "100%", height: 70, position: "relative" }}>
+              <Box sx={{ flex: 0.8, display: "flex", justifyContent: "center", alignItems: "center", minWidth: 80 }}>
+                <Box sx={{ width: "100%", height: 95, position: "relative" }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
                         data={byMethod.length > 0 ? byMethod : [{ name: "No Data", value: 1 }]}
                         cx="50%"
                         cy="50%"
-                        innerRadius={16}
-                        outerRadius={26}
+                        innerRadius={22}
+                        outerRadius={34}
                         paddingAngle={byMethod.length > 0 ? 2 : 0}
                         dataKey="value"
                       >
@@ -679,8 +680,8 @@ export default function ReportsPage() {
                     </PieChart>
                   </ResponsiveContainer>
                   <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center", pointerEvents: "none" }}>
-                    <Typography sx={{ fontSize: "9.5px", fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{d.totalDisposals ?? 0}</Typography>
-                    <Typography sx={{ fontSize: "5.5px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", mt: 0.1 }}>Total</Typography>
+                    <Typography sx={{ fontSize: "12px", fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{d.totalDisposals ?? 0}</Typography>
+                    <Typography sx={{ fontSize: "7.5px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", mt: 0.1 }}>Total</Typography>
                   </Box>
                 </Box>
               </Box>

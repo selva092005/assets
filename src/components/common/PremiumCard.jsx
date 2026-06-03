@@ -24,32 +24,35 @@ export default function PremiumCard({ title, icon, children, action, subtitle })
     >
       <Box sx={{ display: "flex", alignItems: "center", justifyBox: "space-between", mb: 1, mt: 0.1, justifyContent: "space-between" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Box sx={{
-            width: 22,
-            height: 22,
-            borderRadius: "6px",
-            background: isDark
-              ? "rgba(129, 140, 248, 0.15)"
-              : "linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(139, 92, 246, 0.12) 100%)",
-            border: isDark
-              ? "1px solid rgba(129, 140, 248, 0.45)"
-              : "1px solid rgba(37, 99, 235, 0.25)",
-            color: isDark ? "#818cf8" : "#2563eb",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "10px",
-            flexShrink: 0,
-            transition: "all 300ms ease",
-          }}>
+          <Box
+            className="premium-card-icon-box"
+            sx={{
+              width: 26,
+              height: 26,
+              borderRadius: "6px",
+              background: isDark
+                ? "rgba(129, 140, 248, 0.15)"
+                : "linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(139, 92, 246, 0.12) 100%)",
+              border: isDark
+                ? "1px solid rgba(129, 140, 248, 0.45)"
+                : "1px solid rgba(37, 99, 235, 0.25)",
+              color: isDark ? "#818cf8" : "#2563eb",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "12px",
+              flexShrink: 0,
+              transition: "all 300ms cubic-bezier(0.16, 1, 0.3, 1)",
+            }}
+          >
             {icon}
           </Box>
           <Box>
-            <Typography sx={{ fontWeight: 800, fontSize: "10px", color: isDark ? "#ffffff" : "#0f172a", textTransform: "uppercase", letterSpacing: "0.04em", lineHeight: 1.1 }}>
+            <Typography sx={{ fontWeight: 800, fontSize: "12px", color: isDark ? "#ffffff" : "#0f172a", textTransform: "uppercase", letterSpacing: "0.04em", lineHeight: 1.1 }}>
               {title}
             </Typography>
             {subtitle && (
-              <Typography sx={{ fontSize: "8px", fontWeight: 600, color: isDark ? "#94a3b8" : "#94a3b8", mt: 0.15 }}>
+              <Typography sx={{ fontSize: "9px", fontWeight: 600, color: isDark ? "#94a3b8" : "#94a3b8", mt: 0.15 }}>
                 {subtitle}
               </Typography>
             )}

@@ -208,6 +208,7 @@ export default function AssetsPage() {
 
       <PageHeader
         title="Assets"
+        subtitle="Track, audit, search and manage organizational inventory"
         actions={
           <Box sx={{
             display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center",
@@ -299,7 +300,7 @@ export default function AssetsPage() {
                 variant="outlined"
                 startIcon={<FaUpload size={11} />}
                 onClick={() => navigate("/home/assets/bulk-upload")}
-                sx={{ ...outlinedBtnSx, borderColor: "#4caf50", color: "#2e7d32", "&:hover": { borderColor: "#388e3c", background: "rgba(76, 175, 80, 0.04)" } }}
+                sx={outlinedBtnSx}
               >
                 Bulk Upload
               </Button>
@@ -309,7 +310,7 @@ export default function AssetsPage() {
             {canWrite && (
               <Button
                 variant="contained"
-                startIcon={<FaPlus size={10} />}
+                startIcon={<FaPlus size={11} />}
                 onClick={() => navigate("/home/assets/new")}
                 sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
               >

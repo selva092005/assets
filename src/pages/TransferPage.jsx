@@ -75,6 +75,7 @@ export default function TransferPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [showCount, setShowCount] = useState(10);
   const [statusFilter, setStatusFilter] = useState("");
   const [overview, setOverview] = useState({ total: 0, pending: 0, approved: 0, rejected: 0 });
 
@@ -85,7 +86,7 @@ export default function TransferPage() {
   const [locations, setLocations] = useState([]);
   const [assetSearch, setAssetSearch] = useState("");
   const [assetAnchor, setAssetAnchor] = useState(null);
-  const [reqForm, setReqForm] = useState({ assetId: "", toLocation: "", reason: "" });
+  const [reqForm, setReqForm] = useState({ assetId: "", toLocation: "", reason: "", expectedDate: "", priority: "MEDIUM" });
   const [fromLocation, setFromLocation] = useState("");
   const [errors, setErrors] = useState({});
 
@@ -98,10 +99,10 @@ export default function TransferPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   // ── Load transfers ─────────────────────────────────────────────────────────
-  const load = async (p = 0, st = statusFilter) => {
+  const load = async (p = page, st = statusFilter) => {
     setLoading(true);
     try {
-      const params = { page: p, size: 10, ...(st ? { status: st } : {}) };
+      const params = { page: p, size: showCount, ...(st ? { status: st } : {}) };
       if (tab === 0 && !st) params.status = "PENDING";
       const res = await getAllTransfers(params);
       const pg = extractPage(res);
@@ -121,7 +122,7 @@ export default function TransferPage() {
     } catch { /* silent */ }
   };
 
-  useEffect(() => { load(0); loadOverview(); }, [tab, statusFilter]);
+  useEffect(() => { load(page); loadOverview(); }, [page, showCount, tab, statusFilter]);
 
   // ── Open request modal ─────────────────────────────────────────────────────
   const openRequest = async () => {
@@ -134,7 +135,7 @@ export default function TransferPage() {
       const raw = res?.data ?? res;
       setLocations(Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : []);
     } catch { setLocations([]); }
-    setReqForm({ assetId: "", toLocation: "", reason: "" });
+    setReqForm({ assetId: "", toLocation: "", reason: "", expectedDate: "", priority: "MEDIUM" });
     setFromLocation("");
     setAssetSearch("");
     setErrors({});
@@ -152,6 +153,7 @@ export default function TransferPage() {
     const e = {};
     if (!reqForm.assetId) e.assetId = "Select an asset to transfer";
     if (!reqForm.toLocation) e.toLocation = "Select a destination location";
+    if (!reqForm.expectedDate) e.expectedDate = "Expected transfer date is required";
     if (!required(reqForm.reason)) e.reason = "Transfer reason is required";
     else if (reqForm.reason.trim().length < 5) e.reason = "Reason must be at least 5 characters";
 
@@ -211,7 +213,7 @@ export default function TransferPage() {
   const selectedAsset = assets.find((a) => a.assetId === reqForm.assetId);
   const availableLocations = locations.filter((l) => {
     // 1. Cannot transfer to the exact same location
-    if (l.locationName === fromLocation) return false;
+    if (l.locationName?.trim().toLowerCase() === fromLocation?.trim().toLowerCase()) return false;
 
     // 2. Ensure location belongs to the same company as the selected asset
     if (selectedAsset) {
@@ -237,16 +239,33 @@ export default function TransferPage() {
         title="Asset Transfers"
         subtitle="Manage location-to-location asset transfers"
         actions={
-          canRequest && (
-            <Button
-              variant="contained"
-              startIcon={<FaExchangeAlt size={11} />}
-              onClick={openRequest}
-              sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
-            >
-              Request Transfer
-            </Button>
-          )
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+            {/* Show count */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
+              Showing
+              <Select
+                value={showCount}
+                onChange={(e) => { setShowCount(Number(e.target.value)); setPage(0); }}
+                size="small"
+                sx={selectSx}
+              >
+                {[5, 10, 20, 50].map((n) => (
+                  <MenuItem key={n} value={n} sx={{ fontSize: 11 }}>{n}</MenuItem>
+                ))}
+              </Select>
+            </Box>
+
+            {canRequest && (
+              <Button
+                variant="contained"
+                startIcon={<FaExchangeAlt size={11} />}
+                onClick={openRequest}
+                sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
+              >
+                Request Transfer
+              </Button>
+            )}
+          </Box>
         }
       />
 
@@ -309,7 +328,7 @@ export default function TransferPage() {
             <Table size="small" sx={{ minWidth: 750, borderCollapse: "collapse" }}>
               <TableHead>
                 <TableRow>
-                  {["#", "Asset", "Code", "From → To", "Reason", "Requested By", "Date", "Status", ...(isAdmin && tab === 0 ? ["Actions"] : [])].map((h) => (
+                  {["#", "Asset", "Code", "From → To", "Priority", "Expected Date", "Reason", "Requested By", "Date", "Status", ...(isAdmin && tab === 0 ? ["Actions"] : [])].map((h) => (
                     <TableCell key={h} sx={{ fontWeight: 700, color: "#64748b", whiteSpace: "nowrap", background: "#f8fafc", borderBottom: "2px solid #e2e8f0", textTransform: "uppercase", fontSize: 11 }}>{h}</TableCell>
                   ))}
                 </TableRow>
@@ -331,6 +350,21 @@ export default function TransferPage() {
                         <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#2563eb" }}>{row.toLocation}</Typography>
                       </Box>
                     </TableCell>
+                    <TableCell>
+                      <Chip label={row.priority || "MEDIUM"} size="small"
+                        sx={{
+                          fontSize: 9.5,
+                          height: 18,
+                          fontWeight: 700,
+                          background: row.priority === "HIGH" ? "rgba(239, 68, 68, 0.08)" : row.priority === "LOW" ? "rgba(100, 116, 139, 0.08)" : "rgba(245, 158, 11, 0.08)",
+                          color: row.priority === "HIGH" ? "#ef4444" : row.priority === "LOW" ? "#64748b" : "#f59e0b",
+                          border: `1px solid ${row.priority === "HIGH" ? "rgba(239, 68, 68, 0.2)" : row.priority === "LOW" ? "rgba(100, 116, 139, 0.2)" : "rgba(245, 158, 11, 0.2)"}`,
+                          borderRadius: "5px",
+                          textTransform: "uppercase",
+                          "& .MuiChip-label": { px: "6px" }
+                        }} />
+                    </TableCell>
+                    <TableCell sx={{ fontSize: 11, whiteSpace: "nowrap" }}>{row.expectedDate ? fmt(row.expectedDate) : "—"}</TableCell>
                     <TableCell sx={{ fontSize: 11, color: COLORS.textMuted, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.reason}</TableCell>
                     <TableCell sx={{ fontSize: 11, color: COLORS.textMuted }}>{row.requestedBy}</TableCell>
                     <TableCell sx={{ fontSize: 11, whiteSpace: "nowrap" }}>{fmt(row.requestedAt)}</TableCell>
@@ -452,6 +486,53 @@ export default function TransferPage() {
                 </Select>
                 {errors.toLocation && <Typography color="error" sx={{ fontSize: 10.5, mt: 0.25 }}>{errors.toLocation}</Typography>}
               </FormControl>
+            </Box>
+          </Box>
+
+          {/* Priority & Expected Date */}
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+            <Box>
+              <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: errors.priority ? "#c62828" : COLORS.textMuted, mb: 0.5 }}>
+                Priority *
+              </Typography>
+              <FormControl fullWidth size="small" error={!!errors.priority}>
+                <Select
+                  value={reqForm.priority}
+                  onChange={(e) => setReqForm((p) => ({ ...p, priority: e.target.value }))}
+                  sx={{
+                    ...selectSx,
+                    height: 30,
+                    borderColor: errors.priority ? "#c62828" : "#cbd5e1",
+                    "& .MuiSelect-select": { height: "28px", lineHeight: "28px" }
+                  }}
+                >
+                  <MenuItem value="LOW" sx={{ fontSize: 11.5 }}>Low</MenuItem>
+                  <MenuItem value="MEDIUM" sx={{ fontSize: 11.5 }}>Medium</MenuItem>
+                  <MenuItem value="HIGH" sx={{ fontSize: 11.5 }}>High</MenuItem>
+                </Select>
+                {errors.priority && <Typography color="error" sx={{ fontSize: 10.5, mt: 0.25 }}>{errors.priority}</Typography>}
+              </FormControl>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: errors.expectedDate ? "#c62828" : COLORS.textMuted, mb: 0.5 }}>
+                Expected Date *
+              </Typography>
+              <TextField
+                type="date"
+                size="small"
+                fullWidth
+                value={reqForm.expectedDate}
+                onChange={(e) => setReqForm((p) => ({ ...p, expectedDate: e.target.value }))}
+                error={!!errors.expectedDate}
+                helperText={errors.expectedDate || ""}
+                slotProps={{
+                  inputLabel: { shrink: true }
+                }}
+                sx={{
+                  ...inputSx,
+                  "& .MuiOutlinedInput-root": { ...inputSx["& .MuiOutlinedInput-root"], height: 30, fontSize: 11.5 }
+                }}
+              />
             </Box>
           </Box>
 

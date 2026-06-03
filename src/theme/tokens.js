@@ -147,18 +147,19 @@ export const sharedBtnSizingSx = {
 
 export const primaryBtnSx = {
   ...sharedBtnSizingSx,
-  background: "#000000",
-  border: "1px solid #000000",
+  background: COLORS.primary,
+  border: `1px solid ${COLORS.primary}`,
   color: "#ffffff",
-  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+  boxShadow: "0 1px 2px rgba(37, 99, 235, 0.12)",
   transition: "all 150ms ease-in-out",
   "&:hover": {
-    background: "#1e1e1e",
-    borderColor: "#1e1e1e",
-    boxShadow: "0 2px 4px rgba(0, 0, 0, 0.08)",
+    background: COLORS.primaryDark,
+    borderColor: COLORS.primaryDark,
+    boxShadow: "0 2px 4px rgba(37, 99, 235, 0.2)",
   },
   "&:active": {
-    background: "#333333",
+    background: "#1d4ed8",
+    borderColor: "#1d4ed8",
   },
   "&.Mui-disabled": {
     background: "#f1f5f9",
@@ -176,9 +177,9 @@ export const outlinedBtnSx = {
   boxShadow: "0 1px 2px rgba(0, 0, 0, 0.02)",
   transition: "all 150ms ease-in-out",
   "&:hover": {
-    borderColor: "#000000",
-    color: "#000000",
-    background: "#ffffff",
+    borderColor: COLORS.primary,
+    color: COLORS.primary,
+    background: "rgba(37, 99, 235, 0.02)",
   },
   "&:active": {
     background: "#fafafa",
@@ -429,43 +430,57 @@ export const statCardSx = (iconColor, styleMode = "AURORA") => {
   const isDark = styleMode === "DARK_STEEL";
 
   return {
-    borderRadius: "10px",
-    p: "12px 16px",
-    background: theme.bg,
-    backdropFilter: (isGlass || isDark) ? "blur(14px)" : "none",
-    border: isSolid ? "1px solid transparent" : `1px solid ${theme.border}`,
-    boxShadow: `0 4px 14px -3px ${theme.shadow}, 0 2px 4px -2px ${theme.shadow}`,
+    borderRadius: isSolid ? "0px" : "12px",
+    p: "18px 22px",
+    background: isDark
+      ? "linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(30, 41, 59, 0.85) 100%)"
+      : isSolid
+        ? "#ffffff"
+        : "linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)",
+    backdropFilter: (isGlass || isDark || styleMode === "AURORA") ? "blur(16px)" : "none",
+    border: isSolid
+      ? "3px solid #0f172a"
+      : `1px solid ${isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(15, 23, 42, 0.08)"}`,
+    boxShadow: isSolid
+      ? `4px 4px 0px 0px #0f172a`
+      : isDark
+        ? `0 1px 3px 0 rgba(0, 0, 0, 0.2), 0 4px 12px -2px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04)`
+        : `0 1px 3px 0 rgba(15, 23, 42, 0.03), 0 4px 12px -2px rgba(15, 23, 42, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.85)`,
     display: "flex",
     alignItems: "center",
-    gap: 1.5,
-    cursor: "default",
+    gap: 2,
+    cursor: "pointer",
     position: "relative",
     overflow: "hidden",
     transition: "all 300ms cubic-bezier(0.16, 1, 0.3, 1)",
-    "&::after": {
-      content: '""',
-      position: "absolute",
-      top: "-50%",
-      right: "-30%",
-      width: "80px",
-      height: "80px",
-      borderRadius: "50%",
-      background: styleMode === "DARK_STEEL" ? "rgba(255, 255, 255, 0.05)" : "rgba(255, 255, 255, 0.15)",
-      filter: "blur(8px)",
-      pointerEvents: "none"
-    },
+
     "&:hover": {
-      transform: "translateY(-4px)",
-      boxShadow: `0 14px 28px -6px ${theme.shadow}, 0 6px 12px -4px ${theme.shadow}`,
-      borderColor: isSolid ? "transparent" : iconColor,
-      filter: "brightness(1.03)",
+      transform: isSolid
+        ? "translate(-4px, -4px)"
+        : "translateY(-4px)",
+      boxShadow: isSolid
+        ? `8px 8px 0px 0px #0f172a`
+        : isDark
+          ? `0 12px 24px -4px rgba(0, 0, 0, 0.6), 0 4px 12px -2px rgba(129, 140, 248, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.12)`
+          : `0 12px 24px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(37, 99, 235, 0.04), 0 0 0 1px ${iconColor}18`,
+      borderColor: isSolid ? "#0f172a" : iconColor,
+
       "& .stat-card-icon-box": {
-        transform: "scale(1.1) rotate(5deg)",
+        transform: "scale(1.06) translateY(-1px)",
+        boxShadow: `0 4px 12px ${iconColor}15`
+      },
+      "& .ambient-glint": {
+        animation: "glintSweep 1.2s cubic-bezier(0.16, 1, 0.3, 1) both"
       }
     },
-    animation: "fadeUp 350ms cubic-bezier(0.16, 1, 0.3, 1) both",
+    "@keyframes glintSweep": {
+      "0%": { left: "-150%" },
+      "10%": { left: "-150%" },
+      "100%": { left: "150%" }
+    },
+    animation: "fadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
     "@keyframes fadeUp": {
-      from: { opacity: 0, transform: "translateY(10px)" },
+      from: { opacity: 0, transform: "translateY(12px)" },
       to: { opacity: 1, transform: "translateY(0)" },
     }
   };
@@ -473,45 +488,56 @@ export const statCardSx = (iconColor, styleMode = "AURORA") => {
 
 export const premiumCardSx = (styleMode = "AURORA") => {
   const isDark = styleMode === "DARK_STEEL";
+  const isSolid = styleMode === "SOLID";
+  const isGlass = styleMode === "GLASS";
 
   return {
-    borderRadius: "10px",
-    p: 1.5,
-    background: isDark ? "rgba(15, 23, 42, 0.94)" : "rgba(255, 255, 255, 0.85)",
-    backdropFilter: "blur(14px)",
-    border: isDark ? "1px solid rgba(129, 140, 248, 0.25)" : "1px solid rgba(226, 232, 240, 0.7)",
+    borderRadius: isSolid ? "0px" : "12px",
+    p: 3,
+    background: isDark
+      ? "linear-gradient(135deg, rgba(15, 23, 42, 0.92) 0%, rgba(30, 41, 59, 0.85) 100%)"
+      : isSolid
+        ? "#ffffff"
+        : "linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.9) 100%)",
+    backdropFilter: (isGlass || isDark || styleMode === "AURORA") ? "blur(16px)" : "none",
+    border: isSolid
+      ? "3px solid #0f172a"
+      : isDark
+        ? "1px solid rgba(255, 255, 255, 0.06)"
+        : "1px solid rgba(15, 23, 42, 0.08)",
+    boxShadow: isSolid
+      ? "6px 6px 0px 0px #0f172a"
+      : isDark
+        ? "0 1px 3px 0 rgba(0, 0, 0, 0.2), 0 4px 12px -2px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04)"
+        : "0 1px 3px 0 rgba(15, 23, 42, 0.03), 0 4px 12px -2px rgba(15, 23, 42, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.85)",
     position: "relative",
     height: "100%",
     display: "flex",
     flexDirection: "column",
     transition: "all 300ms cubic-bezier(0.16, 1, 0.3, 1)",
-    "&::after": {
-      content: '""',
-      position: "absolute",
-      bottom: 0,
-      left: "8%",
-      right: "8%",
-      height: "2px",
-      background: isDark
-        ? "linear-gradient(90deg, transparent, #818cf8, #fb7185, transparent)"
-        : "linear-gradient(90deg, transparent, #2563eb, #8b5cf6, transparent)",
-      opacity: 0,
-      transition: "opacity 300ms ease"
-    },
+
     "&:hover": {
-      transform: "translateY(-2px)",
-      borderColor: isDark ? "rgba(129, 140, 248, 0.55)" : "rgba(37, 99, 235, 0.3)",
-      boxShadow: isDark
-        ? "0 16px 36px -12px rgba(129, 140, 248, 0.2)"
-        : "0 12px 25px -10px rgba(37, 99, 235, 0.1)",
-      background: isDark ? "#0f172a" : "#ffffff",
-      "&::after": {
-        opacity: 1
+      transform: isSolid
+        ? "translate(-5px, -5px)"
+        : "translateY(-4px)",
+      borderColor: isSolid ? "#0f172a" : isDark ? "rgba(255, 255, 255, 0.2)" : "rgba(37, 99, 235, 0.35)",
+      boxShadow: isSolid
+        ? "10px 10px 0px 0px #0f172a"
+        : isDark
+          ? "0 12px 24px -4px rgba(0, 0, 0, 0.6), 0 4px 12px -2px rgba(129, 140, 248, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.12)"
+          : "0 12px 24px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(37, 99, 235, 0.04), 0 0 0 1px rgba(37, 99, 235, 0.15)",
+
+      "& .premium-card-icon-box": {
+        transform: "scale(1.06) translateY(-1px)",
+        boxShadow: isDark ? "0 4px 12px rgba(129, 140, 248, 0.2)" : "0 4px 12px rgba(37, 99, 235, 0.12)"
+      },
+      "& .ambient-glint": {
+        animation: "glintSweep 1.2s cubic-bezier(0.16, 1, 0.3, 1) both"
       }
     },
-    animation: "cardSlideUp 450ms cubic-bezier(0.16, 1, 0.3, 1) both",
+    animation: "cardSlideUp 500ms cubic-bezier(0.16, 1, 0.3, 1) both",
     "@keyframes cardSlideUp": {
-      from: { opacity: 0, transform: "translateY(12px)" },
+      from: { opacity: 0, transform: "translateY(16px)" },
       to: { opacity: 1, transform: "translateY(0)" }
     }
   };
@@ -555,6 +581,14 @@ export const premiumFormGroupSx = {
 export const FONT_FAMILIES = {
   header: "'Plus Jakarta Sans', sans-serif",
   content: "'Plus Jakarta Sans', sans-serif"
+};
+
+export const denseCellSx = {
+  py: 0.4,
+  px: 0.75,
+  fontSize: "10px",
+  borderColor: COLORS.borderLight,
+  lineHeight: 1.25,
 };
 
 

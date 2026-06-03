@@ -6,7 +6,7 @@ import { getImageUrl } from "../../services/assets_service";
 import StatusPill from "../common/StatusPill";
 import ActionBtn from "../common/ActionBtn";
 
-const HEADERS = ["ID", "Asset Name", "Asset Code", "Value", "Type", "Location", "Company", "Status", "Condition", "Actions"];
+const HEADERS = ["#", "Asset Name", "Asset Code", "Value", "Type", "Location", "Company", "Status", "Condition", "Actions"];
 
 export default function AssetTable({ assets, loading, userRole = "user", page = 0, pageSize = 10, onView, onEdit, onDelete, onQR, onHistory }) {
   const canEdit = userRole === "admin" || userRole === "manager";
@@ -37,6 +37,7 @@ export default function AssetTable({ assets, loading, userRole = "user", page = 
                 whiteSpace: "nowrap",
                 letterSpacing: "0.05em",
                 textTransform: "uppercase",
+                fontSize: 11
               }}>
                 {h}
               </TableCell>

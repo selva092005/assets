@@ -1,10 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
   AppBar, Avatar, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
   IconButton, List, ListItemButton, ListItemText, Toolbar, Typography,
-  Popover,
+  Popover, Badge, Divider, Tooltip,
 } from "@mui/material";
 import {
   KeyboardArrowDown as KeyboardArrowDownIcon,
@@ -16,8 +16,18 @@ import {
   SwapHoriz as SwapHorizIcon,
   Delete as DeleteIcon,
   UploadFile as UploadFileIcon,
+  Notifications as NotificationsIcon,
+  NotificationsNone as NotificationsNoneIcon,
+  NotificationsActive as NotificationsActiveIcon,
+  Close as CloseIcon,
 } from "@mui/icons-material";
 import { logoutUser } from "../../store/slices/authSlice";
+import {
+  getNotifications,
+  getUnreadCount,
+  markAsRead,
+  markAllAsRead,
+} from "../../services/notification_service";
 import amsLogo from "../../assets/ams_no_bg.png";
 import { FONT_FAMILIES } from "../../theme/tokens";
 
@@ -130,6 +140,74 @@ const Navbar = () => {
   const [mobileAssetsOpen, setMobileAssetsOpen] = useState(false);
   const closeTimer = useRef(null);
 
+  // ── Notifications State ──────────────────────────────────────────────────
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifAnchorEl, setNotifAnchorEl] = useState(null);
+
+  const fetchNotifications = async () => {
+    try {
+      const data = await getNotifications();
+      if (data && (data.httpStatus === 200 || data.success)) {
+        setNotifications(data.data || []);
+      }
+      const countData = await getUnreadCount();
+      if (countData && (countData.httpStatus === 200 || countData.success)) {
+        setUnreadCount(countData.data || 0);
+      }
+    } catch (err) {
+      console.error("Failed to fetch notifications:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 900) {
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const handleNotifClick = (event) => {
+    setNotifAnchorEl(event.currentTarget);
+    fetchNotifications();
+  };
+
+  const handleNotifClose = () => {
+    setNotifAnchorEl(null);
+  };
+
+  const handleMarkAsRead = async (id) => {
+    try {
+      await markAsRead(id);
+      fetchNotifications();
+    } catch (err) {
+      console.error("Failed to mark notification as read:", err);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await markAllAsRead();
+      fetchNotifications();
+    } catch (err) {
+      console.error("Failed to mark all as read:", err);
+    }
+  };
+
+  const notifOpen = Boolean(notifAnchorEl);
+  const notifId = notifOpen ? "notif-popover" : undefined;
+
   const openDropdown = () => { clearTimeout(closeTimer.current); setDropOpen(true); };
   const closeDropdown = () => { closeTimer.current = setTimeout(() => setDropOpen(false), 100); };
 
@@ -191,7 +269,7 @@ const Navbar = () => {
           </Box>
 
           {/* Desktop nav pill */}
-          <Box sx={{ background: "linear-gradient(135deg,rgba(239,246,255,0.96),rgba(219,234,254,0.92),rgba(255,255,255,0.96))", border: "1px solid #dbeafe", borderRadius: 999, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.85)", display: { xs: "none", md: "flex" }, gap: 0.25, p: "3px" }}>
+          <Box sx={{ background: "linear-gradient(135deg, rgba(239, 246, 255, 0.9), rgba(219, 234, 254, 0.95))", border: "1px solid rgba(191, 219, 254, 0.8)", backdropFilter: "blur(12px)", borderRadius: 999, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.85)", display: { xs: "none", md: "flex" }, gap: 0.25, p: "3px" }}>
             {visibleNavItems.map((item) => {
               const active = isActivePath(item);
               const visibleDropdown = item.dropdown?.filter((d) => d.roles.includes(userRole));
@@ -214,14 +292,16 @@ const Navbar = () => {
                         }} />
                       }
                       sx={{
-                        bgcolor: dropActive ? "#ffffff" : "transparent",
+                        bgcolor: dropActive ? "rgba(255, 255, 255, 0.85)" : "transparent",
+                        border: "1px solid",
+                        borderColor: dropActive ? "rgba(37, 99, 235, 0.25)" : "transparent",
                         borderRadius: 999,
-                        boxShadow: dropActive ? "0 2px 8px rgba(37,99,235,0.15)" : "none",
+                        boxShadow: dropActive ? "0 2px 8px rgba(37,99,235,0.08)" : "none",
                         color: dropActive ? "#2563eb" : "#475569",
                         fontWeight: dropActive ? 700 : 500,
                         fontSize: 12, px: 1.25, py: 0.4, minHeight: 0, textTransform: "none",
                         transition: "all 150ms ease",
-                        "&:hover": { bgcolor: "#ffffff", color: "#2563eb" },
+                        "&:hover": { bgcolor: "rgba(255, 255, 255, 0.95)", color: "#2563eb", borderColor: "rgba(37, 99, 235, 0.35)" },
                       }}>
                       {item.label}
                     </Button>
@@ -330,7 +410,18 @@ const Navbar = () => {
               }
               return (
                 <Button key={item.path} component={Link} to={item.path}
-                  sx={{ bgcolor: active ? "#ffffff" : "transparent", borderRadius: 999, boxShadow: active ? "0 2px 8px rgba(37,99,235,0.15)" : "none", color: active ? "#111827" : "#475569", fontWeight: active ? 700 : 500, fontSize: 12, px: 1.25, py: 0.4, minHeight: 0, textTransform: "none", transition: "all 150ms ease", "&:hover": { bgcolor: "#ffffff", color: "#111827" } }}>
+                  sx={{
+                    bgcolor: active ? "rgba(255, 255, 255, 0.85)" : "transparent",
+                    border: "1px solid",
+                    borderColor: active ? "rgba(37, 99, 235, 0.25)" : "transparent",
+                    borderRadius: 999,
+                    boxShadow: active ? "0 2px 8px rgba(37,99,235,0.08)" : "none",
+                    color: active ? "#2563eb" : "#475569",
+                    fontWeight: active ? 700 : 500,
+                    fontSize: 12, px: 1.25, py: 0.4, minHeight: 0, textTransform: "none",
+                    transition: "all 150ms ease",
+                    "&:hover": { bgcolor: "rgba(255, 255, 255, 0.95)", color: "#2563eb", borderColor: "rgba(37, 99, 235, 0.35)" }
+                  }}>
                   {item.label}
                 </Button>
               );
@@ -341,13 +432,212 @@ const Navbar = () => {
           <Box sx={{ alignItems: "center", display: "flex", gap: 1 }}>
 
             {/* Mobile hamburger */}
-            <IconButton aria-label="Open navigation menu" onClick={() => setMenuOpen(true)} size="small"
+            <IconButton aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"} onClick={() => setMenuOpen((prev) => !prev)} size="small"
               sx={{ border: "1px solid #e5e7eb", display: { xs: "inline-flex", md: "none" }, p: 0.5, "&:hover": { bgcolor: "#eff6ff" } }}>
-              <MenuIcon sx={{ fontSize: 18 }} />
+              {menuOpen ? <CloseIcon sx={{ fontSize: 18 }} /> : <MenuIcon sx={{ fontSize: 18 }} />}
             </IconButton>
 
             {isLoggedIn ? (
               <>
+                {/* Notification Bell */}
+                <Tooltip title="Notifications">
+                  <IconButton
+                    aria-describedby={notifId}
+                    onClick={handleNotifClick}
+                    size="small"
+                    sx={{
+                      width: 32,
+                      height: 32,
+                      border: "1px solid",
+                      borderColor: notifOpen ? "rgba(37, 99, 235, 0.25)" : "rgba(226, 232, 240, 0.8)",
+                      bgcolor: notifOpen ? "rgba(37, 99, 235, 0.08)" : "rgba(248, 250, 252, 0.6)",
+                      color: notifOpen || unreadCount > 0 ? "#2563eb" : "#64748b",
+                      backdropFilter: "blur(8px)",
+                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                      position: "relative",
+                      boxShadow: notifOpen
+                        ? "0 0 12px rgba(37, 99, 235, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.2)"
+                        : "0 1px 2px rgba(0, 0, 0, 0.02)",
+                      "&:hover": {
+                        bgcolor: "rgba(37, 99, 235, 0.08)",
+                        borderColor: "rgba(37, 99, 235, 0.3)",
+                        color: "#2563eb",
+                        transform: "translateY(-1px)",
+                        boxShadow: "0 4px 12px rgba(37, 99, 235, 0.12)",
+                      },
+                      "&:active": {
+                        transform: "translateY(0px)",
+                      }
+                    }}
+                  >
+                    {unreadCount > 0 ? (
+                      <NotificationsActiveIcon
+                        sx={{
+                          fontSize: 18,
+                          animation: "ring 2.5s ease-in-out infinite",
+                          transformOrigin: "50% 0",
+                          "@keyframes ring": {
+                            "0%": { transform: "rotate(0)" },
+                            "4%": { transform: "rotate(15deg)" },
+                            "8%": { transform: "rotate(-12deg)" },
+                            "12%": { transform: "rotate(10deg)" },
+                            "16%": { transform: "rotate(-8deg)" },
+                            "20%": { transform: "rotate(6deg)" },
+                            "24%": { transform: "rotate(-4deg)" },
+                            "28%": { transform: "rotate(2deg)" },
+                            "32%": { transform: "rotate(-1deg)" },
+                            "36%": { transform: "rotate(0)" },
+                            "100%": { transform: "rotate(0)" }
+                          }
+                        }}
+                      />
+                    ) : (
+                      <NotificationsNoneIcon sx={{ fontSize: 18 }} />
+                    )}
+
+                    {unreadCount > 0 && (
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: -2,
+                          right: -2,
+                          minWidth: 15,
+                          height: 15,
+                          borderRadius: "50%",
+                          background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                          color: "#ffffff",
+                          fontSize: "8.5px",
+                          fontWeight: 800,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          px: "4px",
+                          boxShadow: "0 0 0 2px #ffffff, 0 2px 6px rgba(239, 68, 68, 0.4)",
+                          animation: "pulse 2s infinite",
+                          "@keyframes pulse": {
+                            "0%": { boxShadow: "0 0 0 0 rgba(239, 68, 68, 0.5), 0 0 0 2px #ffffff" },
+                            "70%": { boxShadow: "0 0 0 6px rgba(239, 68, 68, 0), 0 0 0 2px #ffffff" },
+                            "100%": { boxShadow: "0 0 0 0 rgba(239, 68, 68, 0), 0 0 0 2px #ffffff" }
+                          }
+                        }}
+                      >
+                        {unreadCount}
+                      </Box>
+                    )}
+                  </IconButton>
+                </Tooltip>
+
+                {/* Notifications Popover */}
+                <Popover
+                  id={notifId}
+                  open={notifOpen}
+                  anchorEl={notifAnchorEl}
+                  onClose={handleNotifClose}
+                  anchorOrigin={{
+                    vertical: "bottom",
+                    horizontal: "right",
+                  }}
+                  transformOrigin={{
+                    vertical: "top",
+                    horizontal: "right",
+                  }}
+                  slotProps={{
+                    paper: {
+                      sx: {
+                        mt: 1.5,
+                        width: 320,
+                        maxHeight: 400,
+                        borderRadius: "10px",
+                        boxShadow: "0 10px 25px -5px rgba(15,23,42,0.12), 0 8px 16px -6px rgba(15,23,42,0.04)",
+                        border: "1px solid #e2e8f0",
+                        display: "flex",
+                        flexDirection: "column",
+                        background: "rgba(255, 255, 255, 0.98)",
+                        backdropFilter: "blur(10px)",
+                      },
+                    },
+                  }}
+                >
+                  {/* Popover Header */}
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1.5 }}>
+                    <Typography sx={{ fontWeight: 700, fontSize: 13, color: "#0f172a", fontFamily: FONT_FAMILIES.header }}>
+                      Notifications
+                    </Typography>
+                    {unreadCount > 0 && (
+                      <Button
+                        onClick={handleMarkAllAsRead}
+                        size="small"
+                        sx={{
+                          fontSize: 10,
+                          textTransform: "none",
+                          fontWeight: 700,
+                          color: "#2563eb",
+                          p: 0,
+                          minWidth: 0,
+                          "&:hover": { bg: "transparent", textDecoration: "underline" },
+                        }}
+                      >
+                        Mark all as read
+                      </Button>
+                    )}
+                  </Box>
+                  <Divider />
+
+                  {/* Popover Content */}
+                  <Box sx={{ overflowY: "auto", flexGrow: 1 }}>
+                    {notifications.length === 0 ? (
+                      <Box sx={{ p: 3, textAlign: "center" }}>
+                        <Typography sx={{ color: "#64748b", fontSize: 11 }}>
+                          No notifications
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <List disablePadding>
+                        {notifications.map((notif) => (
+                          <Box key={notif.id}>
+                            <ListItemButton
+                              onClick={() => handleMarkAsRead(notif.id)}
+                              disabled={notif.read}
+                              sx={{
+                                px: 2,
+                                py: 1.25,
+                                alignItems: "flex-start",
+                                bgcolor: notif.read ? "transparent" : "rgba(37,99,235,0.02)",
+                                borderLeft: notif.read ? "none" : "3px solid #2563eb",
+                                transition: "all 150ms ease",
+                                "&:hover": {
+                                  bgcolor: "rgba(37,99,235,0.04)",
+                                },
+                              }}
+                            >
+                              <ListItemText
+                                primary={
+                                  <Typography
+                                    sx={{
+                                      fontSize: 11.5,
+                                      fontWeight: notif.read ? 500 : 700,
+                                      color: notif.read ? "#475569" : "#0f172a",
+                                      lineHeight: 1.4,
+                                    }}
+                                  >
+                                    {notif.message}
+                                  </Typography>
+                                }
+                                secondary={
+                                  <Typography sx={{ fontSize: 9, color: "#94a3b8", mt: 0.5 }}>
+                                    {new Date(notif.createdAt).toLocaleString()}
+                                  </Typography>
+                                }
+                              />
+                            </ListItemButton>
+                            <Divider />
+                          </Box>
+                        ))}
+                      </List>
+                    )}
+                  </Box>
+                </Popover>
+
                 {/* Ultra-Premium 3D Coin-Spin Reveal Morph Profile Capsule */}
                 <Box
                   sx={{

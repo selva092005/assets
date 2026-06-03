@@ -19,6 +19,7 @@ import {
 import { getCompanies } from "../services/Company service";
 import PageHeader from "../components/common/PageHeader";
 import TableCard from "../components/common/TableCard";
+import TablePagination from "../components/common/TablePagination";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import StatCard from "../components/common/StatCard";
 import { COLORS, primaryBtnSx, outlinedBtnSx, inputSx, selectSx, chipSx } from "../theme/tokens";
@@ -40,6 +41,8 @@ export default function Locations() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [page, setPage] = useState(0);
+  const [showCount, setShowCount] = useState(10);
   const debounceRef = useRef(null);
 
   // Add/Edit Dialog State
@@ -92,12 +95,14 @@ export default function Locations() {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       setSearch(val);
+      setPage(0);
     }, 400);
   };
 
   const clearFilters = () => {
     setSearchInput("");
     setSearch("");
+    setPage(0);
   };
 
   const filteredLocations = locations.filter((loc) =>
@@ -108,6 +113,8 @@ export default function Locations() {
       loc.companyName?.toLowerCase().includes(search.toLowerCase())
     )
   );
+
+  const paginatedLocations = filteredLocations.slice(page * showCount, (page + 1) * showCount);
 
   // ── Add / Edit Actions ─────────────────────────────────────────────────────
   const openAdd = () => {
@@ -207,16 +214,33 @@ export default function Locations() {
         title="Office Locations"
         subtitle="Manage company offices, sites and remote hubs"
         actions={
-          canWrite && (
-            <Button
-              variant="contained"
-              startIcon={<FaPlus size={11} />}
-              onClick={openAdd}
-              sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
-            >
-              Add Location
-            </Button>
-          )
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+            {/* Show count */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
+              Showing
+              <Select
+                value={showCount}
+                onChange={(e) => { setShowCount(Number(e.target.value)); setPage(0); }}
+                size="small"
+                sx={selectSx}
+              >
+                {[5, 10, 20, 50].map((n) => (
+                  <MenuItem key={n} value={n} sx={{ fontSize: 11 }}>{n}</MenuItem>
+                ))}
+              </Select>
+            </Box>
+
+            {canWrite && (
+              <Button
+                variant="contained"
+                startIcon={<FaPlus size={11} />}
+                onClick={openAdd}
+                sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
+              >
+                Add Location
+              </Button>
+            )}
+          </Box>
         }
       />
 
@@ -288,12 +312,21 @@ export default function Locations() {
               <TableHead>
                 <TableRow>
                   {["#", "Location Name", "Location Code", "Corporate Association", ...(canWrite ? ["Actions"] : [])].map((h) => (
-                    <TableCell key={h} sx={{ fontWeight: 700, color: "#64748b", whiteSpace: "nowrap", background: "#f8fafc", borderBottom: "2px solid #e2e8f0", textTransform: "uppercase", fontSize: 11 }}>{h}</TableCell>
+                    <TableCell key={h} sx={{
+                      fontWeight: 700,
+                      color: "#64748b",
+                      whiteSpace: "nowrap",
+                      background: "#f8fafc",
+                      borderBottom: "2px solid #e2e8f0",
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      fontSize: 11
+                    }}>{h}</TableCell>
                   ))}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredLocations.map((row, i) => (
+                {paginatedLocations.map((row, i) => (
                   <TableRow
                     key={row.locationId}
                     sx={{
@@ -307,7 +340,7 @@ export default function Locations() {
                       }
                     }}
                   >
-                    <TableCell sx={{ color: COLORS.textFaint, fontSize: 11, width: 50 }}>{i + 1}</TableCell>
+                    <TableCell sx={{ color: COLORS.textFaint, fontSize: 11, width: 50 }}>{page * showCount + i + 1}</TableCell>
                     <TableCell sx={{ fontSize: 11, fontWeight: 600, color: "#1e1b4b" }}>{row.locationName}</TableCell>
                     <TableCell>
                       <Chip
@@ -355,6 +388,13 @@ export default function Locations() {
               </TableBody>
             </Table>
           </Box>
+        )}
+        {!loading && filteredLocations.length > 0 && (
+          <TablePagination
+            page={page}
+            totalPages={Math.ceil(filteredLocations.length / showCount) || 1}
+            onPageChange={(pg) => setPage(pg)}
+          />
         )}
       </TableCard>
 

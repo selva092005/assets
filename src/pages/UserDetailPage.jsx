@@ -7,7 +7,9 @@ import toast from "../utils/toast.jsx";
 
 import { getUserById } from "../services/users_service";
 import {
-  COLORS
+  COLORS,
+  outlinedBtnSx,
+  denseCellSx
 } from "../theme/tokens";
 
 const ROLE_PILL = {
@@ -55,13 +57,6 @@ export default function UserDetailPage() {
 
   const handleEdit = () => navigate("/home/users/edit/" + id);
 
-  const denseCellSx = {
-    py: 0.4,
-    px: 0.75,
-    fontSize: "10px",
-    borderColor: COLORS.borderLight,
-    lineHeight: 1.25,
-  };
 
   return (
     <Box sx={{
@@ -117,7 +112,7 @@ export default function UserDetailPage() {
           <Typography sx={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", mb: 0.75 }}>Actions</Typography>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
             {isAdmin ? (
-              <Button variant="outlined" size="small" startIcon={<FaEdit size={10} />} onClick={handleEdit} sx={{ fontSize: 10, py: "2px", textTransform: "none", borderRadius: "3px", color: COLORS.primary, borderColor: COLORS.primary, justifyContent: "flex-start" }}>
+              <Button variant="outlined" size="small" startIcon={<FaEdit size={10} />} onClick={handleEdit} sx={{ ...outlinedBtnSx, color: COLORS.primary, borderColor: COLORS.primary, justifyContent: "flex-start", width: "100%" }}>
                 Edit User
               </Button>
             ) : (
@@ -140,15 +135,11 @@ export default function UserDetailPage() {
           <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.primary, mb: 0.75, textTransform: "uppercase", letterSpacing: "0.05em" }}>Identity Details</Typography>
           <Table size="small" sx={{ mb: 2, border: "1px solid " + COLORS.borderLight }}>
             <TableBody>
-              <TableRow sx={{ background: "#fcfcfd" }}>
-                <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted, width: "20%" }}>User ID</TableCell>
-                <TableCell sx={denseCellSx}>{data.userId || data.id || "—"}</TableCell>
+          <TableRow sx={{ background: "#fcfcfd" }}>
                 <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted, width: "20%" }}>Full Name</TableCell>
                 <TableCell sx={denseCellSx}>{data.userName || "—"}</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Email Address</TableCell>
-                <TableCell sx={denseCellSx} colSpan={3}>{data.userEmail || "—"}</TableCell>
+                <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted, width: "20%" }}>Email Address</TableCell>
+                <TableCell sx={denseCellSx}>{data.userEmail || "—"}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
@@ -189,8 +180,8 @@ export default function UserDetailPage() {
 
           {/* System Metadata */}
           <Box sx={{ mt: 3, display: "flex", justifyContent: "space-between", color: COLORS.textFaint, fontSize: "9px" }}>
-            <Typography sx={{ fontSize: "inherit" }}>Joined On: {data.createdAt ? new Date(data.createdAt).toLocaleString() : "—"}</Typography>
-            <Typography sx={{ fontSize: "inherit" }}>Last Modified: {data.updatedAt ? new Date(data.updatedAt).toLocaleString() : "—"}</Typography>
+            <Typography sx={{ fontSize: "inherit" }}>Created: {data.createdAt ? new Date(data.createdAt).toLocaleString() : "—"}</Typography>
+            <Typography sx={{ fontSize: "inherit" }}>Modified: {data.updatedAt ? new Date(data.updatedAt).toLocaleString() : "—"}</Typography>
           </Box>
         </Box>
         

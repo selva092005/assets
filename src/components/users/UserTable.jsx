@@ -16,9 +16,18 @@ export default function UserTable({ users, loading, currentUserName, userRole = 
   return (
     <Table size="small" sx={{ minWidth: 900 }}>
       <TableHead>
-        <TableRow sx={{ background: "#f8f9fc" }}>
+        <TableRow>
           {HEADERS.map((h) => (
-            <TableCell key={h} sx={{ fontWeight: 600, color: COLORS.textFaint, whiteSpace: "nowrap", borderBottom: `1px solid ${COLORS.borderLight}` }}>
+            <TableCell key={h} sx={{
+              fontWeight: 700,
+              color: "#64748b",
+              background: "#f8fafc",
+              borderBottom: "2px solid #e2e8f0",
+              whiteSpace: "nowrap",
+              letterSpacing: "0.05em",
+              textTransform: "uppercase",
+              fontSize: 11
+            }}>
               {h}
             </TableCell>
           ))}

@@ -7,6 +7,7 @@ import {
   MenuItem, Popover, List, ListItemButton, ListItemText,
   Select, Table, TableBody, TableCell, TableHead, TableRow,
   TextField, Tooltip, Typography, InputLabel, FormControl, OutlinedInput,
+  Avatar,
 } from "@mui/material";
 import {
   FaPlus, FaUndo, FaTimes, FaBoxOpen, FaSearch,
@@ -20,16 +21,17 @@ import toast from "../utils/toast.jsx";
 import {
   allocateAsset, getAllAllocations, getAllocationById, returnAsset, getAllocationOverview,
 } from "../services/allocation_service";
-import { getAssets } from "../services/assets_service";
+import { getAssets, getImageUrl } from "../services/assets_service";
 import { exportAllocations } from "../services/report_service";
 import { fetchAssets } from "../store/slices/assetSlice";
 import PageHeader from "../components/common/PageHeader";
 import TableCard from "../components/common/TableCard";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import ActionBtn from "../components/common/ActionBtn";
+import TablePagination from "../components/common/TablePagination";
 import PremiumCard from "../components/common/PremiumCard";
 import StatCard from "../components/common/StatCard";
-import { COLORS, outlinedBtnSx, primaryBtnSx, selectSx, inputSx, premiumDialogPaperSx, premiumDialogTitleSx, premiumFormGroupSx } from "../theme/tokens";
+import { COLORS, outlinedBtnSx, primaryBtnSx, selectSx, inputSx, premiumDialogPaperSx, premiumDialogTitleSx, premiumFormGroupSx, denseCellSx } from "../theme/tokens";
 import { required, isValidDate, isDateAfter, extractFieldErrors } from "../utils/validate";
 
 // ── Status badge ──────────────────────────────────────────────────────────────
@@ -114,15 +116,24 @@ function ActivityItem({ row, isLast }) {
       borderRadius: "8px",
       '&:hover': { background: '#fbfdff' },
     }}>
-      <Box sx={{
-        width: 30, height: 30, borderRadius: "9px", flexShrink: 0,
-        background: iconBg,
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}>
-        <Box sx={{ color: iconColor, fontSize: 11, display: "flex" }}>
-          {isReturned ? <FaUndo /> : isOverdue ? <FaClock /> : <FaCheckCircle />}
-        </Box>
-      </Box>
+      <Avatar
+        src={getImageUrl(row.assetImagePath)}
+        variant="rounded"
+        sx={{
+          width: 30,
+          height: 30,
+          borderRadius: "8px",
+          bgcolor: iconBg,
+          color: iconColor,
+          border: `1.5px solid ${isReturned ? "#d8b4fe" : isOverdue ? "#fde047" : "#a7f3d0"}`,
+          fontSize: "12px",
+          fontWeight: 800,
+          flexShrink: 0,
+          "& img": { objectFit: "cover" }
+        }}
+      >
+        {row.assetName?.charAt(0).toUpperCase() || "A"}
+      </Avatar>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#1a1a2e", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {row.assetName}
@@ -267,8 +278,6 @@ function extractList(res) {
   return [];
 }
 
-const SIZE = 10;
-
 export default function AssetAllocationPage() {
   const { userRole, userName } = useSelector((s) => s.auth);
   const dispatch = useDispatch();
@@ -281,6 +290,7 @@ export default function AssetAllocationPage() {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
+  const [showCount, setShowCount] = useState(10);
 
   // ── Filter state ──────────────────────────────────────────────────────────
   const [searchInput, setSearchInput] = useState("");
@@ -322,10 +332,10 @@ export default function AssetAllocationPage() {
   const [recentActivities, setRecentActivities] = useState([]);
 
   // ── Load ──────────────────────────────────────────────────────────────────
-  const load = useCallback(async (pg = 0) => {
+  const load = useCallback(async (pg = page) => {
     setLoading(true);
     try {
-      const params = { page: pg, size: SIZE };
+      const params = { page: pg, size: showCount };
       if (search) params.search = search;
       if (statusFilter) params.status = statusFilter;
       if (fromDate) params.fromDate = fromDate;
@@ -340,9 +350,9 @@ export default function AssetAllocationPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter, fromDate, toDate]);
+  }, [search, statusFilter, fromDate, toDate, showCount, page]);
 
-  useEffect(() => { load(page); }, [search, statusFilter, fromDate, toDate, page]);
+  useEffect(() => { load(page); }, [page, showCount, load]);
 
   // ── Overview loader (full dataset, runs once + after allocate/return) ─────
   const loadOverview = useCallback(async () => {
@@ -519,12 +529,6 @@ export default function AssetAllocationPage() {
     } finally { setReturnConfirm(false); setReturnId(null); }
   };
 
-  // ── Pagination page numbers ───────────────────────────────────────────────
-  const pageNums = () => {
-    const pages = [], start = Math.max(0, page - 2), end = Math.min(totalPages - 1, page + 2);
-    for (let i = start; i <= end; i++) pages.push(i);
-    return pages;
-  };
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -533,27 +537,45 @@ export default function AssetAllocationPage() {
       {/* ── Page Header with reset hook ──────────────────────────────────── */}
       <PageHeader
         title="Asset Allocation"
+        subtitle="Allocate, track, assign and manage employee asset assignments"
         actions={
-          canWrite && (
-            <Box sx={{ display: "flex", gap: 1 }}>
-              <Button
-                variant="outlined"
-                startIcon={<FaFileExport size={11} />}
-                onClick={handleExportExcel}
-                sx={outlinedBtnSx}
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
+            {/* Show count */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
+              Showing
+              <Select
+                value={showCount}
+                onChange={(e) => { setShowCount(Number(e.target.value)); setPage(0); }}
+                size="small"
+                sx={selectSx}
               >
-                Export
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<FaPlus size={11} />}
-                onClick={openAllocate}
-                sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
-              >
-                Allocate Asset
-              </Button>
+                {[5, 10, 20, 50].map((n) => (
+                  <MenuItem key={n} value={n} sx={{ fontSize: 11 }}>{n}</MenuItem>
+                ))}
+              </Select>
             </Box>
-          )
+
+            {canWrite && (
+              <Box sx={{ display: "flex", gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<FaFileExport size={11} />}
+                  onClick={handleExportExcel}
+                  sx={outlinedBtnSx}
+                >
+                  Export
+                </Button>
+                <Button
+                  variant="contained"
+                  startIcon={<FaPlus size={11} />}
+                  onClick={openAllocate}
+                  sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
+                >
+                  Allocate Asset
+                </Button>
+              </Box>
+            )}
+          </Box>
         }
       />
 
@@ -647,7 +669,16 @@ export default function AssetAllocationPage() {
               <TableHead>
                 <TableRow>
                   {["#", "Asset", "Code", "Assigned To", "Assigned By", "Date", "Expected Return", "Return Date", "Status", "Remarks", "Actions"].map((h) => (
-                    <TableCell key={h} sx={{ fontWeight: 700, color: "#64748b", whiteSpace: "nowrap", background: "#f8fafc", borderBottom: "2px solid #e2e8f0", letterSpacing: "0.05em", textTransform: "uppercase" }}>{h}</TableCell>
+                    <TableCell key={h} sx={{
+                      fontWeight: 700,
+                      color: "#64748b",
+                      whiteSpace: "nowrap",
+                      background: "#f8fafc",
+                      borderBottom: "2px solid #e2e8f0",
+                      letterSpacing: "0.05em",
+                      textTransform: "uppercase",
+                      fontSize: 11
+                    }}>{h}</TableCell>
                   ))}
                 </TableRow>
               </TableHead>
@@ -656,7 +687,7 @@ export default function AssetAllocationPage() {
                   const overdue = isOverdue(row);
                   return (
                     <TableRow key={row.allocationId} sx={{ borderLeft: "3px solid transparent", transition: "all 180ms ease", "&:last-child td": { border: 0 }, "&:hover": { borderLeft: "3px solid #3b82f6", "& td": { background: overdue ? "#fff7ed" : "#f0f7ff" } }, "& td": { background: overdue ? "#fffbeb" : i % 2 === 0 ? "#fff" : "#f8faff", borderBottom: "1px solid #f1f5f9" } }}>
-                      <TableCell sx={{ verticalAlign: "middle", color: COLORS.textFaint }}>{page * SIZE + i + 1}</TableCell>
+                      <TableCell sx={{ verticalAlign: "middle", color: COLORS.textFaint }}>{page * showCount + i + 1}</TableCell>
                       <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8", fontWeight: 600, color: "#1e1b4b" }}>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
                           {overdue && <Tooltip title="Overdue"><span><FaExclamationTriangle size={11} color="#b45309" /></span></Tooltip>}
@@ -729,30 +760,7 @@ export default function AssetAllocationPage() {
               </TableBody>
             </Table>
 
-            {/* ── Pagination ──────────────────────────────────────────── */}
-            {totalPages > 1 && (
-              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", px: 2, py: 1.5, borderTop: "1px solid #f0f0f0" }}>
-                <Typography fontSize={12} color={COLORS.textMuted}>
-                  Showing {page * SIZE + 1}–{Math.min((page + 1) * SIZE, totalElements)} of {totalElements}
-                </Typography>
-                <Box sx={{ display: "flex", gap: 0.5 }}>
-                  <Button size="small" variant="outlined" disabled={page === 0}
-                    onClick={() => setPage((p) => p - 1)}
-                    sx={{ textTransform: "none", fontSize: 12, minWidth: 60, borderRadius: "7px" }}>Prev</Button>
-                  {pageNums().map((n) => (
-                    <Button key={n} size="small"
-                      variant={n === page ? "contained" : "outlined"}
-                      onClick={() => setPage(n)}
-                      sx={{ minWidth: 32, fontSize: 12, borderRadius: "7px", background: n === page ? COLORS.primary : undefined, boxShadow: "none" }}>
-                      {n + 1}
-                    </Button>
-                  ))}
-                  <Button size="small" variant="outlined" disabled={page >= totalPages - 1}
-                    onClick={() => setPage((p) => p + 1)}
-                    sx={{ textTransform: "none", fontSize: 12, minWidth: 60, borderRadius: "7px" }}>Next</Button>
-                </Box>
-              </Box>
-            )}
+            <TablePagination page={page} totalPages={totalPages} onPageChange={(pg) => setPage(pg)} />
           </Box>
         )}
       </TableCard>
@@ -972,42 +980,103 @@ export default function AssetAllocationPage() {
           {viewLoading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}><CircularProgress size={24} /></Box>
           ) : viewData ? (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-              {[
-                ["Allocation ID", viewData.allocationId],
-                ["Asset", `${viewData.assetName} (${viewData.assetCode || "—"})`],
-                ["Location", viewData.locationName || "—"],
-                ["Assigned To", viewData.assignedTo],
-                ["Assigned By", viewData.assignedBy],
-                ["Assigned Date", fmt(viewData.assignedDate)],
-                ["Expected Return", viewData.expectedReturnDate ? fmt(viewData.expectedReturnDate) : "—"],
-                ["Return Date", viewData.returnDate ? fmt(viewData.returnDate) : "—"],
-                ["Status", viewData.status],
-                ["Remarks", viewData.remarks || "—"],
-              ].map(([label, value]) => (
-                <Box key={label} sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  py: 1,
-                  px: 1.5,
-                  borderRadius: "6px",
-                  background: "#fbfcfd",
-                  border: "1px solid #f1f5f9",
-                  transition: "all 0.15s ease",
-                  "&:hover": {
-                    background: "#f8fafc",
-                    borderColor: "#e2e8f0"
-                  }
+            <Box sx={{ display: "flex", gap: 2, flexDirection: { xs: "column", sm: "row" } }}>
+              {/* Left Mini Panel */}
+              <Box sx={{
+                width: { xs: "100%", sm: 140 },
+                flexShrink: 0,
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: "6px",
+                p: 1.5,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+                justifyContent: "center",
+                height: "fit-content"
+              }}>
+                <Box sx={{
+                  width: 48, height: 48, borderRadius: "4px",
+                  border: "1px solid " + COLORS.borderLight,
+                  bgcolor: "#fcfcfd",
+                  display: "flex", alignItems: "center", justifyContent: "center", mb: 1,
+                  overflow: "hidden"
                 }}>
-                  <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.03em" }}>
-                    {label}
-                  </Typography>
-                  <Typography sx={{ fontSize: 11.5, fontWeight: 600, color: "text.primary", textAlign: "right" }}>
-                    {String(value || "—")}
-                  </Typography>
+                  {viewData.assetImagePath ? (
+                    <img src={getImageUrl(viewData.assetImagePath)} alt="Asset" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <FaBoxOpen size={18} color={COLORS.textFaint} />
+                  )}
                 </Box>
-              ))}
+                <Typography sx={{ fontSize: "11px", fontWeight: 800, color: "#1e293b", mb: 0.5 }}>
+                  {viewData.assetName}
+                </Typography>
+                <Chip
+                  label={viewData.status}
+                  size="small"
+                  sx={{
+                    height: 16, fontSize: 8, fontWeight: 700, borderRadius: "3px",
+                    background: viewData.status === "ACTIVE" ? "#e8f5e9" : "#f3f4f6",
+                    color: viewData.status === "ACTIVE" ? "#2e7d32" : "#6b7280",
+                    "& .MuiChip-label": { px: 1 }
+                  }}
+                />
+              </Box>
+
+              {/* Right Mini Specifications Panel */}
+              <Box sx={{ flex: 1 }}>
+                <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: COLORS.primary, mb: 0.75, textTransform: "uppercase", letterSpacing: "0.05em" }}>Allocation Information</Typography>
+                <Table size="small" sx={{ mb: 1.5, border: "1px solid " + COLORS.borderLight }}>
+                  <TableBody>
+                    <TableRow sx={{ background: "#fcfcfd" }}>
+                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted, width: "30%" }}>Asset Code</TableCell>
+                      <TableCell sx={denseCellSx}>{viewData.assetCode || "—"}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Location</TableCell>
+                      <TableCell sx={denseCellSx}>{viewData.locationName || "—"}</TableCell>
+                    </TableRow>
+                    <TableRow sx={{ background: "#fcfcfd" }}>
+                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Assigned To</TableCell>
+                      <TableCell sx={denseCellSx}>{viewData.assignedTo}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Assigned By</TableCell>
+                      <TableCell sx={denseCellSx}>{viewData.assignedBy}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+
+                <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: COLORS.primary, mb: 0.75, textTransform: "uppercase", letterSpacing: "0.05em" }}>Timeline Details</Typography>
+                <Table size="small" sx={{ mb: 1.5, border: "1px solid " + COLORS.borderLight }}>
+                  <TableBody>
+                    <TableRow sx={{ background: "#fcfcfd" }}>
+                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted, width: "30%" }}>Assigned Date</TableCell>
+                      <TableCell sx={denseCellSx}>{fmt(viewData.assignedDate)}</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Expected Return</TableCell>
+                      <TableCell sx={denseCellSx}>{viewData.expectedReturnDate ? fmt(viewData.expectedReturnDate) : "—"}</TableCell>
+                    </TableRow>
+                    <TableRow sx={{ background: "#fcfcfd" }}>
+                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Return Date</TableCell>
+                      <TableCell sx={denseCellSx}>{viewData.returnDate ? fmt(viewData.returnDate) : "—"}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+
+                {viewData.remarks && (
+                  <>
+                    <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: COLORS.primary, mb: 0.5, textTransform: "uppercase", letterSpacing: "0.05em" }}>Remarks</Typography>
+                    <Box sx={{ p: 1, border: "1px solid " + COLORS.borderLight, borderRadius: "3px", background: "#fcfcfd" }}>
+                      <Typography sx={{ fontSize: 10, color: COLORS.text, whiteSpace: "pre-line" }}>{viewData.remarks}</Typography>
+                    </Box>
+                  </>
+                )}
+
+
+              </Box>
             </Box>
           ) : null}
         </DialogContent>

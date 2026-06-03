@@ -12,7 +12,8 @@ import {
   STATUS_COLORS,
   CONDITION_COLORS,
   outlinedBtnSx,
-  primaryBtnSx
+  primaryBtnSx,
+  denseCellSx
 } from "../theme/tokens";
 
 export default function AssetDetailPage() {
@@ -92,7 +93,7 @@ export default function AssetDetailPage() {
       toast.success("Asset location transferred successfully");
       setTransferOpen(false);
       setTransferForm({ newLocation: "", reason: "" });
-      
+
       // Reload page details & history
       setLoading(true);
       const [assetRes, historyRes] = await Promise.all([
@@ -127,13 +128,6 @@ export default function AssetDetailPage() {
     win.document.close();
   };
 
-  const denseCellSx = {
-    py: 0.4,
-    px: 0.75,
-    fontSize: "10px",
-    borderColor: COLORS.borderLight,
-    lineHeight: 1.25,
-  };
 
   return (
     <>
@@ -154,7 +148,7 @@ export default function AssetDetailPage() {
 
         {/* Unified Two-Column Layout */}
         <Box sx={{ display: "flex", gap: 2, flexDirection: { xs: "column", md: "row" } }}>
-          
+
           {/* LEFT PANEL: Summary Card */}
           <Box sx={{
             width: { xs: "100%", md: 220 },
@@ -326,7 +320,7 @@ export default function AssetDetailPage() {
               <Typography sx={{ fontSize: "inherit" }}>Last Modified: {data.updatedAt ? new Date(data.updatedAt).toLocaleString() : "—"}</Typography>
             </Box>
           </Box>
-          
+
         </Box>
       </Box>
 

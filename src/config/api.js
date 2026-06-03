@@ -32,6 +32,9 @@ API.interceptors.response.use(
   async (error) => {
     const original = error.config;
     if (error.response?.status === 401 && !original._retry) {
+      if (original.url?.includes("/api/auth/")) {
+        return Promise.reject(error);
+      }
       const refreshToken = getCookie("refreshToken");
       const accessToken  = getCookie("token");
       if (!refreshToken || !accessToken) {

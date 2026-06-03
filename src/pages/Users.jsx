@@ -5,9 +5,9 @@ import {
   Box, Button, Select, MenuItem, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions,
   Typography, LinearProgress,
-  IconButton, InputAdornment,
+  IconButton, InputAdornment, Tooltip,
 } from "@mui/material";
-import { FaFilter, FaFileExport, FaPlus, FaUpload, FaDownload, FaFileExcel, FaTimes, FaUsers, FaUserShield, FaUserTie, FaUser } from "react-icons/fa";
+import { FaFilter, FaFileExport, FaPlus, FaUpload, FaTimes, FaUsers, FaUserShield, FaUserTie, FaUser } from "react-icons/fa";
 import toast from "../utils/toast.jsx";
 import {
   fetchUsers,
@@ -36,6 +36,7 @@ export default function UsersPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [stats, setStats] = useState(null);
+  const [exportLoading, setExportLoading] = useState(false);
   const navigate = useNavigate();
 
   // Re-fetch whenever page, showCount, or filterRole changes
@@ -87,10 +88,13 @@ export default function UsersPage() {
 
   const handleExport = async () => {
     try {
+      setExportLoading(true);
       await exportUsers();
       toast.success("Export downloaded successfully");
     } catch {
       toast.error("Export failed. Please try again.");
+    } finally {
+      setExportLoading(false);
     }
   };
 
@@ -123,6 +127,7 @@ export default function UsersPage() {
 
       <PageHeader
         title="Users"
+        subtitle="Manage system operators, employee profiles and role privileges"
         actions={
           <>
             {/* Show count — triggers backend re-fetch */}
@@ -163,23 +168,28 @@ export default function UsersPage() {
             {isAdmin && (
               <Button
                 variant="outlined"
-                startIcon={<FaUpload size={12} />}
+                startIcon={<FaUpload size={11} />}
                 onClick={() => navigate("/home/users/bulk-upload")}
-                sx={{ ...outlinedBtnSx, borderColor: "#2e7d32", color: "#2e7d32" }}
+                sx={outlinedBtnSx}
               >
                 Bulk Upload
               </Button>
             )}
             {/* Export — admin + manager */}
             {canExport && (
-              <Button
-                variant="outlined"
-                startIcon={<FaFileExport size={12} />}
-                onClick={handleExport}
-                sx={outlinedBtnSx}
-              >
-                Export
-              </Button>
+              <Tooltip title="Exports all user accounts to Excel">
+                <span>
+                  <Button
+                    variant="outlined"
+                    startIcon={exportLoading ? <CircularProgress size={11} /> : <FaFileExport size={11} />}
+                    onClick={handleExport}
+                    disabled={exportLoading}
+                    sx={outlinedBtnSx}
+                  >
+                    Export
+                  </Button>
+                </span>
+              </Tooltip>
             )}
             {/* Add New — admin only */}
             {isAdmin && (

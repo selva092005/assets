@@ -25,8 +25,8 @@ export default function StatCard({ icon, label, value, iconColor }) {
       <Box
         className="stat-card-icon-box"
         sx={{
-          width: 32,
-          height: 32,
+          width: 38,
+          height: 38,
           borderRadius: "6px",
           background: theme.iconBg,
           border: `1px solid ${theme.border}`,
@@ -38,13 +38,13 @@ export default function StatCard({ icon, label, value, iconColor }) {
           transition: "all 300ms cubic-bezier(0.16, 1, 0.3, 1)",
         }}
       >
-        <Box sx={{ color: theme.iconColor, display: "flex", fontSize: 13 }}>{icon}</Box>
+        <Box sx={{ color: theme.iconColor, display: "flex", fontSize: 15 }}>{icon}</Box>
       </Box>
       <Box sx={{ zIndex: 1 }}>
-        <Typography sx={{ fontSize: 8.5, color: theme.label, fontWeight: 800, mb: 0.15, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+        <Typography sx={{ fontSize: 9.5, color: theme.label, fontWeight: 800, mb: 0.15, textTransform: "uppercase", letterSpacing: "0.06em" }}>
           {label}
         </Typography>
-        <Typography sx={{ fontSize: 18, fontWeight: 950, color: theme.text, lineHeight: 1 }}>
+        <Typography sx={{ fontSize: 22, fontWeight: 950, color: theme.text, lineHeight: 1 }}>
           {value}
         </Typography>
       </Box>
