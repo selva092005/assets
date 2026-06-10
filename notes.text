@@ -170,3 +170,8 @@ Calculation: ₹10,000 + ₹5,000 = ₹15,000
 1.auto assigned by
 2.table no
 3.add types
+
+
+
+Redis speeds up the connection between your Backend and the Database.
+TanStack Query speeds up the connection between your Frontend and the Backend.

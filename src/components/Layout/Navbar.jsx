@@ -20,16 +20,13 @@ import {
   NotificationsNone as NotificationsNoneIcon,
   NotificationsActive as NotificationsActiveIcon,
   Close as CloseIcon,
+  Storage as StorageIcon,
 } from "@mui/icons-material";
 import { logoutUser } from "../../store/slices/authSlice";
-import {
-  getNotifications,
-  getUnreadCount,
-  markAsRead,
-  markAllAsRead,
-} from "../../services/notification_service";
+import { NotificationBell } from "./NotificationBell";
 import amsLogo from "../../assets/ams_no_bg.png";
 import { FONT_FAMILIES } from "../../theme/tokens";
+import toast from "../../utils/toast.jsx";
 
 // ── Nav items — role restrictions defined here ─────────────────────────────
 const navItems = [
@@ -40,7 +37,6 @@ const navItems = [
       { label: "Allocation", path: "/home/allocation", roles: ["admin", "manager"] },
       { label: "Transfer", path: "/home/transfer", roles: ["admin", "manager"] },
       { label: "Disposal", path: "/home/disposal", roles: ["admin"] },
-      { label: "Bulk Upload", path: "/home/assets/bulk-upload", roles: ["admin"] },
     ],
   },
   { label: "Users", path: "/home/users", roles: ["admin", "manager"] },
@@ -50,6 +46,13 @@ const navItems = [
 
 const getDropdownMeta = (label) => {
   switch (label) {
+    case "Assets Registry":
+      return {
+        icon: <StorageIcon sx={{ fontSize: 16 }} />,
+        color: "#3b82f6",
+        bg: "rgba(59,130,246,0.04)",
+        subtitle: "Inventory database & status tracking",
+      };
     case "Allocation":
       return {
         icon: <AssignmentIndIcon sx={{ fontSize: 16 }} />,
@@ -127,46 +130,41 @@ const rolePillTheme = {
   }
 };
 
+
+
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
 
-  const { isLoggedIn, userRole, userName } = useSelector((s) => s.auth);
+  const { isLoggedIn, userRole, userName, userEmail } = useSelector((s) => s.auth);
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
-  const [dropOpen, setDropOpen] = useState(false);
   const [mobileAssetsOpen, setMobileAssetsOpen] = useState(false);
-  const closeTimer = useRef(null);
 
-  // ── Notifications State ──────────────────────────────────────────────────
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [notifAnchorEl, setNotifAnchorEl] = useState(null);
+  const [isAssetsHovered, setIsAssetsHovered] = useState(false);
+  const assetsHoverTimer = useRef(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  const fetchNotifications = async () => {
-    try {
-      const data = await getNotifications();
-      if (data && (data.httpStatus === 200 || data.success)) {
-        setNotifications(data.data || []);
-      }
-      const countData = await getUnreadCount();
-      if (countData && (countData.httpStatus === 200 || countData.success)) {
-        setUnreadCount(countData.data || 0);
-      }
-    } catch (err) {
-      console.error("Failed to fetch notifications:", err);
-    }
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    });
   };
 
-  useEffect(() => {
-    if (isLoggedIn) {
-      fetchNotifications();
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [isLoggedIn]);
+  const handleAssetsEnter = () => {
+    clearTimeout(assetsHoverTimer.current);
+    setIsAssetsHovered(true);
+  };
+
+  const handleAssetsLeave = () => {
+    assetsHoverTimer.current = setTimeout(() => {
+      setIsAssetsHovered(false);
+    }, 200);
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -177,39 +175,6 @@ const Navbar = () => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-
-  const handleNotifClick = (event) => {
-    setNotifAnchorEl(event.currentTarget);
-    fetchNotifications();
-  };
-
-  const handleNotifClose = () => {
-    setNotifAnchorEl(null);
-  };
-
-  const handleMarkAsRead = async (id) => {
-    try {
-      await markAsRead(id);
-      fetchNotifications();
-    } catch (err) {
-      console.error("Failed to mark notification as read:", err);
-    }
-  };
-
-  const handleMarkAllAsRead = async () => {
-    try {
-      await markAllAsRead();
-      fetchNotifications();
-    } catch (err) {
-      console.error("Failed to mark all as read:", err);
-    }
-  };
-
-  const notifOpen = Boolean(notifAnchorEl);
-  const notifId = notifOpen ? "notif-popover" : undefined;
-
-  const openDropdown = () => { clearTimeout(closeTimer.current); setDropOpen(true); };
-  const closeDropdown = () => { closeTimer.current = setTimeout(() => setDropOpen(false), 100); };
 
   const handleLogoutConfirm = () => {
     dispatch(logoutUser());
@@ -231,6 +196,33 @@ const Navbar = () => {
   const visibleNavItems = navItems.filter((item) =>
     item.roles.includes(userRole)
   );
+
+  // Generate allowed subtabs dynamically under Assets
+  const assetsItem = navItems.find((item) => item.label === "Assets");
+  const visibleSubtabs = [];
+  if (assetsItem) {
+    visibleSubtabs.push({ label: "Assets Registry", path: assetsItem.path, roles: assetsItem.roles });
+    if (assetsItem.dropdown) {
+      assetsItem.dropdown.forEach((d) => {
+        visibleSubtabs.push(d);
+      });
+    }
+  }
+  const allowedSubtabs = visibleSubtabs.filter((sub) => sub.roles.includes(userRole));
+
+  const isAssetsActive =
+    location.pathname.startsWith("/home/assets") ||
+    location.pathname.startsWith("/home/allocation") ||
+    location.pathname.startsWith("/home/transfer") ||
+    location.pathname.startsWith("/home/disposal");
+
+  const activeIndex = allowedSubtabs.findIndex((tab) =>
+    tab.path === "/home/assets"
+      ? location.pathname === "/home/assets"
+      : location.pathname.startsWith(tab.path)
+  );
+
+  const showSubtabs = isAssetsHovered && allowedSubtabs.length > 1;
 
   return (
     <>
@@ -271,136 +263,119 @@ const Navbar = () => {
           {/* Desktop nav pill */}
           <Box sx={{ background: "linear-gradient(135deg, rgba(239, 246, 255, 0.9), rgba(219, 234, 254, 0.95))", border: "1px solid rgba(191, 219, 254, 0.8)", backdropFilter: "blur(12px)", borderRadius: 999, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.85)", display: { xs: "none", md: "flex" }, gap: 0.25, p: "3px" }}>
             {visibleNavItems.map((item) => {
-              const active = isActivePath(item);
-              const visibleDropdown = item.dropdown?.filter((d) => d.roles.includes(userRole));
-              if (visibleDropdown?.length) {
-                const dropActive = active || visibleDropdown.some((d) => location.pathname.startsWith(d.path));
+              const active = item.path === "/home/assets"
+                ? isAssetsActive
+                : isActivePath(item);
+
+              const hasSubmenu = item.path === "/home/assets" && allowedSubtabs.length > 1;
+
+              if (hasSubmenu) {
                 return (
                   <Box key={item.path}
-                    onMouseEnter={openDropdown}
-                    onMouseLeave={closeDropdown}
+                    onMouseEnter={handleAssetsEnter}
+                    onMouseLeave={handleAssetsLeave}
                     sx={{ position: "relative" }}
                   >
                     {/* Nav button */}
                     <Button
                       component={Link} to={item.path}
-                      endIcon={
-                        <KeyboardArrowDownIcon sx={{
-                          fontSize: "13px !important",
-                          transition: "transform 300ms cubic-bezier(.34,1.56,.64,1)",
-                          transform: dropOpen ? "rotate(180deg)" : "rotate(0deg)",
-                        }} />
-                      }
                       sx={{
-                        bgcolor: dropActive ? "rgba(255, 255, 255, 0.85)" : "transparent",
+                        bgcolor: (active || isAssetsHovered) ? "rgba(255, 255, 255, 0.85)" : "transparent",
                         border: "1px solid",
-                        borderColor: dropActive ? "rgba(37, 99, 235, 0.25)" : "transparent",
+                        borderColor: (active || isAssetsHovered) ? "rgba(37, 99, 235, 0.25)" : "transparent",
                         borderRadius: 999,
-                        boxShadow: dropActive ? "0 2px 8px rgba(37,99,235,0.08)" : "none",
-                        color: dropActive ? "#2563eb" : "#475569",
-                        fontWeight: dropActive ? 700 : 500,
+                        boxShadow: (active || isAssetsHovered) ? "0 2px 8px rgba(37,99,235,0.08)" : "none",
+                        color: (active || isAssetsHovered) ? "#2563eb" : "#475569",
+                        fontWeight: (active || isAssetsHovered) ? 700 : 500,
                         fontSize: 12, px: 1.25, py: 0.4, minHeight: 0, textTransform: "none",
-                        transition: "all 150ms ease",
+                        transition: "all 300ms cubic-bezier(0.4, 0, 0.2, 1)",
                         "&:hover": { bgcolor: "rgba(255, 255, 255, 0.95)", color: "#2563eb", borderColor: "rgba(37, 99, 235, 0.35)" },
                       }}>
                       {item.label}
                     </Button>
 
-                    {/* Dropdown card */}
-                    {dropOpen && (
+                    {/* Professional SaaS Magnetic Glass Pill Subtabs */}
+                    {showSubtabs && (
                       <Box
-                        onMouseEnter={openDropdown}
-                        onMouseLeave={closeDropdown}
+                        onMouseEnter={handleAssetsEnter}
+                        onMouseLeave={handleAssetsLeave}
+                        onMouseMove={handleMouseMove}
                         sx={{
                           position: "absolute",
-                          top: "calc(100% + 4px)",
+                          top: "calc(100% + 7px)",
                           left: "50%",
                           transform: "translateX(-50%)",
+                          background: `radial-gradient(90px circle at ${mousePos.x}px ${mousePos.y}px, rgba(37, 99, 235, 0.09), transparent 80%), rgba(255, 255, 255, 0.94)`,
+                          backdropFilter: "blur(16px)",
+                          border: "1px solid rgba(226, 232, 240, 0.9)",
+                          borderRadius: "999px",
+                          boxShadow: "0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 4px 10px -6px rgba(0, 0, 0, 0.02)",
+                          p: "3.5px",
+                          display: "flex",
+                          gap: "3px",
                           zIndex: 1400,
-                          minWidth: 150,
-                          borderRadius: "8px",
-                          background: "rgba(255, 255, 255, 0.94)",
-                          backdropFilter: "blur(12px)",
-                          border: "1px solid #cbd5e1",
-                          boxShadow: "0 10px 25px -5px rgba(15,23,42,0.12), 0 8px 16px -6px rgba(15,23,42,0.04)",
-                          p: "4px",
-                          animation: "premiumDrop 200ms cubic-bezier(.16,1,.3,1) both",
+                          whiteSpace: "nowrap",
+                          animation: "premiumDrop 220ms cubic-bezier(.16,1,.3,1) both",
                           "@keyframes premiumDrop": {
-                            "0%": { opacity: 0, transform: "translateX(-50%) translateY(-6px) scale(0.96)" },
+                            "0%": { opacity: 0, transform: "translateX(-50%) translateY(-5px) scale(0.98)" },
                             "100%": { opacity: 1, transform: "translateX(-50%) translateY(0) scale(1)" },
                           },
+                          // Pointer connection arrow
                           "&::before": {
-                            content: '""', position: "absolute", top: -5, left: "50%",
+                            content: '""',
+                            position: "absolute",
+                            top: -4,
+                            left: "50%",
                             transform: "translateX(-50%) rotate(45deg)",
-                            width: 8, height: 8,
-                            background: "rgba(255, 255, 255, 0.94)",
-                            border: "1px solid #cbd5e1",
-                            borderBottom: "none", borderRight: "none",
-                          },
+                            width: 7,
+                            height: 7,
+                            bgcolor: "rgba(255, 255, 255, 0.94)",
+                            borderTop: "1px solid rgba(226, 232, 240, 0.9)",
+                            borderLeft: "1px solid rgba(226, 232, 240, 0.9)",
+                          }
                         }}
                       >
-                        {visibleDropdown.map((d, i) => {
-                          const isSelected = location.pathname.startsWith(d.path);
-                          const meta = getDropdownMeta(d.label);
+                        {allowedSubtabs.map((tab) => {
+                          const isTabActive = tab.path === "/home/assets"
+                            ? location.pathname === "/home/assets"
+                            : location.pathname.startsWith(tab.path);
+
                           return (
-                            <Box
-                              key={d.path}
-                              component={Link} to={d.path}
-                              onClick={() => setDropOpen(false)}
+                            <Button
+                              key={tab.path}
+                              component={Link}
+                              to={tab.path}
+                              onClick={() => setIsAssetsHovered(false)}
                               sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 1,
-                                px: 1,
-                                py: "5px",
-                                my: "2px",
-                                borderRadius: "5px",
-                                textDecoration: "none",
-                                color: isSelected ? "#2563eb" : "#475569",
-                                bgcolor: isSelected ? "rgba(37,99,235,0.08)" : "transparent",
-                                transition: "all 120ms ease",
-                                animation: `si 150ms ${i * 30}ms both`,
-                                "@keyframes si": {
-                                  "0%": { opacity: 0, transform: "translateY(2px)" },
-                                  "100%": { opacity: 1, transform: "translateY(0)" },
-                                },
+                                fontSize: 10.5,
+                                fontWeight: isTabActive ? 700 : 500,
+                                textTransform: "none",
+                                px: 1.5,
+                                py: 0.35,
+                                borderRadius: "999px",
+                                minWidth: 0,
+                                color: isTabActive ? "#2563eb" : "#475569",
+                                background: isTabActive 
+                                  ? "linear-gradient(135deg, #eff6ff, #dbeafe)" 
+                                  : "transparent",
+                                border: "1px solid",
+                                borderColor: isTabActive ? "rgba(37, 99, 235, 0.2)" : "transparent",
+                                transition: "all 250ms cubic-bezier(0.4, 0, 0.2, 1)",
                                 "&:hover": {
-                                  bgcolor: "rgba(37,99,235,0.06)",
+                                  background: isTabActive 
+                                    ? "linear-gradient(135deg, #eff6ff, #dbeafe)" 
+                                    : "rgba(241, 245, 249, 0.85)",
                                   color: "#2563eb",
-                                  "& .dropdown-icon": {
-                                    color: "#2563eb",
-                                    transform: "scale(1.05)",
-                                  }
+                                  borderColor: isTabActive ? "rgba(37, 99, 235, 0.3)" : "rgba(226, 232, 240, 0.6)",
+                                  transform: "translateY(-1px)",
                                 },
+                                "&:active": {
+                                  transform: "scale(0.97) translateY(0)",
+                                }
                               }}
                             >
-                              {/* Small Icon */}
-                              {meta.icon && (
-                                <Box
-                                  className="dropdown-icon"
-                                  sx={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    color: isSelected ? "#2563eb" : "#64748b",
-                                    transition: "all 150ms ease",
-                                    flexShrink: 0,
-                                    "& svg": { fontSize: "13px !important" }
-                                  }}
-                                >
-                                  {meta.icon}
-                                </Box>
-                              )}
-                              <Typography
-                                sx={{
-                                  fontSize: "11px",
-                                  fontWeight: isSelected ? 700 : 600,
-                                  lineHeight: 1.2,
-                                }}
-                              >
-                                {d.label}
-                              </Typography>
-                            </Box>
+                              {tab.label}
+                            </Button>
                           );
                         })}
                       </Box>
@@ -419,7 +394,7 @@ const Navbar = () => {
                     color: active ? "#2563eb" : "#475569",
                     fontWeight: active ? 700 : 500,
                     fontSize: 12, px: 1.25, py: 0.4, minHeight: 0, textTransform: "none",
-                    transition: "all 150ms ease",
+                    transition: "all 300ms cubic-bezier(0.4, 0, 0.2, 1)",
                     "&:hover": { bgcolor: "rgba(255, 255, 255, 0.95)", color: "#2563eb", borderColor: "rgba(37, 99, 235, 0.35)" }
                   }}>
                   {item.label}
@@ -440,203 +415,7 @@ const Navbar = () => {
             {isLoggedIn ? (
               <>
                 {/* Notification Bell */}
-                <Tooltip title="Notifications">
-                  <IconButton
-                    aria-describedby={notifId}
-                    onClick={handleNotifClick}
-                    size="small"
-                    sx={{
-                      width: 32,
-                      height: 32,
-                      border: "1px solid",
-                      borderColor: notifOpen ? "rgba(37, 99, 235, 0.25)" : "rgba(226, 232, 240, 0.8)",
-                      bgcolor: notifOpen ? "rgba(37, 99, 235, 0.08)" : "rgba(248, 250, 252, 0.6)",
-                      color: notifOpen || unreadCount > 0 ? "#2563eb" : "#64748b",
-                      backdropFilter: "blur(8px)",
-                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                      position: "relative",
-                      boxShadow: notifOpen
-                        ? "0 0 12px rgba(37, 99, 235, 0.15), inset 0 1px 1px rgba(255, 255, 255, 0.2)"
-                        : "0 1px 2px rgba(0, 0, 0, 0.02)",
-                      "&:hover": {
-                        bgcolor: "rgba(37, 99, 235, 0.08)",
-                        borderColor: "rgba(37, 99, 235, 0.3)",
-                        color: "#2563eb",
-                        transform: "translateY(-1px)",
-                        boxShadow: "0 4px 12px rgba(37, 99, 235, 0.12)",
-                      },
-                      "&:active": {
-                        transform: "translateY(0px)",
-                      }
-                    }}
-                  >
-                    {unreadCount > 0 ? (
-                      <NotificationsActiveIcon
-                        sx={{
-                          fontSize: 18,
-                          animation: "ring 2.5s ease-in-out infinite",
-                          transformOrigin: "50% 0",
-                          "@keyframes ring": {
-                            "0%": { transform: "rotate(0)" },
-                            "4%": { transform: "rotate(15deg)" },
-                            "8%": { transform: "rotate(-12deg)" },
-                            "12%": { transform: "rotate(10deg)" },
-                            "16%": { transform: "rotate(-8deg)" },
-                            "20%": { transform: "rotate(6deg)" },
-                            "24%": { transform: "rotate(-4deg)" },
-                            "28%": { transform: "rotate(2deg)" },
-                            "32%": { transform: "rotate(-1deg)" },
-                            "36%": { transform: "rotate(0)" },
-                            "100%": { transform: "rotate(0)" }
-                          }
-                        }}
-                      />
-                    ) : (
-                      <NotificationsNoneIcon sx={{ fontSize: 18 }} />
-                    )}
-
-                    {unreadCount > 0 && (
-                      <Box
-                        sx={{
-                          position: "absolute",
-                          top: -2,
-                          right: -2,
-                          minWidth: 15,
-                          height: 15,
-                          borderRadius: "50%",
-                          background: "linear-gradient(135deg, #ef4444, #dc2626)",
-                          color: "#ffffff",
-                          fontSize: "8.5px",
-                          fontWeight: 800,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          px: "4px",
-                          boxShadow: "0 0 0 2px #ffffff, 0 2px 6px rgba(239, 68, 68, 0.4)",
-                          animation: "pulse 2s infinite",
-                          "@keyframes pulse": {
-                            "0%": { boxShadow: "0 0 0 0 rgba(239, 68, 68, 0.5), 0 0 0 2px #ffffff" },
-                            "70%": { boxShadow: "0 0 0 6px rgba(239, 68, 68, 0), 0 0 0 2px #ffffff" },
-                            "100%": { boxShadow: "0 0 0 0 rgba(239, 68, 68, 0), 0 0 0 2px #ffffff" }
-                          }
-                        }}
-                      >
-                        {unreadCount}
-                      </Box>
-                    )}
-                  </IconButton>
-                </Tooltip>
-
-                {/* Notifications Popover */}
-                <Popover
-                  id={notifId}
-                  open={notifOpen}
-                  anchorEl={notifAnchorEl}
-                  onClose={handleNotifClose}
-                  anchorOrigin={{
-                    vertical: "bottom",
-                    horizontal: "right",
-                  }}
-                  transformOrigin={{
-                    vertical: "top",
-                    horizontal: "right",
-                  }}
-                  slotProps={{
-                    paper: {
-                      sx: {
-                        mt: 1.5,
-                        width: 320,
-                        maxHeight: 400,
-                        borderRadius: "10px",
-                        boxShadow: "0 10px 25px -5px rgba(15,23,42,0.12), 0 8px 16px -6px rgba(15,23,42,0.04)",
-                        border: "1px solid #e2e8f0",
-                        display: "flex",
-                        flexDirection: "column",
-                        background: "rgba(255, 255, 255, 0.98)",
-                        backdropFilter: "blur(10px)",
-                      },
-                    },
-                  }}
-                >
-                  {/* Popover Header */}
-                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", px: 2, py: 1.5 }}>
-                    <Typography sx={{ fontWeight: 700, fontSize: 13, color: "#0f172a", fontFamily: FONT_FAMILIES.header }}>
-                      Notifications
-                    </Typography>
-                    {unreadCount > 0 && (
-                      <Button
-                        onClick={handleMarkAllAsRead}
-                        size="small"
-                        sx={{
-                          fontSize: 10,
-                          textTransform: "none",
-                          fontWeight: 700,
-                          color: "#2563eb",
-                          p: 0,
-                          minWidth: 0,
-                          "&:hover": { bg: "transparent", textDecoration: "underline" },
-                        }}
-                      >
-                        Mark all as read
-                      </Button>
-                    )}
-                  </Box>
-                  <Divider />
-
-                  {/* Popover Content */}
-                  <Box sx={{ overflowY: "auto", flexGrow: 1 }}>
-                    {notifications.length === 0 ? (
-                      <Box sx={{ p: 3, textAlign: "center" }}>
-                        <Typography sx={{ color: "#64748b", fontSize: 11 }}>
-                          No notifications
-                        </Typography>
-                      </Box>
-                    ) : (
-                      <List disablePadding>
-                        {notifications.map((notif) => (
-                          <Box key={notif.id}>
-                            <ListItemButton
-                              onClick={() => handleMarkAsRead(notif.id)}
-                              disabled={notif.read}
-                              sx={{
-                                px: 2,
-                                py: 1.25,
-                                alignItems: "flex-start",
-                                bgcolor: notif.read ? "transparent" : "rgba(37,99,235,0.02)",
-                                borderLeft: notif.read ? "none" : "3px solid #2563eb",
-                                transition: "all 150ms ease",
-                                "&:hover": {
-                                  bgcolor: "rgba(37,99,235,0.04)",
-                                },
-                              }}
-                            >
-                              <ListItemText
-                                primary={
-                                  <Typography
-                                    sx={{
-                                      fontSize: 11.5,
-                                      fontWeight: notif.read ? 500 : 700,
-                                      color: notif.read ? "#475569" : "#0f172a",
-                                      lineHeight: 1.4,
-                                    }}
-                                  >
-                                    {notif.message}
-                                  </Typography>
-                                }
-                                secondary={
-                                  <Typography sx={{ fontSize: 9, color: "#94a3b8", mt: 0.5 }}>
-                                    {new Date(notif.createdAt).toLocaleString()}
-                                  </Typography>
-                                }
-                              />
-                            </ListItemButton>
-                            <Divider />
-                          </Box>
-                        ))}
-                      </List>
-                    )}
-                  </Box>
-                </Popover>
+                <NotificationBell />
 
                 {/* Ultra-Premium 3D Coin-Spin Reveal Morph Profile Capsule */}
                 <Box

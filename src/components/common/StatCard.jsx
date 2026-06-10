@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Paper, Box, Typography } from "@mui/material";
 import { statCardSx, getThemeConfig } from "../../theme/tokens";
 
-export default function StatCard({ icon, label, value, iconColor }) {
+export default function StatCard({ icon, label, value, iconColor, onClick }) {
   const [styleMode, setStyleMode] = useState(() => localStorage.getItem("ams_card_style") || "AURORA");
 
   useEffect(() => {
@@ -21,6 +21,7 @@ export default function StatCard({ icon, label, value, iconColor }) {
     <Paper
       elevation={0}
       sx={statCardSx(iconColor, styleMode)}
+      onClick={onClick}
     >
       <Box
         className="stat-card-icon-box"

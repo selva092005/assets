@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useSearchParams } from "react-router-dom";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   Box, Button, Chip, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, IconButton, InputAdornment,
@@ -9,6 +10,8 @@ import {
   TextField, Tooltip, Typography, InputLabel, FormControl, OutlinedInput,
   Avatar,
 } from "@mui/material";
+import { useForm, Controller } from "react-hook-form";
+import { FormTextField } from "../components/FormFields";
 import {
   FaPlus, FaUndo, FaTimes, FaBoxOpen, FaSearch,
   FaEye, FaExclamationTriangle, FaDownload, FaFileExport,
@@ -23,7 +26,6 @@ import {
 } from "../services/allocation_service";
 import { getAssets, getImageUrl } from "../services/assets_service";
 import { exportAllocations } from "../services/report_service";
-import { fetchAssets } from "../store/slices/assetSlice";
 import PageHeader from "../components/common/PageHeader";
 import TableCard from "../components/common/TableCard";
 import ConfirmDialog from "../components/common/ConfirmDialog";
@@ -33,30 +35,8 @@ import PremiumCard from "../components/common/PremiumCard";
 import StatCard from "../components/common/StatCard";
 import { COLORS, outlinedBtnSx, primaryBtnSx, selectSx, inputSx, premiumDialogPaperSx, premiumDialogTitleSx, premiumFormGroupSx, denseCellSx } from "../theme/tokens";
 import { required, isValidDate, isDateAfter, extractFieldErrors } from "../utils/validate";
-
-// ── Status badge ──────────────────────────────────────────────────────────────
-const StatusBadge = ({ status }) => {
-  const isActive = status === "ACTIVE";
-  return (
-    <Chip
-      label={isActive ? "Active" : "Returned"}
-      size="small"
-      sx={{
-        background: isActive ? "#e8f5e9" : "#f3f4f6",
-        color: isActive ? "#2e7d32" : "#6b7280",
-        fontWeight: 700, fontSize: 11, borderRadius: "20px", height: 22,
-      }}
-    />
-  );
-};
-
-// ── Empty state ───────────────────────────────────────────────────────────────
-const EmptyState = () => (
-  <Box sx={{ textAlign: "center", py: 8, color: COLORS.textFaint }}>
-    <FaBoxOpen size={40} style={{ marginBottom: 12, opacity: 0.35 }} />
-    <Typography fontSize={14}>No allocation records found.</Typography>
-  </Box>
-);
+import StatusBadge from "../components/common/StatusBadge";
+import EmptyState from "../components/common/EmptyState";
 
 // ── Donut Chart ───────────────────────────────────────────────────────────────
 function DonutChart({ segments, total }) {
@@ -283,13 +263,10 @@ export default function AssetAllocationPage() {
   const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
   const canWrite = userRole === "admin" || userRole === "manager";
+  const queryClient = useQueryClient();
 
   // ── Table state ───────────────────────────────────────────────────────────
-  const [allocations, setAllocations] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
   const [showCount, setShowCount] = useState(10);
 
   // ── Filter state ──────────────────────────────────────────────────────────
@@ -301,16 +278,95 @@ export default function AssetAllocationPage() {
   const debounceRef = useRef(null);
 
   // ── Allocate modal state ──────────────────────────────────────────────────
-  const [availableAssets, setAvailableAssets] = useState([]);
   const [allocateOpen, setAllocateOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    assetId: "", assignedTo: "", assignedBy: userName || "",
-    assignedDate: today(), expectedReturnDate: "", remarks: "",
+
+  const { data: allocationsData, isLoading: loading } = useQuery({
+    queryKey: ["allocations", page, showCount, search, statusFilter, fromDate, toDate],
+    queryFn: async () => {
+      const params = { page, size: showCount };
+      if (search) params.search = search;
+      if (statusFilter) params.status = statusFilter;
+      if (fromDate) params.fromDate = fromDate;
+      if (toDate) params.toDate = toDate;
+      const res = await getAllAllocations(params);
+      return res?.data || res;
+    },
+    placeholderData: keepPreviousData,
   });
-  const [errors, setErrors] = useState({});
-  const [adminUsers, setAdminUsers] = useState([]);
-  const [allUsers, setAllUsers] = useState([]);
+
+  const allocations = allocationsData?.content || [];
+  const totalPages = allocationsData?.totalPages || 0;
+  const totalElements = allocationsData?.totalElements || 0;
+
+  const { data: overviewStats = { total: 0, active: 0, returned: 0, overdue: 0, awaitingReturn: 0 }, isLoading: overviewLoading } = useQuery({
+    queryKey: ["allocationOverview"],
+    queryFn: async () => {
+      const res = await getAllocationOverview();
+      const data = res?.data || res;
+      return {
+        total: data.total ?? 0,
+        active: data.active ?? 0,
+        returned: data.returned ?? 0,
+        overdue: data.overdue ?? 0,
+        awaitingReturn: data.awaitingReturn ?? 0,
+      };
+    },
+  });
+
+  const { data: recentActivities = [] } = useQuery({
+    queryKey: ["recentAllocations"],
+    queryFn: async () => {
+      const res = await getAllAllocations({ page: 0, size: 10 });
+      const pageData = res?.data || res;
+      const items = pageData?.content || (Array.isArray(pageData) ? pageData : []);
+      const sorted = [...items];
+      sorted.sort((a, b) => (b.assignedDate || "") > (a.assignedDate || "") ? 1 : -1);
+      return sorted;
+    },
+  });
+
+  // Fetch available assets (enabled when allocateOpen is true)
+  const { data: availableAssets = [] } = useQuery({
+    queryKey: ["availableAssets"],
+    queryFn: async () => {
+      const res = await getAssets({ page: 0, size: 200 });
+      return extractList(res).filter((a) => a.status === "AVAILABLE");
+    },
+    enabled: allocateOpen,
+  });
+
+  // Fetch users (enabled when allocateOpen is true)
+  const { data: usersData = { allUsers: [], adminUsers: [] } } = useQuery({
+    queryKey: ["allocateUsers"],
+    queryFn: async () => {
+      const res = await getUsers({ page: 0, size: 200 });
+      const all = extractList(res);
+      const admins = all.filter((u) => u.userRole === "ADMIN" || u.userRole === "MANAGER");
+      return {
+        allUsers: all,
+        adminUsers: admins.length > 0 ? admins : all,
+      };
+    },
+    enabled: allocateOpen,
+  });
+
+  const allUsers = usersData.allUsers;
+  const adminUsers = usersData.adminUsers;
+
+  const { control, handleSubmit, reset, setValue, setError, watch } = useForm({
+    defaultValues: {
+      assetId: "",
+      assignedTo: "",
+      assignedBy: userName || "",
+      assignedDate: today(),
+      expectedReturnDate: "",
+      remarks: "",
+    }
+  });
+
+  const formAssignedDate = watch("assignedDate");
+
   const [userSearch, setUserSearch] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
   const [assignedToSearch, setAssignedToSearch] = useState("");
@@ -324,67 +380,6 @@ export default function AssetAllocationPage() {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewData, setViewData] = useState(null);
   const [viewLoading, setViewLoading] = useState(false);
-
-  // ── Overview state ────────────────────────────────────────────────────────
-  const [overviewStats, setOverviewStats] = useState({ total: 0, active: 0, returned: 0, overdue: 0, awaitingReturn: 0 });
-  const [overviewLoading, setOverviewLoading] = useState(true);
-  // ── Recent activities state (separate from paginated table) ───────────────
-  const [recentActivities, setRecentActivities] = useState([]);
-
-  // ── Load ──────────────────────────────────────────────────────────────────
-  const load = useCallback(async (pg = page) => {
-    setLoading(true);
-    try {
-      const params = { page: pg, size: showCount };
-      if (search) params.search = search;
-      if (statusFilter) params.status = statusFilter;
-      if (fromDate) params.fromDate = fromDate;
-      if (toDate) params.toDate = toDate;
-      const res = await getAllAllocations(params);
-      const pageData = res?.data || res;
-      setAllocations(pageData?.content || []);
-      setTotalPages(pageData?.totalPages || 0);
-      setTotalElements(pageData?.totalElements || 0);
-    } catch {
-      toast.error("Failed to load allocations");
-    } finally {
-      setLoading(false);
-    }
-  }, [search, statusFilter, fromDate, toDate, showCount, page]);
-
-  useEffect(() => { load(page); }, [page, showCount, load]);
-
-  // ── Overview loader (full dataset, runs once + after allocate/return) ─────
-  const loadOverview = useCallback(async () => {
-    setOverviewLoading(true);
-    try {
-      const res = await getAllocationOverview();
-      const data = res?.data || res;
-      setOverviewStats({
-        total: data.total ?? 0,
-        active: data.active ?? 0,
-        returned: data.returned ?? 0,
-        overdue: data.overdue ?? 0,
-        awaitingReturn: data.awaitingReturn ?? 0,
-      });
-    } catch { /* silent */ } finally { setOverviewLoading(false); }
-  }, []);
-
-  useEffect(() => { loadOverview(); }, [loadOverview]);
-
-  // ── Recent activities loader — fetches latest 10 from backend ─────────────
-  const loadRecentActivities = useCallback(async () => {
-    try {
-      const res = await getAllAllocations({ page: 0, size: 10 });
-      const pageData = res?.data || res;
-      const items = pageData?.content || (Array.isArray(pageData) ? pageData : []);
-      // sort newest assigned date first
-      items.sort((a, b) => (b.assignedDate || "") > (a.assignedDate || "") ? 1 : -1);
-      setRecentActivities(items);
-    } catch { /* silent */ }
-  }, []);
-
-  useEffect(() => { loadRecentActivities(); }, [loadRecentActivities]);
 
   // ── Search debounce ───────────────────────────────────────────────────────
   const handleSearchChange = (e) => {
@@ -431,26 +426,16 @@ export default function AssetAllocationPage() {
     }
   };
 
-  // ── Open allocate modal ───────────────────────────────────────────────────
-  const loadAvailableAssets = async () => {
-    try {
-      const res = await getAssets({ page: 0, size: 200 });
-      setAvailableAssets(extractList(res).filter((a) => a.status === "AVAILABLE"));
-    } catch { toast.error("Failed to load assets"); }
-  };
-
   const openAllocate = async (preselectedAssetId = null) => {
-    await loadAvailableAssets();
-    setForm({ assetId: preselectedAssetId || "", assignedTo: "", assignedBy: userName || "", assignedDate: today(), expectedReturnDate: "", remarks: "" });
+    reset({
+      assetId: preselectedAssetId || "",
+      assignedTo: "",
+      assignedBy: userName || "",
+      assignedDate: today(),
+      expectedReturnDate: "",
+      remarks: "",
+    });
     setUserSearch(""); setAssignedToSearch(""); setAssetSearch("");
-    setErrors({});
-    try {
-      const res = await getUsers({ page: 0, size: 200 });
-      const all = extractList(res);
-      setAllUsers(all);
-      const admins = all.filter((u) => u.userRole === "ADMIN" || u.userRole === "MANAGER");
-      setAdminUsers(admins.length > 0 ? admins : all);
-    } catch { setAdminUsers([]); setAllUsers([]); }
     setAllocateOpen(true);
   };
 
@@ -460,50 +445,32 @@ export default function AssetAllocationPage() {
       openAllocate(Number(assetIdParam));
       setSearchParams({});
     }
-  }, []);
+  }, [searchParams, canWrite]);
 
-  const handleAllocate = async () => {
-    const e = {};
-    const assignedByVal = form.assignedBy || userName;
-    if (!form.assetId) e.assetId = "Select an asset to allocate";
-    if (!form.assignedTo) e.assignedTo = "Employee name is required";
-    else if (form.assignedTo === userName) e.assignedTo = "You cannot allocate an asset to yourself";
-    if (!assignedByVal) e.assignedBy = "Assigned-by name is required";
-    if (!form.assignedDate) e.assignedDate = "Assigned date is required";
-    else if (!isValidDate(form.assignedDate)) e.assignedDate = "Enter a valid date";
-    if (form.expectedReturnDate) {
-      if (!isValidDate(form.expectedReturnDate)) e.expectedReturnDate = "Enter a valid date";
-      else if (!isDateAfter(form.assignedDate, form.expectedReturnDate)) {
-        e.expectedReturnDate = "Expected return date must be on or after the assigned date";
-      }
-    }
-    if (Object.keys(e).length > 0) {
-      setErrors(e);
-      toast.error("Please fix the highlighted fields");
-      return;
-    }
-    setErrors({});
+  const handleAllocate = async (data) => {
     setSaving(true);
     try {
       await allocateAsset({
-        assetId: Number(form.assetId),
-        assignedTo: form.assignedTo,
-        assignedBy: assignedByVal,
-        assignedDate: form.assignedDate,
-        expectedReturnDate: form.expectedReturnDate || null,
-        remarks: form.remarks || null,
+        assetId: Number(data.assetId),
+        assignedTo: data.assignedTo,
+        assignedBy: data.assignedBy || userName,
+        assignedDate: data.assignedDate,
+        expectedReturnDate: data.expectedReturnDate || null,
+        remarks: data.remarks || null,
       });
       toast.success("Asset allocated successfully");
       setAllocateOpen(false);
-      load(page);
-      loadOverview();
-      loadRecentActivities();
-      dispatch(fetchAssets({ page: 0, size: 10 }));
+      queryClient.invalidateQueries({ queryKey: ["allocations"] });
+      queryClient.invalidateQueries({ queryKey: ["allocationOverview"] });
+      queryClient.invalidateQueries({ queryKey: ["recentAllocations"] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
     } catch (err) {
       if (err.response?.status === 400) {
         const fe = extractFieldErrors(err);
         if (Object.keys(fe).length > 0) {
-          setErrors(fe);
+          Object.keys(fe).forEach((key) => {
+            setError(key, { type: "server", message: fe[key] });
+          });
           toast.error("Please fix the highlighted fields");
         } else {
           toast.error(err.response?.data?.message || "Allocation failed");
@@ -514,16 +481,14 @@ export default function AssetAllocationPage() {
     } finally { setSaving(false); }
   };
 
-  const f = (key, val) => setForm((p) => ({ ...p, [key]: val }));
-
   const handleReturnConfirm = async () => {
     try {
       await returnAsset(returnId);
       toast.success("Asset returned successfully");
-      load(page);
-      loadOverview();
-      loadRecentActivities();
-      dispatch(fetchAssets({ page: 0, size: 10 }));
+      queryClient.invalidateQueries({ queryKey: ["allocations"] });
+      queryClient.invalidateQueries({ queryKey: ["allocationOverview"] });
+      queryClient.invalidateQueries({ queryKey: ["recentAllocations"] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
     } catch (e) {
       toast.error(e.response?.data?.message || "Return failed");
     } finally { setReturnConfirm(false); setReturnId(null); }
@@ -594,10 +559,10 @@ export default function AssetAllocationPage() {
           to: { opacity: 1, transform: "translateY(0)" }
         }
       }}>
-        <StatCard label="Total Records" value={totalElements} icon={<FaBoxes size={15} />} iconBg="#e8eaf6" iconColor="#3949ab" />
-        <StatCard label="Active" value={activeCount} icon={<FaCheckCircle size={15} />} iconBg="#ecfdf5" iconColor="#10b981" />
-        <StatCard label="Returned" value={returnedCount} icon={<FaLayerGroup size={15} />} iconBg="#eff6ff" iconColor="#2563eb" />
-        <StatCard label="Overdue" value={overdueCount} icon={<FaClock size={15} />} iconBg="#fffbeb" iconColor="#d97706" />
+        <StatCard label="Total Records" value={totalElements} icon={<FaBoxes size={15} />} iconBg="#e8eaf6" iconColor="#3949ab" onClick={() => { setStatusFilter(""); setPage(0); }} />
+        <StatCard label="Active" value={activeCount} icon={<FaCheckCircle size={15} />} iconBg="#ecfdf5" iconColor="#10b981" onClick={() => { setStatusFilter("ACTIVE"); setPage(0); }} />
+        <StatCard label="Returned" value={returnedCount} icon={<FaLayerGroup size={15} />} iconBg="#eff6ff" iconColor="#2563eb" onClick={() => { setStatusFilter("RETURNED"); setPage(0); }} />
+        <StatCard label="Overdue" value={overdueCount} icon={<FaClock size={15} />} iconBg="#fffbeb" iconColor="#d97706" onClick={() => { setStatusFilter("ACTIVE"); setPage(0); }} />
       </Box>
 
       {/* (AssetOverview moved below the table) */}
@@ -662,7 +627,7 @@ export default function AssetAllocationPage() {
         {loading ? (
           <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
         ) : allocations.length === 0 ? (
-          <EmptyState />
+          <EmptyState icon={FaBoxOpen} label="No allocation records found." />
         ) : (
           <Box sx={{ overflowX: "auto" }}>
             <Table size="small" sx={{ minWidth: 860, tableLayout: "auto", borderCollapse: "collapse" }}>
@@ -771,198 +736,217 @@ export default function AssetAllocationPage() {
       </Box>
 
       {/* ── Allocate Modal (UNCHANGED) ───────────────────────────────────── */}
-      <Dialog open={allocateOpen} onClose={() => setAllocateOpen(false)} maxWidth="sm" fullWidth slotProps={{ paper: { sx: premiumDialogPaperSx } }}>
+      {/* ── Dialog to allocate asset ── */}
+      <Dialog open={allocateOpen} onClose={() => { if (!saving) { setAllocateOpen(false); reset(); } }} maxWidth="sm" fullWidth slotProps={{ paper: { sx: premiumDialogPaperSx } }}>
         <DialogTitle sx={premiumDialogTitleSx}>
           <span>Allocate Asset</span>
-          <IconButton size="small" onClick={() => setAllocateOpen(false)} sx={{ color: COLORS.textFaint }}><FaTimes size={13} /></IconButton>
+          <IconButton size="small" onClick={() => { if (!saving) { setAllocateOpen(false); reset(); } }} sx={{ color: COLORS.textFaint }}><FaTimes size={13} /></IconButton>
         </DialogTitle>
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.75, pt: "18px !important", pb: 2 }}>
           {/* Asset */}
-          <FormControl fullWidth size="small" error={!!errors.assetId}>
-            <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: errors.assetId ? "#c62828" : COLORS.textMuted, mb: 0.5, display: "flex", alignItems: "center", gap: 0.5 }}>
-              Asset *
-            </Typography>
-            <OutlinedInput readOnly notched={false} label="" size="small"
-              value={availableAssets.find((a) => a.assetId === form.assetId)
-                ? `${availableAssets.find((a) => a.assetId === form.assetId).assetName}${availableAssets.find((a) => a.assetId === form.assetId).assetCode ? ` (${availableAssets.find((a) => a.assetId === form.assetId).assetCode})` : ""}`
-                : ""}
-              placeholder="Select asset to allocate..." onClick={(e) => setAssetAnchor(e.currentTarget)}
-              error={!!errors.assetId}
-              endAdornment={<InputAdornment position="end"><Typography fontSize={11} color="#aaa">▾</Typography></InputAdornment>}
-              sx={{
-                ...inputSx["& .MuiOutlinedInput-root"],
-                fontSize: 11.5,
-                height: 30,
-                cursor: "pointer",
-                caretColor: "transparent",
-                background: "#f8fafc",
-                borderColor: errors.assetId ? "#c62828" : "#cbd5e1",
-                "& fieldset": { border: "1px solid", borderColor: errors.assetId ? "#c62828 !important" : "#cbd5e1" }
-              }}
-            />
-            {errors.assetId && <Typography color="error" sx={{ fontSize: 10.5, mt: 0.25 }}>{errors.assetId}</Typography>}
-            <Popover open={Boolean(assetAnchor)} anchorEl={assetAnchor}
-              onClose={() => { setAssetAnchor(null); setAssetSearch(""); }}
-              anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-              slotProps={{ paper: { sx: { width: assetAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column", borderRadius: "10px", boxShadow: "0 10px 25px rgba(0,0,0,0.08)", border: "1px solid #e2e8f0" } } }}>
-              <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
-                <TextField autoFocus size="small" fullWidth placeholder="Search asset..."
-                  value={assetSearch} onChange={(e) => setAssetSearch(e.target.value)}
-                  slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }} />
-              </Box>
-              <List dense sx={{ overflowY: "auto", flex: 1 }}>
-                {(() => {
-                  const q = assetSearch.toLowerCase();
-                  const filtered = availableAssets.filter((a) => !q || a.assetName?.toLowerCase().includes(q) || a.assetCode?.toLowerCase().includes(q));
-                  return filtered.length > 0 ? filtered.map((a) => (
-                    <ListItemButton key={a.assetId} selected={form.assetId === a.assetId}
-                      onClick={() => { f("assetId", a.assetId); setAssetAnchor(null); setAssetSearch(""); }} sx={{ py: 0.5 }}>
-                      <ListItemText
-                        primary={<Typography sx={{ fontSize: 13 }}>{a.assetName}</Typography>}
-                        secondary={<Typography sx={{ fontSize: 11, color: "#64748b" }}>{a.assetCode || ""}</Typography>}
-                      />
-                    </ListItemButton>
-                  )) : <ListItemButton disabled><ListItemText primary={<Typography sx={{ fontSize: 13 }}>No assets found</Typography>} /></ListItemButton>;
-                })()}
-              </List>
-            </Popover>
-          </FormControl>
+          <Controller
+            name="assetId"
+            control={control}
+            rules={{ required: "Select an asset to allocate" }}
+            render={({ field, fieldState: { error } }) => (
+              <FormControl fullWidth size="small" error={!!error}>
+                <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: error ? "#c62828" : COLORS.textMuted, mb: 0.5 }}>
+                  Asset *
+                </Typography>
+                <OutlinedInput readOnly notched={false} label="" size="small"
+                  value={availableAssets.find((a) => a.assetId === field.value)
+                    ? `${availableAssets.find((a) => a.assetId === field.value).assetName}${availableAssets.find((a) => a.assetId === field.value).assetCode ? ` (${availableAssets.find((a) => a.assetId === field.value).assetCode})` : ""}`
+                    : ""}
+                  placeholder="Select asset to allocate..." onClick={(e) => setAssetAnchor(e.currentTarget)}
+                  error={!!error}
+                  endAdornment={<InputAdornment position="end"><Typography fontSize={11} color="#aaa">▾</Typography></InputAdornment>}
+                  sx={{
+                    ...inputSx["& .MuiOutlinedInput-root"],
+                    fontSize: 11.5,
+                    height: 30,
+                    cursor: "pointer",
+                    caretColor: "transparent",
+                    background: "#f8fafc",
+                    borderColor: error ? "#c62828" : "#cbd5e1",
+                    "& fieldset": { border: "1px solid", borderColor: error ? "#c62828 !important" : "#cbd5e1" }
+                  }}
+                />
+                {error && <Typography color="error" sx={{ fontSize: 10.5, mt: 0.25 }}>{error.message}</Typography>}
+                <Popover open={Boolean(assetAnchor)} anchorEl={assetAnchor}
+                  onClose={() => { setAssetAnchor(null); setAssetSearch(""); }}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+                  slotProps={{ paper: { sx: { width: assetAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column", borderRadius: "10px", boxShadow: "0 10px 25px rgba(0,0,0,0.08)", border: "1px solid #e2e8f0" } } }}>
+                  <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
+                    <TextField autoFocus size="small" fullWidth placeholder="Search asset..."
+                      value={assetSearch} onChange={(e) => setAssetSearch(e.target.value)}
+                      slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
+                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }} />
+                  </Box>
+                  <List dense sx={{ overflowY: "auto", flex: 1 }}>
+                    {(() => {
+                      const q = assetSearch.toLowerCase();
+                      const filtered = availableAssets.filter((a) => !q || a.assetName?.toLowerCase().includes(q) || a.assetCode?.toLowerCase().includes(q));
+                      return filtered.length > 0 ? filtered.map((a) => (
+                        <ListItemButton key={a.assetId} selected={field.value === a.assetId}
+                          onClick={() => { field.onChange(a.assetId); setAssetAnchor(null); setAssetSearch(""); }} sx={{ py: 0.5 }}>
+                          <ListItemText
+                            primary={<Typography sx={{ fontSize: 13 }}>{a.assetName}</Typography>}
+                            secondary={<Typography sx={{ fontSize: 11, color: "#64748b" }}>{a.assetCode || ""}</Typography>}
+                          />
+                        </ListItemButton>
+                      )) : <ListItemButton disabled><ListItemText primary={<Typography sx={{ fontSize: 13 }}>No assets found</Typography>} /></ListItemButton>;
+                    })()}
+                  </List>
+                </Popover>
+              </FormControl>
+            )}
+          />
 
           {/* Assigned To */}
-          <FormControl fullWidth size="small" error={!!errors.assignedTo}>
-            <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: errors.assignedTo ? "#c62828" : COLORS.textMuted, mb: 0.5 }}>
-              Assigned To *
-            </Typography>
-            <OutlinedInput readOnly notched={false} label="" size="small"
-              value={form.assignedTo || ""} placeholder="Select employee..." onClick={(e) => setAssignedToAnchor(e.currentTarget)}
-              error={!!errors.assignedTo}
-              endAdornment={<InputAdornment position="end"><Typography fontSize={11} color="#aaa">▾</Typography></InputAdornment>}
-              sx={{
-                ...inputSx["& .MuiOutlinedInput-root"],
-                fontSize: 11.5,
-                height: 30,
-                cursor: "pointer",
-                caretColor: "transparent",
-                background: "#f8fafc",
-                borderColor: errors.assignedTo ? "#c62828" : "#cbd5e1",
-                "& fieldset": { border: "1px solid", borderColor: errors.assignedTo ? "#c62828 !important" : "#cbd5e1" }
-              }}
-            />
-            {errors.assignedTo && <Typography color="error" sx={{ fontSize: 10.5, mt: 0.25 }}>{errors.assignedTo}</Typography>}
-            <Popover open={Boolean(assignedToAnchor)} anchorEl={assignedToAnchor}
-              onClose={() => { setAssignedToAnchor(null); setAssignedToSearch(""); }}
-              anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-              slotProps={{ paper: { sx: { width: assignedToAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column", borderRadius: "10px", boxShadow: "0 10px 25px rgba(0,0,0,0.08)", border: "1px solid #e2e8f0" } } }}>
-              <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
-                <TextField autoFocus size="small" fullWidth placeholder="Search employee..."
-                  value={assignedToSearch} onChange={(e) => setAssignedToSearch(e.target.value)}
-                  slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }} />
-              </Box>
-              <List dense sx={{ overflowY: "auto", flex: 1 }}>
-                {(() => {
-                  const q = assignedToSearch.toLowerCase();
-                  const filtered = allUsers.filter((u) => u.userName !== userName && (!q || u.userName?.toLowerCase().includes(q) || u.userEmail?.toLowerCase().includes(q)));
-                  return filtered.length > 0 ? filtered.map((u) => (
-                    <ListItemButton key={u.userId} selected={form.assignedTo === u.userName}
-                      onClick={() => { f("assignedTo", u.userName); setAssignedToAnchor(null); setAssignedToSearch(""); }} sx={{ py: 0.5 }}>
-                      <ListItemText
-                        primary={
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            <Typography sx={{ fontSize: 13, fontWeight: 500 }}>{u.userName}</Typography>
-                            {u.userRole && (
-                              <Chip
-                                label={u.userRole}
-                                size="small"
-                                sx={{
-                                  height: 16,
-                                  fontSize: 8,
-                                  fontWeight: 700,
-                                  borderRadius: "4px",
-                                  background: u.userRole === "ADMIN" ? "#fee2e2" : u.userRole === "MANAGER" ? "#fef3c7" : "#e0f2fe",
-                                  color: u.userRole === "ADMIN" ? "#991b1b" : u.userRole === "MANAGER" ? "#92400e" : "#0369a1",
-                                  "& .MuiChip-label": { px: 0.75 }
-                                }}
-                              />
-                            )}
-                          </Box>
-                        }
-                        secondary={<Typography sx={{ fontSize: 11, color: "#64748b" }}>{u.userEmail}</Typography>}
-                      />
-                    </ListItemButton>
-                  )) : <ListItemButton disabled><ListItemText primary={<Typography sx={{ fontSize: 13 }}>No users found</Typography>} /></ListItemButton>;
-                })()}
-              </List>
-            </Popover>
-          </FormControl>
+          <Controller
+            name="assignedTo"
+            control={control}
+            rules={{
+              required: "Employee name is required",
+              validate: (val) => val !== userName || "You cannot allocate an asset to yourself"
+            }}
+            render={({ field, fieldState: { error } }) => (
+              <FormControl fullWidth size="small" error={!!error}>
+                <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: error ? "#c62828" : COLORS.textMuted, mb: 0.5 }}>
+                  Assigned To *
+                </Typography>
+                <OutlinedInput readOnly notched={false} label="" size="small"
+                  value={field.value || ""} placeholder="Select employee..." onClick={(e) => setAssignedToAnchor(e.currentTarget)}
+                  error={!!error}
+                  endAdornment={<InputAdornment position="end"><Typography fontSize={11} color="#aaa">▾</Typography></InputAdornment>}
+                  sx={{
+                    ...inputSx["& .MuiOutlinedInput-root"],
+                    fontSize: 11.5,
+                    height: 30,
+                    cursor: "pointer",
+                    caretColor: "transparent",
+                    background: "#f8fafc",
+                    borderColor: error ? "#c62828" : "#cbd5e1",
+                    "& fieldset": { border: "1px solid", borderColor: error ? "#c62828 !important" : "#cbd5e1" }
+                  }}
+                />
+                {error && <Typography color="error" sx={{ fontSize: 10.5, mt: 0.25 }}>{error.message}</Typography>}
+                <Popover open={Boolean(assignedToAnchor)} anchorEl={assignedToAnchor}
+                  onClose={() => { setAssignedToAnchor(null); setAssignedToSearch(""); }}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+                  slotProps={{ paper: { sx: { width: assignedToAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column", borderRadius: "10px", boxShadow: "0 10px 25px rgba(0,0,0,0.08)", border: "1px solid #e2e8f0" } } }}>
+                  <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
+                    <TextField autoFocus size="small" fullWidth placeholder="Search employee..."
+                      value={assignedToSearch} onChange={(e) => setAssignedToSearch(e.target.value)}
+                      slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
+                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }} />
+                  </Box>
+                  <List dense sx={{ overflowY: "auto", flex: 1 }}>
+                    {(() => {
+                      const q = assignedToSearch.toLowerCase();
+                      const filtered = allUsers.filter((u) => u.userName !== userName && (!q || u.userName?.toLowerCase().includes(q) || u.userEmail?.toLowerCase().includes(q)));
+                      return filtered.length > 0 ? filtered.map((u) => (
+                        <ListItemButton key={u.userId} selected={field.value === u.userName}
+                          onClick={() => { field.onChange(u.userName); setAssignedToAnchor(null); setAssignedToSearch(""); }} sx={{ py: 0.5 }}>
+                          <ListItemText
+                            primary={
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <Typography sx={{ fontSize: 13, fontWeight: 500 }}>{u.userName}</Typography>
+                                {u.userRole && (
+                                  <Chip
+                                    label={u.userRole}
+                                    size="small"
+                                    sx={{
+                                      height: 16,
+                                      fontSize: 8,
+                                      fontWeight: 700,
+                                      borderRadius: "4px",
+                                      background: u.userRole === "ADMIN" ? "#fee2e2" : u.userRole === "MANAGER" ? "#fef3c7" : "#e0f2fe",
+                                      color: u.userRole === "ADMIN" ? "#991b1b" : u.userRole === "MANAGER" ? "#92400e" : "#0369a1",
+                                      "& .MuiChip-label": { px: 0.75 }
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                            }
+                            secondary={<Typography sx={{ fontSize: 11, color: "#64748b" }}>{u.userEmail}</Typography>}
+                          />
+                        </ListItemButton>
+                      )) : <ListItemButton disabled><ListItemText primary={<Typography sx={{ fontSize: 13 }}>No users found</Typography>} /></ListItemButton>;
+                    })()}
+                  </List>
+                </Popover>
+              </FormControl>
+            )}
+          />
 
           {/* Assigned By */}
-          <FormControl fullWidth size="small">
-            <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.textMuted, mb: 0.5 }}>
-              Assigned By
-            </Typography>
-            <OutlinedInput
-              disabled
-              notched={false}
-              label=""
-              size="small"
-              value={form.assignedBy || userName || ""}
-              sx={{
-                ...inputSx["& .MuiOutlinedInput-root"],
-                fontSize: 11.5,
-                height: 30,
-                bgcolor: "#f8fafc",
-                "& .MuiOutlinedInput-input.Mui-disabled": {
-                  WebkitTextFillColor: "#475569",
-                }
-              }}
-            />
-          </FormControl>
+          <Controller
+            name="assignedBy"
+            control={control}
+            render={({ field }) => (
+              <FormControl fullWidth size="small">
+                <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.textMuted, mb: 0.5 }}>
+                  Assigned By
+                </Typography>
+                <OutlinedInput
+                  disabled
+                  notched={false}
+                  label=""
+                  size="small"
+                  value={field.value || userName || ""}
+                  sx={{
+                    ...inputSx["& .MuiOutlinedInput-root"],
+                    fontSize: 11.5,
+                    height: 30,
+                    bgcolor: "#f8fafc",
+                    "& .MuiOutlinedInput-input.Mui-disabled": {
+                      WebkitTextFillColor: "#475569",
+                    }
+                  }}
+                />
+              </FormControl>
+            )}
+          />
 
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-            <Box>
-              <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: errors.assignedDate ? "#c62828" : COLORS.textMuted, mb: 0.5 }}>
-                Assigned Date *
-              </Typography>
-              <TextField type="date" size="small" fullWidth
-                value={form.assignedDate} onChange={(e) => f("assignedDate", e.target.value)}
-                error={!!errors.assignedDate} helperText={errors.assignedDate || ""}
-                sx={{
-                  ...inputSx,
-                  "& .MuiOutlinedInput-root": { ...inputSx["& .MuiOutlinedInput-root"], height: 30, fontSize: 11.5 }
-                }} />
-            </Box>
-            <Box>
-              <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: errors.expectedReturnDate ? "#c62828" : COLORS.textMuted, mb: 0.5 }}>
-                Expected Return Date
-              </Typography>
-              <TextField type="date" size="small" fullWidth
-                value={form.expectedReturnDate} onChange={(e) => f("expectedReturnDate", e.target.value)}
-                error={!!errors.expectedReturnDate} helperText={errors.expectedReturnDate || ""}
-                sx={{
-                  ...inputSx,
-                  "& .MuiOutlinedInput-root": { ...inputSx["& .MuiOutlinedInput-root"], height: 30, fontSize: 11.5 }
-                }} />
-            </Box>
+            <FormTextField
+              name="assignedDate"
+              control={control}
+              rules={{ required: "Assigned date is required" }}
+              label="Assigned Date *"
+              type="date"
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+            <FormTextField
+              name="expectedReturnDate"
+              control={control}
+              rules={{
+                validate: (val) => {
+                  if (!val) return true;
+                  return isDateAfter(formAssignedDate, val) || "Must be on or after the assigned date";
+                }
+              }}
+              label="Expected Return Date"
+              type="date"
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
           </Box>
 
-          <Box>
-            <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.textMuted, mb: 0.5 }}>
-              Remarks
-            </Typography>
-            <TextField placeholder="Add any details or notes..." size="small" fullWidth multiline rows={2}
-              value={form.remarks} onChange={(e) => f("remarks", e.target.value)}
-              slotProps={{ htmlInput: { maxLength: 250 } }}
-              sx={{
-                ...inputSx,
-                "& .MuiOutlinedInput-root": { ...inputSx["& .MuiOutlinedInput-root"], height: "auto", fontSize: 11.5, py: "6px !important" }
-              }} />
-          </Box>
+          <FormTextField
+            name="remarks"
+            control={control}
+            label="Remarks"
+            placeholder="Add any details or notes..."
+            multiline
+            rows={2}
+            slotProps={{ htmlInput: { maxLength: 250 } }}
+            sx={{ "& .MuiOutlinedInput-root": { height: "auto" } }}
+          />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5, gap: 1, borderTop: "1px solid #f1f5f9", pt: 1.5 }}>
-          <Button onClick={() => setAllocateOpen(false)} sx={outlinedBtnSx}>Cancel</Button>
-          <Button variant="contained" onClick={handleAllocate} disabled={saving}
+          <Button onClick={() => { setAllocateOpen(false); reset(); }} sx={outlinedBtnSx}>Cancel</Button>
+          <Button variant="contained" onClick={handleSubmit(handleAllocate)} disabled={saving}
             startIcon={saving ? <CircularProgress size={12} color="inherit" /> : <FaPlus size={11} />}
             sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}>
             {saving ? "Allocating..." : "Allocate"}

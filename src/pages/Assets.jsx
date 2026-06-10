@@ -1,21 +1,24 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   Box, Button, Select, MenuItem, CircularProgress,
   Typography, Chip,
   Tooltip, IconButton, InputAdornment,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from "@mui/material";
+import { useForm } from "react-hook-form";
+import { FormTextField } from "../components/FormFields";
 import { FaFilter, FaFileExport, FaPlus, FaUpload, FaBoxes, FaCheckCircle, FaExclamationTriangle, FaWrench, FaTools } from "react-icons/fa";
 import toast from "../utils/toast.jsx";
 import {
-  fetchAssets,
   setAssetPage, setAssetSearch, setAssetFilter, setAssetStatusFilter, resetAssetFilters,
 } from "../store/slices/assetSlice";
 import {
   getAssetTypes, deleteAsset, getAssetById,
   exportAssets, getDashboard, createAssetType,
+  getAssets
 } from "../services/assets_service";
 import { COLORS, primaryBtnSx, outlinedBtnSx, selectSx, inputSx } from "../theme/tokens";
 
@@ -31,13 +34,23 @@ import StatCard from "../components/common/StatCard";
 
 export default function AssetsPage() {
   const dispatch = useDispatch();
-  const { items: assets, totalPages, page, search, filterType, filterStatus, loading } =
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const { page, search, filterType, filterStatus } =
     useSelector((s) => s.assets);
   const { userRole, userName } = useSelector((s) => s.auth);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const statusParam = params.get("status") || "";
+    if (statusParam !== filterStatus) {
+      dispatch(setAssetStatusFilter(statusParam));
+      dispatch(setAssetPage(0));
+    }
+  }, [location.search, filterStatus, dispatch]);
+
   const [inputValue, setInputValue] = useState("");
-  const [types, setTypes] = useState([]);
-  const [typesLoaded, setTypesLoaded] = useState(false);
   const [showCount, setShowCount] = useState(10);
   const [warrantyDays, setWarrantyDays] = useState(null);
   const [qrModal, setQrModal] = useState(false);
@@ -47,41 +60,33 @@ export default function AssetsPage() {
   const [historyModal, setHistoryModal] = useState(false);
   const [historyAsset, setHistoryAsset] = useState(null);
 
-  const [stats, setStats] = useState(null);
   const [exportLoading, setExportLoading] = useState(false);
 
   const [typeDialogOpen, setTypeDialogOpen] = useState(false);
-  const [newTypeName, setNewTypeName] = useState("");
   const [typeDialogLoading, setTypeDialogLoading] = useState(false);
 
-  const handleAddType = async () => {
-    if (!newTypeName.trim()) {
-      toast.error("Type name cannot be empty");
-      return;
-    }
-    setTypeDialogLoading(true);
-    try {
-      const res = await createAssetType(newTypeName.trim());
-      toast.success("Asset type created successfully");
-      const r = await getAssetTypes();
-      const updatedTypes = getAssetTypeList(r);
-      setTypes(updatedTypes);
-      setTypeDialogOpen(false);
-      setNewTypeName("");
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to create asset type");
-    } finally {
-      setTypeDialogLoading(false);
-    }
-  };
+  const queryClient = useQueryClient();
 
-  const navigate = useNavigate();
-  const location = useLocation();
-  const canWrite = userRole === "admin" || userRole === "manager"; // create/edit
-  const canDelete = userRole === "admin";                           // admin only
-  const canExport = userRole === "admin" || userRole === "manager"; // admin + manager
-  const canBulk = userRole === "admin";                           // admin only
-  const canTemplate = userRole === "admin";                           // admin only
+  const typeForm = useForm({
+    defaultValues: { newTypeName: "" }
+  });
+
+  // ── Query Fetchers ──────────────────────────────────────────────────────────
+  const { data: types = [] } = useQuery({
+    queryKey: ["assetTypes"],
+    queryFn: async () => {
+      const res = await getAssetTypes();
+      return getAssetTypeList(res);
+    },
+  });
+
+  const { data: stats = null } = useQuery({
+    queryKey: ["dashboardStats"],
+    queryFn: async () => {
+      const res = await getDashboard();
+      return res;
+    },
+  });
 
   // ── Helper: resolve typeName from filterType (typeId) ──────────────────────
   const resolveTypeName = (typeId, typeList) => {
@@ -90,37 +95,57 @@ export default function AssetsPage() {
     return found?.typeName || undefined;
   };
 
-  // ── Load asset types ONCE, then trigger first fetch ─────────────────────────
-  useEffect(() => {
-    getAssetTypes()
-      .then((res) => {
-        setTypes(getAssetTypeList(res));
-        setTypesLoaded(true);
-      })
-      .catch(() => {
-        setTypes([]);
-        setTypesLoaded(true); // still mark loaded so fetch proceeds
-      });
+  const typeName = resolveTypeName(filterType, types);
 
-    // Fetch dashboard stats for ribbon
-    getDashboard()
-      .then((res) => setStats(res))
-      .catch(() => { });
-  }, []);
+  const { data: assetsData, isLoading: loading } = useQuery({
+    queryKey: ["assets", search, page, showCount, typeName, filterStatus],
+    queryFn: async () => {
+      const params = {
+        keyword: search || undefined,
+        type:    typeName || undefined,
+        status:  filterStatus || undefined,
+        page,
+        size:    showCount,
+      };
+      const res = await getAssets(params);
+      return {
+        content:    res.data?.content    || res.content    || [],
+        totalPages: res.data?.totalPages || res.totalPages || 0,
+      };
+    },
+    placeholderData: keepPreviousData,
+  });
 
-  // ── Re-fetch whenever page / filterType / filterStatus / showCount changes ───
-  useEffect(() => {
-    if (!typesLoaded) return;
-    const typeName = resolveTypeName(filterType, types);
-    dispatch(fetchAssets({ keyword: search, page, size: showCount, type: typeName, status: filterStatus }));
-  }, [page, showCount, filterType, filterStatus, search, typesLoaded, dispatch]);
+  const assets = assetsData?.content || [];
+  const totalPages = assetsData?.totalPages || 0;
+
+  const handleAddType = async (data) => {
+    if (!data.newTypeName?.trim()) {
+      toast.error("Type name cannot be empty");
+      return;
+    }
+    setTypeDialogLoading(true);
+    try {
+      await createAssetType(data.newTypeName.trim());
+      toast.success("Asset type created successfully");
+      queryClient.invalidateQueries({ queryKey: ["assetTypes"] });
+      setTypeDialogOpen(false);
+      typeForm.reset();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to create asset type");
+    } finally {
+      setTypeDialogLoading(false);
+    }
+  };
+
+  const canWrite = userRole === "admin" || userRole === "manager"; // create/edit
+  const canDelete = userRole === "admin";                           // admin only
+  const canExport = userRole === "admin" || userRole === "manager"; // admin + manager
+  const canBulk = userRole === "admin";                           // admin only
 
   const reload = () => {
-    const typeName = resolveTypeName(filterType, types);
-    dispatch(fetchAssets({ keyword: search, page, size: showCount, type: typeName, status: filterStatus }));
-    getDashboard()
-      .then((res) => setStats(res))
-      .catch(() => { });
+    queryClient.invalidateQueries({ queryKey: ["assets"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
   };
 
   const handleSearch = () => {
@@ -131,12 +156,13 @@ export default function AssetsPage() {
   const handleReset = () => {
     setInputValue("");
     dispatch(resetAssetFilters());
-    dispatch(fetchAssets({ keyword: "", page: 0, size: showCount }));
+    navigate({ search: "" });
   };
 
   const handleFilterChange = (value) => {
     if (value === "ADD_NEW") {
       setTypeDialogOpen(true);
+      typeForm.reset({ newTypeName: "" });
       return;
     }
     dispatch(setAssetFilter(value));
@@ -144,15 +170,18 @@ export default function AssetsPage() {
   };
 
   const handleStatusChange = (value) => {
-    dispatch(setAssetStatusFilter(value));
-    dispatch(setAssetPage(0));
-    // useEffect will fire from filterStatus + page change
+    const params = new URLSearchParams(location.search);
+    if (value) {
+      params.set("status", value);
+    } else {
+      params.delete("status");
+    }
+    navigate({ search: params.toString() });
   };
 
   const handleShowCountChange = (value) => {
     setShowCount(Number(value));
     dispatch(setAssetPage(0));
-    // useEffect will fire from showCount change
   };
 
   const handleEdit = (item) => navigate(`/home/assets/edit/${item.assetId}`);
@@ -337,11 +366,11 @@ export default function AssetsPage() {
           to: { opacity: 1, transform: "translateY(0)" }
         }
       }}>
-        <StatCard label="Total Assets" value={stats?.totalAssets ?? 0} icon={<FaBoxes />} iconColor="#3949ab" />
-        <StatCard label="Available" value={stats?.available ?? 0} icon={<FaCheckCircle />} iconColor="#10b981" />
-        <StatCard label="Assigned" value={stats?.assigned ?? 0} icon={<FaTools />} iconColor="#2563eb" />
-        <StatCard label="Maintenance" value={stats?.underMaintenance ?? 0} icon={<FaWrench />} iconColor="#d97706" />
-        <StatCard label="Damaged" value={stats?.damaged ?? 0} icon={<FaExclamationTriangle />} iconColor="#f43f5e" />
+        <StatCard label="Total Assets" value={stats?.totalAssets ?? 0} icon={<FaBoxes />} iconColor="#3949ab" onClick={() => handleStatusChange("")} />
+        <StatCard label="Available" value={stats?.available ?? 0} icon={<FaCheckCircle />} iconColor="#10b981" onClick={() => handleStatusChange("AVAILABLE")} />
+        <StatCard label="Assigned" value={stats?.assigned ?? 0} icon={<FaTools />} iconColor="#2563eb" onClick={() => handleStatusChange("ASSIGNED")} />
+        <StatCard label="Maintenance" value={stats?.underMaintenance ?? 0} icon={<FaWrench />} iconColor="#d97706" onClick={() => handleStatusChange("UNDER_MAINTENANCE")} />
+        <StatCard label="Damaged" value={stats?.damaged ?? 0} icon={<FaExclamationTriangle />} iconColor="#f43f5e" onClick={() => handleStatusChange("DAMAGED")} />
       </Box>
 
       <SearchBar
@@ -377,9 +406,9 @@ export default function AssetsPage() {
       />
 
       {/* ── Dialog to add new type ── */}
-      <Dialog 
-        open={typeDialogOpen} 
-        onClose={() => { if (!typeDialogLoading) setTypeDialogOpen(false); }}
+      <Dialog
+        open={typeDialogOpen}
+        onClose={() => { if (!typeDialogLoading) { setTypeDialogOpen(false); typeForm.reset(); } }}
         maxWidth="xs"
         fullWidth
         slotProps={{
@@ -391,43 +420,41 @@ export default function AssetsPage() {
           }
         }}
       >
-        <DialogTitle sx={{ 
-          display: "flex", 
-          alignItems: "center", 
-          justifyContent: "space-between", 
-          pb: 1, 
-          fontWeight: 700, 
-          fontSize: 15, 
+        <DialogTitle sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          pb: 1,
+          fontWeight: 700,
+          fontSize: 15,
           color: COLORS.text,
           borderBottom: `1px solid ${COLORS.borderLight || "#f1f5f9"}`
         }}>
           Add Asset Type
         </DialogTitle>
         <DialogContent sx={{ pt: "16px !important", pb: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
-          <Typography sx={{ fontSize: 11.5, color: COLORS.textFaint, mb: 0.5 }}>Type Name *</Typography>
-          <TextField
-            autoFocus
+          <FormTextField
+            name="newTypeName"
+            control={typeForm.control}
+            rules={{ required: "Type name is required" }}
+            label="Type Name *"
             placeholder="e.g. Server, Projector, Tablet"
-            value={newTypeName}
-            onChange={(e) => setNewTypeName(e.target.value)}
-            size="small"
-            fullWidth
+            autoFocus
             disabled={typeDialogLoading}
-            sx={inputSx}
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 1.5, gap: 1 }}>
-          <Button 
-            variant="outlined" 
-            onClick={() => { setTypeDialogOpen(false); setNewTypeName(""); }} 
+          <Button
+            variant="outlined"
+            onClick={() => { setTypeDialogOpen(false); typeForm.reset(); }}
             disabled={typeDialogLoading}
             sx={outlinedBtnSx}
           >
             Cancel
           </Button>
-          <Button 
-            variant="contained" 
-            onClick={handleAddType} 
+          <Button
+            variant="contained"
+            onClick={typeForm.handleSubmit(handleAddType)}
             disabled={typeDialogLoading}
             sx={{ ...primaryBtnSx, px: 2.5 }}
           >

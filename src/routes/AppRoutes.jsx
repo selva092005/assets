@@ -15,6 +15,7 @@ import UserDetailPage from "../pages/UserDetailPage";
 import TransferPage from "../pages/TransferPage";
 import ReportsPage from "../pages/ReportsPage";
 import Locations from "../pages/Locations";
+import NotFound from "../pages/NotFound";
 
 function ProtectedRoute({ children }) {
   const { isLoggedIn } = useSelector((s) => s.auth);
@@ -66,7 +67,7 @@ export default function AppRoutes() {
         <Route path="reports" element={<ReportsPage />} />
       </Route>
 
-      <Route path="*" element={<Navigate to="/" />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }

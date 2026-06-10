@@ -21,26 +21,34 @@ const getUserNameFromToken = (token) => {
   return raw.includes("@") ? raw.split("@")[0] : raw;
 };
 
+const getUserEmailFromToken = (token) => {
+  const p = decodePayload(token);
+  if (!p) return "";
+  return p.sub || p.email || p.username || "";
+};
+
 const token    = getToken();
 // Only use stored role if it's a non-empty string
 const stored   = localStorage.getItem("role") || "";
 const userRole = stored.trim() !== "" ? stored.trim() : getRoleFromToken(token);
 const userName = getUserNameFromToken(token);
+const userEmail = getUserEmailFromToken(token);
 
 const authSlice = createSlice({
   name: "auth",
-  initialState: { token, userRole, userName, isLoggedIn: !!token, loading: false, error: null },
+  initialState: { token, userRole, userName, userEmail, isLoggedIn: !!token, loading: false, error: null },
   reducers: {
     setCredentials(state, { payload }) {
       state.token      = payload.token;
       state.userRole   = payload.userRole;
       state.userName   = getUserNameFromToken(payload.token);
+      state.userEmail  = getUserEmailFromToken(payload.token);
       state.isLoggedIn = true;
       state.error      = null;
     },
     logoutUser(state) {
       logoutFn();
-      state.token = null; state.userRole = "user"; state.userName = ""; state.isLoggedIn = false;
+      state.token = null; state.userRole = "user"; state.userName = ""; state.userEmail = ""; state.isLoggedIn = false;
     },
     setAuthError(state,   { payload }) { state.error   = payload; state.loading = false; },
     setAuthLoading(state, { payload }) { state.loading = payload; },

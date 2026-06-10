@@ -332,7 +332,7 @@ export const showToast = {
       finalMsg = "";
     }
     opt = { ...opt, ...options };
-    return toast.custom((t) => createToast(t, "success", title, finalMsg, opt.duration), opt);
+    return toast.custom((t) => createToast(t, "success", title, finalMsg, opt.duration, opt.actionText, opt.onActionClick), opt);
   },
 
   error: (title, msg, options = {}) => {
@@ -343,7 +343,7 @@ export const showToast = {
       finalMsg = "";
     }
     opt = { ...opt, ...options };
-    return toast.custom((t) => createToast(t, "error", title, finalMsg, opt.duration), opt);
+    return toast.custom((t) => createToast(t, "error", title, finalMsg, opt.duration, opt.actionText, opt.onActionClick), opt);
   },
 
   warning: (title, msg, options = {}) => {
@@ -354,7 +354,7 @@ export const showToast = {
       finalMsg = "";
     }
     opt = { ...opt, ...options };
-    return toast.custom((t) => createToast(t, "warning", title, finalMsg, opt.duration), opt);
+    return toast.custom((t) => createToast(t, "warning", title, finalMsg, opt.duration, opt.actionText, opt.onActionClick), opt);
   },
 
   info: (title, msg, options = {}) => {
@@ -365,7 +365,7 @@ export const showToast = {
       finalMsg = "";
     }
     opt = { ...opt, ...options };
-    return toast.custom((t) => createToast(t, "info", title, finalMsg, opt.duration), opt);
+    return toast.custom((t) => createToast(t, "info", title, finalMsg, opt.duration, opt.actionText, opt.onActionClick), opt);
   },
 
   loading: (title, msg, options = {}) => {

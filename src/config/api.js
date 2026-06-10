@@ -13,6 +13,8 @@ const clearSession = () => {
 
 const API = axios.create({ baseURL: import.meta.env.VITE_BASE_URL });
 
+
+//req interceptor
 API.interceptors.request.use((config) => {
   const token = getCookie("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;

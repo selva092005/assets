@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Box, Button, Chip, CircularProgress, Typography, IconButton, Divider, Modal, Table, TableBody, TableCell, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, TextField } from "@mui/material";
+import { Box, Button, Chip, CircularProgress, Typography, IconButton, Divider, Modal, Table, TableBody, TableCell, TableRow, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { useForm } from "react-hook-form";
+import { FormTextField } from "../components/FormFields";
 import { FaArrowLeft, FaEdit, FaBox, FaTrash, FaLayerGroup, FaPrint, FaMapMarkerAlt, FaExchangeAlt, FaTimes } from "react-icons/fa";
 import { useSelector } from "react-redux";
 import toast from "../utils/toast.jsx";
@@ -27,8 +29,11 @@ export default function AssetDetailPage() {
 
   // Transfer Dialog State
   const [transferOpen, setTransferOpen] = useState(false);
-  const [transferForm, setTransferForm] = useState({ newLocation: "", reason: "" });
   const [transferSaving, setTransferSaving] = useState(false);
+
+  const transferForm = useForm({
+    defaultValues: { newLocation: "", reason: "" }
+  });
 
   const canEdit = userRole === "admin" || userRole === "manager";
   const canAllocate = userRole === "admin" || userRole === "manager";
@@ -76,23 +81,19 @@ export default function AssetDetailPage() {
   const handleAllocate = () => navigate("/home/allocation?assetId=" + id);
   const handleDispose = () => navigate("/home/disposal?assetId=" + id);
 
-  const handleTransfer = async () => {
-    if (!transferForm.newLocation.trim()) {
-      toast.error("New location is required");
-      return;
-    }
+  const handleTransfer = async (values) => {
     setTransferSaving(true);
     try {
       await moveAsset({
         assetId: data.assetId,
         fromLocation: data.locationName || null,
-        newLocation: transferForm.newLocation.trim(),
+        newLocation: values.newLocation.trim(),
         movedBy: userName || "Admin",
-        reason: transferForm.reason.trim() || "Transferred via asset detail view",
+        reason: values.reason.trim() || "Transferred via asset detail view",
       });
       toast.success("Asset location transferred successfully");
       setTransferOpen(false);
-      setTransferForm({ newLocation: "", reason: "" });
+      transferForm.reset();
 
       // Reload page details & history
       setLoading(true);
@@ -325,40 +326,39 @@ export default function AssetDetailPage() {
       </Box>
 
       {/* ── Transfer Asset Dialog ── */}
-      <Dialog open={transferOpen} onClose={() => setTransferOpen(false)} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { borderRadius: "6px" } } }}>
+      <Dialog open={transferOpen} onClose={() => { if (!transferSaving) { setTransferOpen(false); transferForm.reset(); } }} maxWidth="xs" fullWidth slotProps={{ paper: { sx: { borderRadius: "6px" } } }}>
         <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1, borderBottom: "1px solid " + COLORS.borderLight }}>
           <Typography fontWeight={700} fontSize={13} sx={{ textTransform: "uppercase", letterSpacing: "0.05em" }}>Transfer Asset</Typography>
-          <IconButton size="small" onClick={() => setTransferOpen(false)}><FaTimes size={13} /></IconButton>
+          <IconButton size="small" onClick={() => { if (!transferSaving) { setTransferOpen(false); transferForm.reset(); } }}><FaTimes size={13} /></IconButton>
         </DialogTitle>
         <DialogContent sx={{ pt: "16px !important", pb: 2, display: "flex", flexDirection: "column", gap: 2 }}>
           <Box>
             <Typography sx={{ fontSize: 11, color: COLORS.textMuted, mb: 0.5 }}>Current Location</Typography>
             <Typography sx={{ fontSize: 12, fontWeight: 600 }}>{data.locationName || "Register"}</Typography>
           </Box>
-          <TextField
+          <FormTextField
+            name="newLocation"
+            control={transferForm.control}
+            rules={{ required: "New location is required" }}
             label="New Location *"
-            size="small"
-            fullWidth
-            value={transferForm.newLocation}
-            onChange={(e) => setTransferForm((f) => ({ ...f, newLocation: e.target.value }))}
-            sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12.5 } }}
+            placeholder="Enter new location"
+            disabled={transferSaving}
           />
-          <TextField
+          <FormTextField
+            name="reason"
+            control={transferForm.control}
             label="Reason"
-            size="small"
-            fullWidth
+            placeholder="Enter reason (optional)"
             multiline
             rows={2}
-            value={transferForm.reason}
-            onChange={(e) => setTransferForm((f) => ({ ...f, reason: e.target.value }))}
-            sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12.5 } }}
+            disabled={transferSaving}
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2, borderTop: "1px solid " + COLORS.borderLight, gap: 1 }}>
-          <Button onClick={() => setTransferOpen(false)} sx={outlinedBtnSx}>Cancel</Button>
+          <Button onClick={() => { setTransferOpen(false); transferForm.reset(); }} disabled={transferSaving} sx={outlinedBtnSx}>Cancel</Button>
           <Button
             variant="contained"
-            onClick={handleTransfer}
+            onClick={transferForm.handleSubmit(handleTransfer)}
             disabled={transferSaving}
             startIcon={transferSaving ? <CircularProgress size={10} color="inherit" /> : <FaExchangeAlt size={10} />}
             sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}

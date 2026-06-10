@@ -3,13 +3,13 @@ import { outlinedBtnSx, primaryBtnSx } from "../../theme/tokens";
 
 export default function ConfirmDialog({
   open,
-  title        = "Confirm",
-  message      = "Are you sure?",
+  title = "Confirm",
+  message = "Are you sure?",
   onConfirm,
   onCancel,
   onClose,
   confirmLabel = "Confirm",
-  cancelLabel  = "Cancel",
+  cancelLabel = "Cancel",
 }) {
   const handleCancel = onCancel || onClose;
 

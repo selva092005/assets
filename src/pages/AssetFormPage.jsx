@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
+import { useForm } from "react-hook-form";
 import {
-  Box, Button, Grid, TextField, Select, MenuItem,
+  Box, Button, Grid, MenuItem,
   IconButton, Tooltip, CircularProgress, Typography, InputAdornment,
   Dialog, DialogTitle, DialogContent, DialogActions,
 } from "@mui/material";
@@ -20,20 +21,14 @@ import { required, isValidDate, isDateAfter, extractFieldErrors } from "../utils
 import { getAssetTypes, addAsset, updateAsset, getAssetById, uploadAssetImage, getImageUrl, createAssetType } from "../services/assets_service";
 import { getCompanies } from "../services/Company service";
 import { moveAsset } from "../services/location_history_service";
-import { fetchAssets } from "../store/slices/assetSlice";
-
-const EMPTY = {
-  assetId: null, assetName: "", serialNumber: "", brand: "", model: "",
-  purchaseDate: "", warrantyExpiry: "", cost: "", status: "AVAILABLE",
-  assetCondition: "GOOD", notes: "", typeId: "", locationName: "", companyName: "", imagePath: "",
-};
+import { useQueryClient } from "@tanstack/react-query";
+import { FormTextField, FormSelect } from "../components/FormFields";
 
 const getAssetTypeList = (res) => {
   const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : res?.data?.content ?? res?.content ?? [];
   return list.map((t) => ({ typeId: t.typeId ?? t.id, typeName: t.typeName ?? t.name })).filter((t) => t.typeId != null && t.typeName);
 };
 
-// ── Section header ──
 function Section({ icon, title, index }) {
   return (
     <Box sx={{
@@ -69,12 +64,11 @@ const adorn = (icon) => (
 export default function AssetFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  const queryClient = useQueryClient();
   const { page, search } = useSelector((s) => s.assets);
   const { userName } = useSelector((s) => s.auth);
   const isEdit = !!id;
 
-  const [form, setForm] = useState(EMPTY);
   const [originalLocation, setOriginalLocation] = useState("");
   const [types, setTypes] = useState([]);
   const [companies, setCompanies] = useState([]);
@@ -85,38 +79,63 @@ export default function AssetFormPage() {
   const [gpsError, setGpsError] = useState("");
   const [loading, setLoading] = useState(isEdit);
 
-  const onChange = (e) => {
-    const { name, value } = e.target;
-    if (name === "typeId" && value === "ADD_NEW") {
-      setTypeDialogOpen(true);
-      return;
-    }
-    setForm((f) => ({ ...f, [name]: value }));
-  };
-  const [errors, setErrors] = useState({});
-
   const [typeDialogOpen, setTypeDialogOpen] = useState(false);
-  const [newTypeName, setNewTypeName] = useState("");
   const [typeDialogLoading, setTypeDialogLoading] = useState(false);
 
-  const handleAddType = async () => {
-    if (!newTypeName.trim()) {
+  const { control, handleSubmit, reset, setValue, setError, watch } = useForm({
+    defaultValues: {
+      assetName: "",
+      serialNumber: "",
+      brand: "",
+      model: "",
+      typeId: "",
+      purchaseDate: "",
+      warrantyExpiry: "",
+      cost: "",
+      status: "AVAILABLE",
+      assetCondition: "GOOD",
+      locationName: "",
+      companyName: "",
+      notes: "",
+      imagePath: "",
+    }
+  });
+
+  const typeForm = useForm({
+    defaultValues: { newTypeName: "" }
+  });
+
+  const currentStatus = watch("status");
+  const purchaseDateValue = watch("purchaseDate");
+
+  const handleTypeChange = (e, rhfOnChange) => {
+    const val = e.target.value;
+    if (val === "ADD_NEW") {
+      setTypeDialogOpen(true);
+      typeForm.reset({ newTypeName: "" });
+    } else {
+      rhfOnChange(val);
+    }
+  };
+
+  const handleAddType = async (data) => {
+    if (!data.newTypeName?.trim()) {
       toast.error("Type name cannot be empty");
       return;
     }
     setTypeDialogLoading(true);
     try {
-      const res = await createAssetType(newTypeName.trim());
+      const res = await createAssetType(data.newTypeName.trim());
       toast.success("Asset type created successfully");
       const r = await getAssetTypes();
       const updatedTypes = getAssetTypeList(r);
       setTypes(updatedTypes);
-      const created = updatedTypes.find((t) => t.typeName?.toLowerCase() === newTypeName.trim().toLowerCase());
+      const created = updatedTypes.find((t) => t.typeName?.toLowerCase() === data.newTypeName.trim().toLowerCase());
       if (created) {
-        setForm((f) => ({ ...f, typeId: String(created.typeId) }));
+        setValue("typeId", String(created.typeId));
       }
       setTypeDialogOpen(false);
-      setNewTypeName("");
+      typeForm.reset();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to create asset type");
     } finally {
@@ -130,13 +149,21 @@ export default function AssetFormPage() {
     if (isEdit) {
       getAssetById(id).then((res) => {
         const d = res.data ?? res;
-        setForm({
-          assetId: d.assetId, assetName: d.assetName || "", serialNumber: d.serialNumber || "",
-          brand: d.brand || "", model: d.model || "", purchaseDate: d.purchaseDate || "",
-          warrantyExpiry: d.warrantyExpiry || "", cost: d.cost || "", status: d.status || "AVAILABLE",
-          assetCondition: d.assetCondition || "GOOD", notes: d.notes || "",
-          locationName: d.locationName || "", companyName: d.companyName || "",
-          typeId: String(d.typeId ?? d.assetType?.typeId ?? ""), imagePath: d.imagePath || "",
+        reset({
+          assetName: d.assetName || "",
+          serialNumber: d.serialNumber || "",
+          brand: d.brand || "",
+          model: d.model || "",
+          purchaseDate: d.purchaseDate || "",
+          warrantyExpiry: d.warrantyExpiry || "",
+          cost: d.cost ?? "",
+          status: d.status || "AVAILABLE",
+          assetCondition: d.assetCondition || "GOOD",
+          notes: d.notes || "",
+          locationName: d.locationName || "",
+          companyName: d.companyName || "",
+          typeId: String(d.typeId ?? d.assetType?.typeId ?? ""),
+          imagePath: d.imagePath || "",
         });
         setOriginalLocation(d.locationName || "");
 
@@ -151,7 +178,7 @@ export default function AssetFormPage() {
         setLoading(false);
       }).catch(() => { toast.error("Failed to load asset"); navigate("/home/assets"); });
     }
-  }, [id]);
+  }, [id, isEdit, reset, navigate]);
 
   const handleDetectLocation = () => {
     setGpsError("");
@@ -164,7 +191,7 @@ export default function AssetFormPage() {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
           const data = await res.json();
           const city = data.address?.city || data.address?.town || data.address?.village || data.address?.state || "";
-          setForm((f) => ({ ...f, locationName: city }));
+          setValue("locationName", city);
         } catch { setGpsError("Could not fetch location."); }
         finally { setDetecting(false); }
       },
@@ -180,51 +207,37 @@ export default function AssetFormPage() {
     setImagePreview(URL.createObjectURL(file));
   };
 
-  const handleSave = async () => {
-    // ── Frontend validation ──────────────────────────────────────────────────
-    const e = {};
-    if (!required(form.assetName)) e.assetName = "Asset name is required";
-    if (!form.typeId) e.typeId = "Asset type is required";
-    if (!required(form.locationName)) e.locationName = "Location is required";
-    if (!required(form.companyName)) e.companyName = "Company is required";
-    if (!required(form.purchaseDate)) e.purchaseDate = "Purchase date is required";
-    if (!isValidDate(form.purchaseDate)) e.purchaseDate = "Enter a valid purchase date";
-    if (form.warrantyExpiry && !isDateAfter(form.purchaseDate, form.warrantyExpiry))
-      e.warrantyExpiry = "Warranty expiry must be on or after purchase date";
-    if (form.cost === "" || form.cost === null || form.cost === undefined)
-      e.cost = "Cost is required";
-    else if (Number(form.cost) < 0)
-      e.cost = "Cost must be zero or positive";
-    if (Object.keys(e).length > 0) {
-      setErrors(e);
-      toast.error("Please fix the highlighted fields");
-      return;
-    }
-    setErrors({});
+  const onSubmit = async (data) => {
     setUploading(true);
     try {
-      let resolvedImagePath = form.imagePath || null;
+      let resolvedImagePath = data.imagePath || null;
       if (imageFile) resolvedImagePath = await uploadAssetImage(imageFile);
 
       const payload = {
-        assetName: form.assetName, serialNumber: form.serialNumber, brand: form.brand, model: form.model,
-        purchaseDate: form.purchaseDate || null, warrantyExpiry: form.warrantyExpiry || null,
-        cost: form.cost === "" ? null : Number(form.cost),
-        status: form.status, assetCondition: form.assetCondition, notes: form.notes,
-        typeId: form.typeId === "" ? null : Number(form.typeId),
-        locationName: form.locationName || null, companyName: form.companyName || null,
+        assetName: data.assetName,
+        serialNumber: data.serialNumber || null,
+        brand: data.brand || null,
+        model: data.model || null,
+        purchaseDate: data.purchaseDate || null,
+        warrantyExpiry: data.warrantyExpiry || null,
+        cost: data.cost === "" ? null : Number(data.cost),
+        status: data.status,
+        assetCondition: data.assetCondition,
+        notes: data.notes || null,
+        typeId: data.typeId === "" ? null : Number(data.typeId),
+        locationName: data.locationName || null,
+        companyName: data.companyName || null,
         imagePath: resolvedImagePath,
       };
 
       if (isEdit) {
         // If location changed, write history BEFORE updating the asset
-        // (so the backend still sees the old location in DB when it records fromLocation)
-        const newLocation = form.locationName?.trim() || "";
+        const newLocation = data.locationName?.trim() || "";
         const oldLocation = originalLocation?.trim() || "";
         if (newLocation && newLocation !== oldLocation) {
           try {
             await moveAsset({
-              assetId: form.assetId,
+              assetId: id,
               fromLocation: oldLocation || null,
               newLocation,
               movedBy: userName || "Admin",
@@ -234,14 +247,15 @@ export default function AssetFormPage() {
             // History write failure should not block the main save
           }
         }
-        await updateAsset(form.assetId, payload);
+        await updateAsset(id, payload);
         toast.success("Asset updated successfully");
       } else {
         await addAsset(payload);
         toast.success("Asset created successfully");
       }
 
-      dispatch(fetchAssets({ keyword: search, page, size: 10 }));
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
       navigate("/home/assets");
     } catch (e) {
       if (e.response?.status === 409) {
@@ -249,7 +263,9 @@ export default function AssetFormPage() {
       } else if (e.response?.status === 400) {
         const fe = extractFieldErrors(e);
         if (Object.keys(fe).length > 0) {
-          setErrors(fe);
+          Object.keys(fe).forEach((key) => {
+            setError(key, { type: "server", message: fe[key] });
+          });
           toast.error("Please fix the highlighted fields");
         } else {
           toast.error(e.response?.data?.message || "Failed to save asset");
@@ -257,7 +273,9 @@ export default function AssetFormPage() {
       } else {
         toast.error(e.response?.data?.message || "Failed to save asset");
       }
-    } finally { setUploading(false); }
+    } finally {
+      setUploading(false);
+    }
   };
 
   if (loading) return (
@@ -268,7 +286,6 @@ export default function AssetFormPage() {
 
   return (
     <Box sx={{ p: 0 }}>
-
       {/* ── Top bar ── */}
       <Box sx={{
         px: 1.5, py: 0.75, background: "#fff", borderBottom: `1px solid ${COLORS.borderLight}`,
@@ -299,7 +316,6 @@ export default function AssetFormPage() {
 
       {/* ── Page content ── */}
       <Box sx={{ maxWidth: 580, mx: "auto", px: 1, py: 1 }}>
-
         {/* Page title */}
         <Box sx={{
           display: "flex", alignItems: "center", gap: 1.5, mb: 1.5,
@@ -337,46 +353,60 @@ export default function AssetFormPage() {
           animation: "cardIn .45s cubic-bezier(.22,1,.36,1) .08s both",
           "@keyframes cardIn": { from: { opacity: 0, transform: "translateY(20px)" }, to: { opacity: 1, transform: "translateY(0)" } },
         }}>
-
           {/* Basic Info */}
           <Section icon={<MdOutlineInventory2 size={14} />} title="Basic Information" index={0} />
           <Grid container spacing={1}>
             <Grid size={12} sx={anim(0)}>
-              <Typography sx={{ fontSize: 11, color: errors.assetName ? "#c62828" : COLORS.textFaint, mb: 0.25 }}>Asset Name *</Typography>
-              <TextField name="assetName" placeholder="e.g. Dell Laptop Pro" value={form.assetName} onChange={onChange}
-                size="small" fullWidth sx={inputSx}
-                error={!!errors.assetName} helperText={errors.assetName || ""}
-                slotProps={{ input: { startAdornment: adorn(<FaBox size={12} />) } }} />
+              <FormTextField
+                name="assetName"
+                control={control}
+                rules={{ required: "Asset name is required" }}
+                label="Asset Name *"
+                placeholder="e.g. Dell Laptop Pro"
+                slotProps={{ input: { startAdornment: adorn(<FaBox size={12} />) } }}
+              />
             </Grid>
             <Grid size={6} sx={anim(1)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Serial Number</Typography>
-              <TextField name="serialNumber" placeholder="SN-XXXXXXXX" value={form.serialNumber} onChange={onChange}
-                size="small" fullWidth sx={inputSx}
-                slotProps={{ input: { startAdornment: adorn(<FaBarcode size={12} />) } }} />
+              <FormTextField
+                name="serialNumber"
+                control={control}
+                label="Serial Number"
+                placeholder="SN-XXXXXXXX"
+                slotProps={{ input: { startAdornment: adorn(<FaBarcode size={12} />) } }}
+              />
             </Grid>
             <Grid size={6} sx={anim(2)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Brand</Typography>
-              <TextField name="brand" placeholder="e.g. Dell, HP, Apple" value={form.brand} onChange={onChange}
-                size="small" fullWidth sx={inputSx}
-                slotProps={{ input: { startAdornment: adorn(<FaTrademark size={12} />) } }} />
+              <FormTextField
+                name="brand"
+                control={control}
+                label="Brand"
+                placeholder="e.g. Dell, HP, Apple"
+                slotProps={{ input: { startAdornment: adorn(<FaTrademark size={12} />) } }}
+              />
             </Grid>
             <Grid size={6} sx={anim(3)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Model</Typography>
-              <TextField name="model" placeholder="e.g. XPS 15" value={form.model} onChange={onChange}
-                size="small" fullWidth sx={inputSx}
-                slotProps={{ input: { startAdornment: adorn(<FaCubes size={12} />) } }} />
+              <FormTextField
+                name="model"
+                control={control}
+                label="Model"
+                placeholder="e.g. XPS 15"
+                slotProps={{ input: { startAdornment: adorn(<FaCubes size={12} />) } }}
+              />
             </Grid>
             <Grid size={6} sx={anim(4)}>
-              <Typography sx={{ fontSize: 11, color: errors.typeId ? "#c62828" : COLORS.textFaint, mb: 0.25 }}>Asset Type *</Typography>
-              <Select name="typeId" value={form.typeId} onChange={onChange} displayEmpty size="small" fullWidth
-                sx={{ ...selectSx, ...(errors.typeId ? { "& .MuiOutlinedInput-notchedOutline": { borderColor: "#c62828" } } : {}) }}>
+              <FormSelect
+                name="typeId"
+                control={control}
+                rules={{ required: "Asset type is required" }}
+                label="Asset Type *"
+                onChange={handleTypeChange}
+              >
                 <MenuItem value="" disabled sx={{ fontSize: 13 }}>Select Type</MenuItem>
                 {types.map((t) => <MenuItem key={t.typeId} value={String(t.typeId)} sx={{ fontSize: 13 }}>{t.typeName}</MenuItem>)}
                 <MenuItem value="ADD_NEW" sx={{ fontSize: 13, color: "#2563eb", fontWeight: 600, borderTop: "1px solid #e2e8f0", mt: 0.5 }}>
                   + Add New Type...
                 </MenuItem>
-              </Select>
-              {errors.typeId && <Typography sx={{ fontSize: 10.5, color: "#c62828", mt: 0.25 }}>{errors.typeId}</Typography>}
+              </FormSelect>
             </Grid>
           </Grid>
 
@@ -384,27 +414,46 @@ export default function AssetFormPage() {
           <Section icon={<FaDollarSign size={13} />} title="Purchase Details" index={1} />
           <Grid container spacing={1}>
             <Grid size={4} sx={anim(5)}>
-              <Typography sx={{ fontSize: 11, color: errors.purchaseDate ? "#c62828" : COLORS.textFaint, mb: 0.25, display: "flex", alignItems: "center", gap: 0.5 }}>
-                <FaCalendarAlt size={10} /> Purchase Date *
-              </Typography>
-              <TextField name="purchaseDate" type="date" value={form.purchaseDate} onChange={onChange}
-                size="small" fullWidth sx={inputSx}
-                error={!!errors.purchaseDate} helperText={errors.purchaseDate || ""} />
+              <FormTextField
+                name="purchaseDate"
+                control={control}
+                rules={{
+                  required: "Purchase date is required",
+                  validate: (val) => isValidDate(val) || "Enter a valid purchase date"
+                }}
+                label="Purchase Date *"
+                type="date"
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
             </Grid>
             <Grid size={4} sx={anim(6)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25, display: "flex", alignItems: "center", gap: 0.5 }}>
-                <FaShieldAlt size={10} /> Warranty Expiry
-              </Typography>
-              <TextField name="warrantyExpiry" type="date" value={form.warrantyExpiry} onChange={onChange}
-                size="small" fullWidth sx={inputSx}
-                error={!!errors.warrantyExpiry} helperText={errors.warrantyExpiry || ""} />
+              <FormTextField
+                name="warrantyExpiry"
+                control={control}
+                rules={{
+                  validate: (val) => {
+                    if (!val) return true;
+                    return isDateAfter(purchaseDateValue, val) || "Must be on or after purchase date";
+                  }
+                }}
+                label="Warranty Expiry"
+                type="date"
+                slotProps={{ inputLabel: { shrink: true } }}
+              />
             </Grid>
             <Grid size={4} sx={anim(7)}>
-              <Typography sx={{ fontSize: 11, color: errors.cost ? "#c62828" : COLORS.textFaint, mb: 0.25 }}>Cost (₹) *</Typography>
-              <TextField name="cost" type="number" placeholder="0.00" value={form.cost} onChange={onChange}
-                size="small" fullWidth sx={inputSx}
-                error={!!errors.cost} helperText={errors.cost || ""}
-                slotProps={{ input: { startAdornment: adorn(<FaDollarSign size={12} />) } }} />
+              <FormTextField
+                name="cost"
+                control={control}
+                rules={{
+                  required: "Cost is required",
+                  validate: (val) => Number(val) >= 0 || "Cost must be zero or positive"
+                }}
+                label="Cost (₹) *"
+                type="number"
+                placeholder="0.00"
+                slotProps={{ input: { startAdornment: adorn(<FaDollarSign size={12} />) } }}
+              />
             </Grid>
           </Grid>
 
@@ -412,34 +461,37 @@ export default function AssetFormPage() {
           <Section icon={<FaCheckCircle size={13} />} title="Status & Condition" index={2} />
           <Grid container spacing={1}>
             <Grid size={6} sx={anim(8)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Status</Typography>
-              <Select name="status" value={form.status} onChange={onChange} size="small" fullWidth sx={selectSx}
-                disabled={form.status === "ASSIGNED"}>
+              <FormSelect
+                name="status"
+                control={control}
+                label="Status"
+                disabled={currentStatus === "ASSIGNED"}
+              >
                 {["AVAILABLE", "DAMAGED", "UNDER_MAINTENANCE"].map((v) => (
                   <MenuItem key={v} value={v} sx={{ fontSize: 13 }}>{v.replace("_", " ")}</MenuItem>
                 ))}
-                {form.status === "ASSIGNED" && (
+                {currentStatus === "ASSIGNED" && (
                   <MenuItem value="ASSIGNED" sx={{ fontSize: 13, color: "#f97316" }}>ASSIGNED (via Allocation)</MenuItem>
                 )}
-              </Select>
-              {form.status === "ASSIGNED" && (
-                <Typography sx={{ fontSize: 11, color: "#f97316", mt: 0.25 }}>
+              </FormSelect>
+              {currentStatus === "ASSIGNED" && (
+                <Typography sx={{ fontSize: 11, color: "#f97316", mt: -0.5, mb: 1 }}>
                   ⚠ Status is controlled by the Allocation page
                 </Typography>
               )}
-              {form.status === "UNDER_MAINTENANCE" && (
-                <Typography sx={{ fontSize: 11, color: "#e65100", mt: 0.25 }}>
+              {currentStatus === "UNDER_MAINTENANCE" && (
+                <Typography sx={{ fontSize: 11, color: "#e65100", mt: -0.5, mb: 1 }}>
                   🔧 Asset is under maintenance — allocation is blocked
                 </Typography>
               )}
             </Grid>
             <Grid size={6} sx={anim(9)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Condition</Typography>
-              <Select name="assetCondition" value={form.assetCondition} onChange={onChange} size="small" fullWidth sx={selectSx}>
-                {["GOOD", "FAIR", "POOR"].map((v) => (
-                  <MenuItem key={v} value={v} sx={{ fontSize: 13 }}>{v}</MenuItem>
-                ))}
-              </Select>
+              <FormSelect
+                name="assetCondition"
+                control={control}
+                label="Condition"
+                options={["GOOD", "FAIR", "POOR"]}
+              />
             </Grid>
           </Grid>
 
@@ -447,10 +499,12 @@ export default function AssetFormPage() {
           <Section icon={<FaMapMarkerAlt size={13} />} title="Location & Company" index={3} />
           <Grid container spacing={1}>
             <Grid size={6} sx={anim(10)}>
-              <Typography sx={{ fontSize: 11, color: errors.locationName ? "#c62828" : COLORS.textFaint, mb: 0.25 }}>Location *</Typography>
-              <TextField name="locationName" placeholder="City / Location" value={form.locationName} onChange={onChange}
-                size="small" fullWidth sx={inputSx}
-                error={!!errors.locationName} helperText={errors.locationName || ""}
+              <FormTextField
+                name="locationName"
+                control={control}
+                rules={{ required: "Location is required" }}
+                label="Location *"
+                placeholder="City / Location"
                 slotProps={{
                   input: {
                     startAdornment: adorn(<FaMapMarkerAlt size={12} />),
@@ -467,27 +521,36 @@ export default function AssetFormPage() {
                       </InputAdornment>
                     ),
                   }
-                }} />
-              {gpsError && <Typography sx={{ fontSize: 11, color: "#c62828", mt: 0.25 }}>{gpsError}</Typography>}
+                }}
+              />
+              {gpsError && <Typography sx={{ fontSize: 11, color: "#c62828", mt: -0.5, mb: 1 }}>{gpsError}</Typography>}
             </Grid>
             <Grid size={6} sx={anim(11)}>
-              <Typography sx={{ fontSize: 11, color: errors.companyName ? "#c62828" : COLORS.textFaint, mb: 0.25 }}>Company *</Typography>
-              <Select name="companyName" value={form.companyName} onChange={onChange} displayEmpty size="small" fullWidth
-                sx={{ ...selectSx, ...(errors.companyName ? { "& .MuiOutlinedInput-notchedOutline": { borderColor: "#c62828" } } : {}) }}>
+              <FormSelect
+                name="companyName"
+                control={control}
+                rules={{ required: "Company is required" }}
+                label="Company *"
+              >
                 <MenuItem value="" disabled sx={{ fontSize: 13 }}>Select Company</MenuItem>
                 {companies.map((c) => <MenuItem key={c.companyId} value={c.companyName} sx={{ fontSize: 13 }}>{c.companyName}</MenuItem>)}
-              </Select>
-              {errors.companyName && <Typography sx={{ fontSize: 10.5, color: "#c62828", mt: 0.25 }}>{errors.companyName}</Typography>}
+              </FormSelect>
             </Grid>
           </Grid>
 
           {/* Notes */}
           <Section icon={<FaStickyNote size={13} />} title="Notes" index={4} />
           <Box sx={anim(12)}>
-            <TextField name="notes" placeholder="Additional notes about this asset..." value={form.notes} onChange={onChange}
-              size="small" fullWidth multiline rows={2}
-              sx={{ ...inputSx, "& .MuiOutlinedInput-root": { ...inputSx["& .MuiOutlinedInput-root"], height: "auto" } }}
-              slotProps={{ input: { startAdornment: <InputAdornment position="start" sx={{ alignSelf: "flex-start", mt: "8px", color: "#c0c0c0" }}><FaStickyNote size={12} /></InputAdornment> } }} />
+            <FormTextField
+              name="notes"
+              control={control}
+              label="Notes"
+              placeholder="Additional notes about this asset..."
+              multiline
+              rows={2}
+              sx={{ "& .MuiOutlinedInput-root": { height: "auto" } }}
+              slotProps={{ input: { startAdornment: <InputAdornment position="start" sx={{ alignSelf: "flex-start", mt: "8px", color: "#c0c0c0" }}><FaStickyNote size={12} /></InputAdornment> } }}
+            />
           </Box>
 
           {/* Image Upload */}
@@ -520,7 +583,6 @@ export default function AssetFormPage() {
               </Button>
             )}
           </Box>
-
         </Box>
 
         {/* ── Action bar ── */}
@@ -535,13 +597,12 @@ export default function AssetFormPage() {
           <Button variant="outlined" onClick={() => navigate("/home/assets")} sx={outlinedBtnSx}>
             Cancel
           </Button>
-          <Button variant="contained" onClick={handleSave} disabled={uploading}
+          <Button variant="contained" onClick={handleSubmit(onSubmit)} disabled={uploading}
             startIcon={uploading ? null : (isEdit ? <FaEdit size={12} /> : <FaCheckCircle size={12} />)}
             sx={{ ...primaryBtnSx, minWidth: 130 }}>
             {uploading ? <CircularProgress size={16} sx={{ color: "#fff" }} /> : (isEdit ? "Update Asset" : "Save Asset")}
           </Button>
         </Box>
-
       </Box>
 
       {/* ── Dialog to add new type ── */}
@@ -554,25 +615,23 @@ export default function AssetFormPage() {
       >
         <DialogTitle sx={premiumDialogTitleSx}>
           <span>Add Asset Type</span>
-          <IconButton size="small" onClick={() => { if (!typeDialogLoading) { setTypeDialogOpen(false); setNewTypeName(""); } }} sx={{ color: COLORS.textFaint }} disabled={typeDialogLoading}><FaTimes size={13} /></IconButton>
+          <IconButton size="small" onClick={() => { if (!typeDialogLoading) { setTypeDialogOpen(false); } }} sx={{ color: COLORS.textFaint }} disabled={typeDialogLoading}><FaTimes size={13} /></IconButton>
         </DialogTitle>
         <DialogContent sx={{ pt: "18px !important", pb: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
-          <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.textMuted, mb: 0.5 }}>Type Name *</Typography>
-          <TextField
-            autoFocus
+          <FormTextField
+            name="newTypeName"
+            control={typeForm.control}
+            rules={{ required: "Type name is required" }}
+            label="Type Name *"
             placeholder="e.g. Server, Projector, Tablet"
-            value={newTypeName}
-            onChange={(e) => setNewTypeName(e.target.value)}
-            size="small"
-            fullWidth
+            autoFocus
             disabled={typeDialogLoading}
-            sx={inputSx}
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5, gap: 1, borderTop: "1px solid #f1f5f9", pt: 1.5 }}>
           <Button
             variant="outlined"
-            onClick={() => { setTypeDialogOpen(false); setNewTypeName(""); }}
+            onClick={() => { setTypeDialogOpen(false); }}
             disabled={typeDialogLoading}
             sx={outlinedBtnSx}
           >
@@ -580,7 +639,7 @@ export default function AssetFormPage() {
           </Button>
           <Button
             variant="contained"
-            onClick={handleAddType}
+            onClick={typeForm.handleSubmit(handleAddType)}
             disabled={typeDialogLoading}
             sx={{ ...primaryBtnSx, px: 2.5 }}
           >

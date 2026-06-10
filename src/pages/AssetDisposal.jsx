@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   Box, Button, Chip, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, IconButton, MenuItem, Select,
@@ -9,6 +10,8 @@ import {
   Typography, InputLabel, FormControl, InputAdornment, OutlinedInput,
   Tooltip,
 } from "@mui/material";
+import { useForm, Controller } from "react-hook-form";
+import { FormTextField, FormSelect } from "../components/FormFields";
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
@@ -32,55 +35,11 @@ import { required, isValidDate, isNotFutureDate, extractFieldErrors } from "../u
 
 const DISPOSAL_METHODS = ["SOLD", "SCRAPPED", "DONATED", "DAMAGED"];
 
-const METHOD_STYLES = {
-  SOLD: { bg: "#e8f5e9", color: "#2e7d32" },
-  SCRAPPED: { bg: "#fff3e0", color: "#e65100" },
-  DONATED: { bg: "#e3f2fd", color: "#1565c0" },
-  DAMAGED: { bg: "#ffebee", color: "#c62828" },
-};
-
-const MethodBadge = ({ method }) => {
-  const s = METHOD_STYLES[method] || { bg: "#f3f4f6", color: "#6b7280" };
-  return (
-    <Chip
-      label={method}
-      size="small"
-      sx={{ background: s.bg, color: s.color, fontWeight: 700, fontSize: 11, borderRadius: "20px", height: 22 }}
-    />
-  );
-};
+import StatusBadge from "../components/common/StatusBadge";
+import EmptyState from "../components/common/EmptyState";
+import CustomTooltip from "../components/common/CustomTooltip";
 
 const CHART_COLORS = ["#2563eb", "#10b981", "#d97706", "#f43f5e", "#8b5cf6", "#0891b2", "#f97316"];
-
-const CustomTooltip = ({ active, payload }) => {
-  if (active && payload && payload.length) {
-    return (
-      <Box sx={{
-        bgcolor: "#ffffff",
-        p: "6px 10px",
-        borderRadius: "6px",
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
-        border: "1px solid #e2e8f0",
-        pointerEvents: "none"
-      }}>
-        <Typography sx={{ fontSize: "9.5px", fontWeight: 700, color: "#1e293b" }}>
-          {payload[0].name}
-        </Typography>
-        <Typography sx={{ fontSize: "10.5px", fontWeight: 900, color: "#2563eb", mt: 0.25 }}>
-          {payload[0].value.toLocaleString()}
-        </Typography>
-      </Box>
-    );
-  }
-  return null;
-};
-
-const EmptyState = () => (
-  <Box sx={{ textAlign: "center", py: 8, color: COLORS.textFaint }}>
-    <FaRecycle size={40} style={{ marginBottom: 12, opacity: 0.35 }} />
-    <Typography fontSize={14}>No disposal records found.</Typography>
-  </Box>
-);
 
 export default function AssetDisposalPage() {
   const { userRole, userName } = useSelector((s) => s.auth);
@@ -88,18 +47,50 @@ export default function AssetDisposalPage() {
   const canView = userRole === "admin"; // admin only
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [disposals, setDisposals] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [disposableAssets, setDisposableAssets] = useState([]);
-  const [adminUsers, setAdminUsers] = useState([]);
-  const [userSearch, setUserSearch] = useState("");
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [assetSearch, setAssetSearch] = useState("");
-  const [assetAnchor, setAssetAnchor] = useState(null);
+  // ── Query Client ───────────────────────────────────────────────────────────
+  const queryClient = useQueryClient();
 
   // Search & Filters State
   const [searchInput, setSearchInput] = useState("");
   const [methodFilter, setMethodFilter] = useState("");
+  const [page, setPage] = useState(0);
+  const [showCount, setShowCount] = useState(10);
+
+  // ── Query Fetcher ──────────────────────────────────────────────────────────
+  const { data: disposals = [], isLoading: loading } = useQuery({
+    queryKey: ["disposals", searchInput, methodFilter],
+    queryFn: async () => {
+      const params = {};
+      if (searchInput.trim()) params.search = searchInput.trim();
+      if (methodFilter) params.method = methodFilter;
+      const res = await getAllDisposals(params);
+      return extractList(res);
+    },
+    placeholderData: keepPreviousData,
+  });
+
+  const { data: allAssets = [] } = useQuery({
+    queryKey: ["assets", "simple"],
+    queryFn: async () => {
+      const res = await getAssets({ page: 0, size: 200 });
+      return extractList(res?.data ?? res);
+    },
+    enabled: canDispose,
+  });
+
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ["users", "simple"],
+    queryFn: async () => {
+      const res = await getUsers({ page: 0, size: 200 });
+      return extractList(res);
+    },
+    enabled: canDispose,
+  });
+
+  const [userSearch, setUserSearch] = useState("");
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [assetSearch, setAssetSearch] = useState("");
+  const [assetAnchor, setAssetAnchor] = useState(null);
 
   // View Details Modal State
   const [viewOpen, setViewOpen] = useState(false);
@@ -108,17 +99,38 @@ export default function AssetDisposalPage() {
 
   // Export excel state
   const [exporting, setExporting] = useState(false);
-  const [page, setPage] = useState(0);
-  const [showCount, setShowCount] = useState(10);
 
   // Dispose modal
   const [disposeOpen, setDisposeOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState(defaultForm());
-  const [errors, setErrors] = useState({});
+
+  const { control, handleSubmit, reset, setValue, setError, watch } = useForm({
+    defaultValues: {
+      assetId: "",
+      disposalMethod: "",
+      reason: "",
+      disposedBy: userName || "",
+      disposalDate: today(),
+      disposalValue: "",
+    }
+  });
+
+  const formAssetId = watch("assetId");
+
+  const formDataRef = useRef(null);
 
   // Confirm dialog
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const preselectedAssetId = Number(searchParams.get("assetId"));
+
+  const disposableAssets = allAssets.filter(
+    (a) => a.status === "AVAILABLE" || a.status === "DAMAGED" || a.status === "UNDER_MAINTENANCE" || a.assetId === formAssetId || a.assetId === preselectedAssetId
+  );
+
+  const adminUsers = allUsers.filter((u) => u.userRole === "ADMIN" || u.userRole === "MANAGER").length > 0
+    ? allUsers.filter((u) => u.userRole === "ADMIN" || u.userRole === "MANAGER")
+    : allUsers;
 
   // ── KPI Calculations ──────────────────────────────────────────────────────
   const totalRecords = disposals.length;
@@ -129,7 +141,6 @@ export default function AssetDisposalPage() {
   const damagedCount = disposals.filter((d) => d.disposalMethod === "DAMAGED").length;
 
   // ── Filtered Disposals List ───────────────────────────────────────────────
-  // Since we filter on the backend now, filteredDisposals is just the loaded disposal list.
   const filteredDisposals = disposals;
   const paginatedDisposals = filteredDisposals.slice(page * showCount, (page + 1) * showCount);
 
@@ -172,52 +183,18 @@ export default function AssetDisposalPage() {
     setPage(0);
   };
 
-  // ── Load disposals ────────────────────────────────────────────────────────
-  const load = async (search = "", method = "") => {
-    setLoading(true);
-    try {
-      const params = {};
-      if (search.trim()) params.search = search.trim();
-      if (method) params.method = method;
-      const res = await getAllDisposals(params);
-      setDisposals(extractList(res));
-    } catch {
-      toast.error("Failed to load disposal records");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Debounced load based on filters changing
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      load(searchInput, methodFilter);
-    }, 300);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchInput, methodFilter]);
-
   // ── Open dispose modal ────────────────────────────────────────────────────
-  const openDispose = async (preselectedAssetId = null) => {
-    try {
-      const res = await getAssets({ page: 0, size: 200 });
-      const all = extractList(res?.data ?? res);
-      setDisposableAssets(all.filter((a) => a.status === "AVAILABLE" || a.status === "DAMAGED" || a.status === "UNDER_MAINTENANCE" || a.assetId === preselectedAssetId));
-    } catch {
-      toast.error("Failed to load assets");
-    }
+  const openDispose = (preselectedAssetId = null) => {
     setUserSearch("");
     setAssetSearch("");
-    try {
-      const res = await getUsers({ page: 0, size: 200 });
-      const all = extractList(res);
-      const filtered = all.filter((u) => u.userRole === "ADMIN" || u.userRole === "MANAGER");
-      setAdminUsers(filtered.length > 0 ? filtered : all);
-    } catch {
-      setAdminUsers([]);
-    }
-    setForm({ ...defaultForm(), assetId: preselectedAssetId || "", disposedBy: userName || "" });
-    setErrors({});
+    reset({
+      assetId: preselectedAssetId || "",
+      disposalMethod: "",
+      reason: "",
+      disposedBy: userName || "",
+      disposalDate: today(),
+      disposalValue: "",
+    });
     setDisposeOpen(true);
   };
 
@@ -227,52 +204,39 @@ export default function AssetDisposalPage() {
       openDispose(Number(assetIdParam));
       setSearchParams({});
     }
-  }, []);
+  }, [searchParams, canDispose]);
 
   // ── Submit disposal ───────────────────────────────────────────────────────
-  const handleDispose = async () => {
-    const e = {};
-    if (!form.assetId) e.assetId = "Select an asset to dispose";
-    if (!form.disposalMethod) e.disposalMethod = "Disposal method is required";
-    if (!required(form.reason)) e.reason = "Disposal reason is required";
-    else if (form.reason.trim().length < 5) e.reason = "Reason must be at least 5 characters";
-    if (!form.disposedBy) e.disposedBy = "Disposed-by name is required";
-    if (!form.disposalDate) e.disposalDate = "Disposal date is required";
-    else if (!isValidDate(form.disposalDate)) e.disposalDate = "Enter a valid date";
-    else if (!isNotFutureDate(form.disposalDate)) e.disposalDate = "Disposal date cannot be in the future";
-    if (form.disposalValue !== "" && form.disposalValue !== null && form.disposalValue !== undefined) {
-      if (Number(form.disposalValue) < 0) e.disposalValue = "Value must be zero or positive";
-    }
-
-    if (Object.keys(e).length > 0) {
-      setErrors(e);
-      toast.error("Please fix the highlighted fields");
-      return;
-    }
-    setErrors({});
+  const handleDispose = (data) => {
+    formDataRef.current = data;
     setConfirmOpen(true);
   };
 
   const confirmDispose = async () => {
+    const data = formDataRef.current;
+    if (!data) return;
     setSaving(true);
     setConfirmOpen(false);
     try {
       await disposeAsset({
-        assetId: Number(form.assetId),
-        disposalDate: form.disposalDate,
-        disposalMethod: form.disposalMethod,
-        reason: form.reason,
-        disposedBy: form.disposedBy,
-        disposalValue: form.disposalValue ? Number(form.disposalValue) : null,
+        assetId: Number(data.assetId),
+        disposalDate: data.disposalDate,
+        disposalMethod: data.disposalMethod,
+        reason: data.reason,
+        disposedBy: data.disposedBy || userName,
+        disposalValue: data.disposalValue ? Number(data.disposalValue) : null,
       });
       toast.success("Asset disposed successfully");
       setDisposeOpen(false);
-      load();
+      queryClient.invalidateQueries({ queryKey: ["disposals"] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
     } catch (err) {
       if (err.response?.status === 400) {
         const fe = extractFieldErrors(err);
         if (Object.keys(fe).length > 0) {
-          setErrors(fe);
+          Object.keys(fe).forEach((key) => {
+            setError(key, { type: "server", message: fe[key] });
+          });
           toast.error("Please fix the highlighted fields");
         } else {
           toast.error(err.response?.data?.message || "Disposal failed");
@@ -314,7 +278,7 @@ export default function AssetDisposalPage() {
     }
   };
 
-  const f = (key, val) => setForm((p) => ({ ...p, [key]: val }));
+
 
   // Block non-authorised users
   if (!canView) {
@@ -373,10 +337,10 @@ export default function AssetDisposalPage() {
       />
       {/* ── KPI Cards Row ── */}
       <Box sx={{ display: "flex", gap: 1.5, mb: 2.5, flexWrap: "wrap" }}>
-        <StatCard label="Total Retired" value={totalRecords} icon={<FaRecycle size={15} />} iconBg="#e8eaf6" iconColor="#3949ab" />
+        <StatCard label="Total Retired" value={totalRecords} icon={<FaRecycle size={15} />} iconBg="#e8eaf6" iconColor="#3949ab" onClick={() => { setMethodFilter(""); setPage(0); }} />
         <StatCard label="Capital Recovered" value={`₹${totalRecovered.toLocaleString("en-IN")}`} icon={<FaCoins size={15} />} iconBg="#ecfdf5" iconColor="#10b981" />
         <StatCard label="Recycled/Sold Value" value={`₹${scrapSoldRecovery.toLocaleString("en-IN")}`} icon={<FaFileExcel size={15} />} iconBg="#eff6ff" iconColor="#2563eb" />
-        <StatCard label="Total Damaged (Loss)" value={damagedCount} icon={<FaExclamationTriangle size={15} />} iconBg="#ffe4e6" iconColor="#f43f5e" />
+        <StatCard label="Total Damaged (Loss)" value={damagedCount} icon={<FaExclamationTriangle size={15} />} iconBg="#ffe4e6" iconColor="#f43f5e" onClick={() => { setMethodFilter("DAMAGED"); setPage(0); }} />
       </Box>
 
       {/* ── Search & Filter Controls ── */}
@@ -431,7 +395,7 @@ export default function AssetDisposalPage() {
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
           ) : filteredDisposals.length === 0 ? (
-            <EmptyState />
+            <EmptyState icon={FaRecycle} label="No disposal records found." />
           ) : (
             <Box sx={{ overflowX: "auto" }}>
               <Table size="small" sx={{ minWidth: 700, tableLayout: "auto", borderCollapse: "collapse" }}>
@@ -459,7 +423,7 @@ export default function AssetDisposalPage() {
                       <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>
                         <Chip label={row.assetCode || "—"} size="small" sx={{ fontSize: 9.5, height: 18, background: "#ffebee", color: "#c62828", borderRadius: "5px", "& .MuiChip-label": { px: "6px" } }} />
                       </TableCell>
-                      <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}><MethodBadge method={row.disposalMethod} /></TableCell>
+                      <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}><StatusBadge status={row.disposalMethod} /></TableCell>
                       <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>{fmt(row.disposalDate)}</TableCell>
                       <TableCell sx={{ fontSize: 11, color: COLORS.textMuted, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>{row.disposedBy}</TableCell>
                       <TableCell sx={{ fontSize: 11, color: COLORS.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>{row.reason}</TableCell>
@@ -629,16 +593,7 @@ export default function AssetDisposalPage() {
                 <Typography sx={{ fontSize: "11px", fontWeight: 800, color: "#1e293b", mb: 0.5 }}>
                   {viewData.assetName}
                 </Typography>
-                <Chip
-                  label={viewData.disposalMethod}
-                  size="small"
-                  sx={{
-                    height: 16, fontSize: 8, fontWeight: 700, borderRadius: "3px",
-                    background: METHOD_STYLES[viewData.disposalMethod]?.bg || "#f3f4f6",
-                    color: METHOD_STYLES[viewData.disposalMethod]?.color || "#6b7280",
-                    "& .MuiChip-label": { px: 1 }
-                  }}
-                />
+                <StatusBadge status={viewData.disposalMethod} />
               </Box>
 
               {/* Right Mini Specifications Panel */}
@@ -695,10 +650,10 @@ export default function AssetDisposalPage() {
       </Dialog>
 
       {/* ── Dispose Modal ──────────────────────────────────────────────── */}
-      <Dialog open={disposeOpen} onClose={() => setDisposeOpen(false)} maxWidth="sm" fullWidth slotProps={{ paper: { sx: { borderRadius: "12px" } } }}>
+      <Dialog open={disposeOpen} onClose={() => { if (!saving) { setDisposeOpen(false); reset(); } }} maxWidth="sm" fullWidth slotProps={{ paper: { sx: { borderRadius: "12px" } } }}>
         <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
           <Typography fontWeight={700} fontSize={16}>Dispose Asset</Typography>
-          <IconButton size="small" onClick={() => setDisposeOpen(false)}><FaTimes size={14} /></IconButton>
+          <IconButton size="small" onClick={() => { if (!saving) { setDisposeOpen(false); reset(); } }}><FaTimes size={14} /></IconButton>
         </DialogTitle>
 
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "12px !important" }}>
@@ -711,136 +666,165 @@ export default function AssetDisposalPage() {
           </Box>
 
           {/* Asset searchable dropdown */}
-          <FormControl fullWidth size="small" error={!!errors.assetId}>
-            <InputLabel shrink sx={{ fontSize: 13, ...(errors.assetId ? { color: "#c62828 !important" } : {}) }}>Asset *</InputLabel>
-            <OutlinedInput
-              readOnly
-              notched
-              label="Asset *"
-              size="small"
-              value={disposableAssets.find((a) => a.assetId === form.assetId)
-                ? `${disposableAssets.find((a) => a.assetId === form.assetId).assetName}${disposableAssets.find((a) => a.assetId === form.assetId).assetCode ? ` (${disposableAssets.find((a) => a.assetId === form.assetId).assetCode})` : ""}`
-                : ""}
-              placeholder="Select asset..."
-              onClick={(e) => setAssetAnchor(e.currentTarget)}
-              error={!!errors.assetId}
-              endAdornment={<InputAdornment position="end"><Typography fontSize={12} color="#aaa">▾</Typography></InputAdornment>}
-              sx={{ fontSize: 13, borderRadius: "8px", cursor: "pointer", caretColor: "transparent" }}
-            />
-            {errors.assetId && <Typography color="error" sx={{ fontSize: 11, mt: 0.5 }}>{errors.assetId}</Typography>}
-            <Popover
-              open={Boolean(assetAnchor)}
-              anchorEl={assetAnchor}
-              onClose={() => { setAssetAnchor(null); setAssetSearch(""); }}
-              anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-              slotProps={{ paper: { sx: { width: assetAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } } }}
-            >
-              <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
-                <TextField
-                  autoFocus
+          <Controller
+            name="assetId"
+            control={control}
+            rules={{ required: "Select an asset to dispose" }}
+            render={({ field, fieldState: { error } }) => (
+              <FormControl fullWidth size="small" error={!!error}>
+                <InputLabel shrink sx={{ fontSize: 13, ...(error ? { color: "#c62828 !important" } : {}) }}>Asset *</InputLabel>
+                <OutlinedInput
+                  readOnly
+                  notched
+                  label="Asset *"
                   size="small"
-                  fullWidth
-                  placeholder="Search asset..."
-                  value={assetSearch}
-                  onChange={(e) => setAssetSearch(e.target.value)}
-                  slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }}
+                  value={disposableAssets.find((a) => a.assetId === field.value)
+                    ? `${disposableAssets.find((a) => a.assetId === field.value).assetName}${disposableAssets.find((a) => a.assetId === field.value).assetCode ? ` (${disposableAssets.find((a) => a.assetId === field.value).assetCode})` : ""}`
+                    : ""}
+                  placeholder="Select asset..."
+                  onClick={(e) => setAssetAnchor(e.currentTarget)}
+                  error={!!error}
+                  endAdornment={<InputAdornment position="end"><Typography fontSize={12} color="#aaa">▾</Typography></InputAdornment>}
+                  sx={{ fontSize: 13, borderRadius: "8px", cursor: "pointer", caretColor: "transparent" }}
                 />
-              </Box>
-              <List dense sx={{ overflowY: "auto", flex: 1 }}>
-                {(() => {
-                  const q = assetSearch.toLowerCase();
-                  const filtered = disposableAssets.filter((a) =>
-                    !q || a.assetName?.toLowerCase().includes(q) || a.assetCode?.toLowerCase().includes(q)
-                  );
-                  return filtered.length > 0 ? filtered.map((a) => (
-                    <ListItemButton
-                      key={a.assetId}
-                      selected={form.assetId === a.assetId}
-                      onClick={() => { f("assetId", a.assetId); setAssetAnchor(null); setAssetSearch(""); }}
-                      sx={{ py: 0.5 }}
-                    >
-                      <ListItemText
-                        primary={<Typography sx={{ fontSize: 13 }}>{a.assetName}</Typography>}
-                        secondary={<Typography sx={{ fontSize: 11, color: "#64748b" }}>{a.assetCode || ""}</Typography>}
-                      />
-                    </ListItemButton>
-                  )) : (
-                    <ListItemButton disabled>
-                      <ListItemText primary={<Typography sx={{ fontSize: 13 }}>No assets found</Typography>} />
-                    </ListItemButton>
-                  );
-                })()}
-              </List>
-            </Popover>
-          </FormControl>
+                {error && <Typography color="error" sx={{ fontSize: 11, mt: 0.5 }}>{error.message}</Typography>}
+                <Popover
+                  open={Boolean(assetAnchor)}
+                  anchorEl={assetAnchor}
+                  onClose={() => { setAssetAnchor(null); setAssetSearch(""); }}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+                  slotProps={{ paper: { sx: { width: assetAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column" } } }}
+                >
+                  <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
+                    <TextField
+                      autoFocus
+                      size="small"
+                      fullWidth
+                      placeholder="Search asset..."
+                      value={assetSearch}
+                      onChange={(e) => setAssetSearch(e.target.value)}
+                      slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
+                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }}
+                    />
+                  </Box>
+                  <List dense sx={{ overflowY: "auto", flex: 1 }}>
+                    {(() => {
+                      const q = assetSearch.toLowerCase();
+                      const filtered = disposableAssets.filter((a) =>
+                        !q || a.assetName?.toLowerCase().includes(q) || a.assetCode?.toLowerCase().includes(q)
+                      );
+                      return filtered.length > 0 ? filtered.map((a) => (
+                        <ListItemButton
+                          key={a.assetId}
+                          selected={field.value === a.assetId}
+                          onClick={() => { field.onChange(a.assetId); setAssetAnchor(null); setAssetSearch(""); }}
+                          sx={{ py: 0.5 }}
+                        >
+                          <ListItemText
+                            primary={<Typography sx={{ fontSize: 13 }}>{a.assetName}</Typography>}
+                            secondary={<Typography sx={{ fontSize: 11, color: "#64748b" }}>{a.assetCode || ""}</Typography>}
+                          />
+                        </ListItemButton>
+                      )) : (
+                        <ListItemButton disabled>
+                          <ListItemText primary={<Typography sx={{ fontSize: 13 }}>No assets found</Typography>} />
+                        </ListItemButton>
+                      );
+                    })()}
+                  </List>
+                </Popover>
+              </FormControl>
+            )}
+          />
 
           {/* Method select */}
-          <FormControl fullWidth size="small" error={!!errors.disposalMethod}>
-            <InputLabel sx={{ fontSize: 11.5, transform: "translate(8px, 6px) scale(1)", "&.MuiInputLabel-shrink": { transform: "translate(8px, -6px) scale(0.85)" } }}>Disposal Method *</InputLabel>
-            <Select
-              value={form.disposalMethod}
-              label="Disposal Method *"
-              onChange={(e) => f("disposalMethod", e.target.value)}
-              sx={{ ...selectSx, ...(errors.disposalMethod ? { "& .MuiOutlinedInput-notchedOutline": { borderColor: "#c62828" } } : {}) }}
-            >
-              {DISPOSAL_METHODS.map((m) => (
-                <MenuItem key={m} value={m} sx={{ fontSize: 13 }}>{m}</MenuItem>
-              ))}
-            </Select>
-            {errors.disposalMethod && <Typography color="error" sx={{ fontSize: 11, mt: 0.5 }}>{errors.disposalMethod}</Typography>}
-          </FormControl>
+          <FormSelect
+            name="disposalMethod"
+            control={control}
+            rules={{ required: "Disposal method is required" }}
+            label="Disposal Method *"
+            disabled={saving}
+          >
+            {DISPOSAL_METHODS.map((m) => (
+              <MenuItem key={m} value={m} sx={{ fontSize: 13 }}>{m}</MenuItem>
+            ))}
+          </FormSelect>
 
-          <TextField label="Reason *" size="small" fullWidth multiline rows={2}
-            value={form.reason} onChange={(e) => f("reason", e.target.value)}
-            error={!!errors.reason}
-            helperText={errors.reason || ""}
+          <FormTextField
+            name="reason"
+            control={control}
+            rules={{
+              required: "Disposal reason is required",
+              minLength: { value: 5, message: "Reason must be at least 5 characters" }
+            }}
+            label="Reason *"
+            placeholder="Disposal reason..."
+            multiline
+            rows={2}
+            disabled={saving}
             slotProps={{ htmlInput: { maxLength: 250 } }}
             sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
           />
 
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-            <FormControl fullWidth size="small">
-              <InputLabel shrink sx={{ fontSize: 13 }}>Disposed By</InputLabel>
-              <OutlinedInput
-                disabled
-                notched
-                label="Disposed By"
-                size="small"
-                value={form.disposedBy || userName || ""}
-                sx={{
-                  fontSize: 13,
-                  borderRadius: "8px",
-                  bgcolor: "#f8fafc",
-                  "& .MuiOutlinedInput-input.Mui-disabled": {
-                    WebkitTextFillColor: "#475569",
-                  }
-                }}
-              />
-            </FormControl>
-            <TextField label="Disposal Date *" type="date" size="small" fullWidth
-              value={form.disposalDate} onChange={(e) => f("disposalDate", e.target.value)}
-              error={!!errors.disposalDate}
-              helperText={errors.disposalDate || ""}
+            <Controller
+              name="disposedBy"
+              control={control}
+              render={({ field }) => (
+                <FormControl fullWidth size="small">
+                  <InputLabel shrink sx={{ fontSize: 13 }}>Disposed By</InputLabel>
+                  <OutlinedInput
+                    disabled
+                    notched
+                    label="Disposed By"
+                    size="small"
+                    value={field.value || userName || ""}
+                    sx={{
+                      fontSize: 13,
+                      borderRadius: "8px",
+                      bgcolor: "#f8fafc",
+                      "& .MuiOutlinedInput-input.Mui-disabled": {
+                        WebkitTextFillColor: "#475569",
+                      }
+                    }}
+                  />
+                </FormControl>
+              )}
+            />
+            <FormTextField
+              name="disposalDate"
+              control={control}
+              rules={{
+                required: "Disposal date is required",
+                validate: (val) => isNotFutureDate(val) || "Disposal date cannot be in the future"
+              }}
+              label="Disposal Date *"
+              type="date"
+              disabled={saving}
               slotProps={{ inputLabel: { shrink: true } }}
               sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
             />
           </Box>
 
-          <TextField label="Disposal Value (optional)" type="number" size="small" fullWidth
-            value={form.disposalValue} onChange={(e) => f("disposalValue", e.target.value)}
-            error={!!errors.disposalValue}
-            helperText={errors.disposalValue || ""}
+          <FormTextField
+            name="disposalValue"
+            control={control}
+            rules={{
+              min: { value: 0, message: "Value must be zero or positive" }
+            }}
+            label="Disposal Value (optional)"
+            type="number"
+            disabled={saving}
             slotProps={{ input: { startAdornment: <InputAdornment position="start"><Typography fontSize={13}>₹</Typography></InputAdornment> } }}
             sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
           />
         </DialogContent>
 
         <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
-          <Button onClick={() => setDisposeOpen(false)} sx={outlinedBtnSx}>Cancel</Button>
+          <Button onClick={() => { setDisposeOpen(false); reset(); }} sx={outlinedBtnSx}>Cancel</Button>
           <Button
             variant="contained"
-            onClick={handleDispose}
+            onClick={handleSubmit(handleDispose)}
             disabled={saving}
             startIcon={saving ? <CircularProgress size={12} color="inherit" /> : <FaTrash size={11} />}
             sx={{ ...primaryBtnSx, background: "#c62828", borderColor: "#b71c1c", "&:hover": { background: "#b71c1c" } }}

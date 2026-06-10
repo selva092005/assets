@@ -1,11 +1,14 @@
 import { useEffect, useState, useRef } from "react";
 import { useSelector } from "react-redux";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Box, Button, Chip, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, IconButton, InputAdornment,
-  Table, TableBody, TableCell, TableHead, TableRow, TextField,
-  Tooltip, Typography, Select, MenuItem,
+  Table, TableBody, TableCell, TableHead, TableRow,
+  Tooltip, Typography, MenuItem, Select, TextField,
 } from "@mui/material";
+import { useForm } from "react-hook-form";
+import { FormTextField, FormSelect } from "../components/FormFields";
 import {
   FaMapMarkerAlt, FaPlus, FaTimes, FaEdit, FaTrash,
   FaSearch, FaCheckCircle, FaBuilding, FaCrosshairs,
@@ -36,9 +39,31 @@ export default function Locations() {
   const { userRole } = useSelector((s) => s.auth);
   const canWrite = userRole === "admin";
 
+  // ── Query Client ───────────────────────────────────────────────────────────
+  const queryClient = useQueryClient();
+
+  // ── Query Fetchers ──────────────────────────────────────────────────────────
+  const { data: locations = [], isLoading: loading, refetch: load } = useQuery({
+    queryKey: ["locations"],
+    queryFn: async () => {
+      const res = await getAllLocations();
+      return extractList(res);
+    },
+  });
+
+  const { data: companies = [] } = useQuery({
+    queryKey: ["companies"],
+    queryFn: async () => {
+      try {
+        const list = await getCompanies();
+        return list || [];
+      } catch {
+        return [];
+      }
+    },
+  });
+
   // ── States ──────────────────────────────────────────────────────────────────
-  const [locations, setLocations] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [page, setPage] = useState(0);
@@ -49,44 +74,19 @@ export default function Locations() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
   const [editId, setEditId] = useState(null);
-  const [formName, setFormName] = useState("");
-  const [formCompanyId, setFormCompanyId] = useState("");
-  const [companies, setCompanies] = useState([]);
   const [saving, setSaving] = useState(false);
   const [detecting, setDetecting] = useState(false);
-  const [formErrors, setFormErrors] = useState({});
+
+  const { control, handleSubmit, reset, setValue } = useForm({
+    defaultValues: {
+      locationName: "",
+      companyId: "",
+    }
+  });
 
   // Delete State
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
-
-  // ── API Fetchers ────────────────────────────────────────────────────────────
-  const load = async () => {
-    setLoading(true);
-    try {
-      const res = await getAllLocations();
-      setLocations(extractList(res));
-    } catch {
-      toast.error("Failed to load locations");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadCompanies = async () => {
-    try {
-      const list = await getCompanies();
-      setCompanies(list);
-      if (list.length > 0) {
-        setFormCompanyId(list[0].companyId || "");
-      }
-    } catch { }
-  };
-
-  useEffect(() => {
-    load();
-    loadCompanies();
-  }, []);
 
   // ── Search & Filter Logic ──────────────────────────────────────────────────
   const handleSearchChange = (e) => {
@@ -120,34 +120,27 @@ export default function Locations() {
   const openAdd = () => {
     setIsEdit(false);
     setEditId(null);
-    setFormName("");
-    if (companies.length > 0) {
-      setFormCompanyId(companies[0].companyId);
-    } else {
-      setFormCompanyId("");
-    }
+    reset({
+      locationName: "",
+      companyId: companies.length > 0 ? companies[0].companyId : "",
+    });
     setDialogOpen(true);
   };
 
   const openEdit = (loc) => {
     setIsEdit(true);
     setEditId(loc.locationId);
-    setFormName(loc.locationName || "");
-    setFormCompanyId(loc.companyId || "");
+    reset({
+      locationName: loc.locationName || "",
+      companyId: loc.companyId || "",
+    });
     setDialogOpen(true);
   };
 
-  const handleSave = async () => {
-    const e = {};
-    if (!required(formName) || formName.trim().length < 2)
-      e.formName = "Location name is required (min 2 characters)";
-    if (!formCompanyId)
-      e.formCompanyId = "Corporate association is required";
-    if (Object.keys(e).length > 0) { setFormErrors(e); return; }
-    setFormErrors({});
+  const onSubmit = async (data) => {
     setSaving(true);
     try {
-      const payload = { locationName: formName.trim(), companyId: Number(formCompanyId) };
+      const payload = { locationName: data.locationName.trim(), companyId: Number(data.companyId) };
       if (isEdit) {
         await updateLocation(editId, payload);
         toast.success("Location updated successfully");
@@ -156,7 +149,7 @@ export default function Locations() {
         toast.success("Location created successfully");
       }
       setDialogOpen(false);
-      load();
+      queryClient.invalidateQueries({ queryKey: ["locations"] });
     } catch (e) {
       toast.error(e.response?.data?.message || "Operation failed");
     } finally {
@@ -172,7 +165,7 @@ export default function Locations() {
       const res = await getCurrentLocation();
       const data = res?.data ?? res;
       if (data?.city) {
-        setFormName(data.city);
+        setValue("locationName", data.city);
         toast.success(`Detected location: ${data.city}`, { id });
       } else {
         toast.error("Could not auto-detect location", { id });
@@ -194,7 +187,7 @@ export default function Locations() {
     try {
       await deleteLocation(deleteId);
       toast.success("Location deleted successfully");
-      load();
+      queryClient.invalidateQueries({ queryKey: ["locations"] });
     } catch {
       toast.error("Failed to delete location");
     } finally {
@@ -448,45 +441,37 @@ export default function Locations() {
             </Box>
           )}
 
-          <TextField
+          <FormTextField
+            name="locationName"
+            control={control}
+            rules={{
+              required: "Location name is required",
+              minLength: { value: 2, message: "Location name is required (min 2 characters)" }
+            }}
             label="Location Name *"
-            size="small"
-            fullWidth
-            value={formName}
-            onChange={(e) => setFormName(e.target.value)}
             placeholder="e.g. Chennai Office, Floor 3 Lab"
             disabled={saving}
-            sx={inputSx}
-            error={!!formErrors.formName}
-            helperText={formErrors.formName || ""}
           />
 
-          <Box>
-            <Typography sx={{ fontSize: 11, color: COLORS.textMuted, mb: 0.5, fontWeight: 600 }}>
-              Corporate Association (Company) *
-            </Typography>
-            <Select
-              value={formCompanyId}
-              onChange={(e) => setFormCompanyId(e.target.value)}
-              size="small"
-              fullWidth
-              disabled={saving}
-              sx={{ ...selectSx, ...(formErrors.formCompanyId ? { "& .MuiOutlinedInput-notchedOutline": { borderColor: "#c62828" } } : {}) }}
-            >
-              {companies.map((c) => (
-                <MenuItem key={c.companyId} value={c.companyId} sx={{ fontSize: 11.5 }}>
-                  {c.companyName}
-                </MenuItem>
-              ))}
-            </Select>
-            {formErrors.formCompanyId && <Typography sx={{ fontSize: 10.5, color: "#c62828", mt: 0.5 }}>{formErrors.formCompanyId}</Typography>}
-          </Box>
+          <FormSelect
+            name="companyId"
+            control={control}
+            rules={{ required: "Corporate association is required" }}
+            label="Corporate Association (Company) *"
+            disabled={saving}
+          >
+            {companies.map((c) => (
+              <MenuItem key={c.companyId} value={c.companyId} sx={{ fontSize: 11.5 }}>
+                {c.companyName}
+              </MenuItem>
+            ))}
+          </FormSelect>
         </DialogContent>
         <DialogActions sx={{ px: 2, pb: 2, gap: 1 }}>
           <Button onClick={() => setDialogOpen(false)} disabled={saving} sx={outlinedBtnSx}>Cancel</Button>
           <Button
             variant="contained"
-            onClick={handleSave}
+            onClick={handleSubmit(onSubmit)}
             disabled={saving}
             startIcon={saving ? <CircularProgress size={11} color="inherit" /> : <FaCheckCircle size={10} />}
             sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}

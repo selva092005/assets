@@ -16,6 +16,7 @@ import { bulkUploadExcel, downloadTemplate, getBulkUploadHistory } from "../serv
 import { bulkUploadUsers, downloadUserTemplate } from "../services/users_service";
 import { COLORS, selectSx } from "../theme/tokens";
 import TablePagination from "../components/common/TablePagination";
+import StatusBadge from "../components/common/StatusBadge";
 
 /* ── Suggestion mapper ── */
 function getSuggestion(field, message, mode = "assets") {
@@ -38,29 +39,7 @@ function getSuggestion(field, message, mode = "assets") {
   }
 }
 
-/* ── Status badge mapper for history logs ── */
-const getStatusBadge = (status) => {
-  let bg = "#f0fdf4";
-  let color = "#16a34a";
-  let text = "Success";
-  let border = "1px solid #bbf7d0";
-  if (status === "COMPLETED_WITH_ERRORS") {
-    bg = "#fffbeb";
-    color = "#d97706";
-    text = "Errors Found";
-    border = "1px solid #fef3c7";
-  } else if (status === "FAILED") {
-    bg = "#fef2f2";
-    color = "#dc2626";
-    text = "Failed";
-    border = "1px solid #fecaca";
-  }
-  return (
-    <Box sx={{ display: "inline-flex", px: 1, py: 0.25, borderRadius: "12px", background: bg, color: color, border: border, fontSize: 9.5, fontWeight: 700 }}>
-      {text}
-    </Box>
-  );
-};
+
 
 /* ── Date formatter for history logs ── */
 const formatDate = (dateStr) => {
@@ -909,7 +888,7 @@ export default function BulkUploadPage({ mode = "assets" }) {
                         {item.uploadedBy || "System"}
                       </TableCell>
                       <TableCell sx={{ py: 1.25 }}>
-                        {getStatusBadge(item.status)}
+                        <StatusBadge status={item.status} />
                       </TableCell>
                       <TableCell sx={{ py: 1.25, textAlign: "right" }}>
                         <Box sx={{ display: "inline-flex", gap: 1.5, alignItems: "center" }}>

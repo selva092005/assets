@@ -23,3 +23,9 @@ export const markAllAsRead = async () => {
   const res = await API.put("/api/notifications/read-all");
   return res.data;
 };
+
+// DELETE /api/notifications/clear-all
+export const clearAllNotifications = async () => {
+  const res = await API.delete("/api/notifications/clear-all");
+  return res.data;
+};

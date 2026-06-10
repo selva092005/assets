@@ -949,19 +949,19 @@ export default function Login() {
           pointer-events: none;
         }
 
-        /* Authenticating State: pulsing neon blue/cyan aura around card */
+        /* Authenticating State: pulsing neon blue/cyan aura around card (disabled) */
         .center-card-container.authenticating {
-          animation: borderPulse 1.2s infinite ease-in-out;
+          /* animation: borderPulse 1.2s infinite ease-in-out; */
         }
 
-        @keyframes borderPulse {
+        /* @keyframes borderPulse {
           0%, 100% {
             box-shadow: 0 0 0 0px rgba(37, 99, 235, 0.2);
           }
           50% {
             box-shadow: 0 0 25px 4px rgba(6, 182, 212, 0.5);
           }
-        }
+        } */
 
         /* Error Shake State */
         .center-card-container.error-shake {

@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
+import { useForm } from "react-hook-form";
+import { useQueryClient } from "@tanstack/react-query";
 import {
-  Box, Button, Grid, TextField, Select, MenuItem,
+  Box, Button, Grid, MenuItem,
   CircularProgress, Typography, InputAdornment,
 } from "@mui/material";
 import {
@@ -15,11 +17,10 @@ import toast from "../utils/toast.jsx";
 import { inputSx, selectSx, primaryBtnSx, outlinedBtnSx, COLORS } from "../theme/tokens";
 import { required, isValidEmail, isStrongPassword, extractFieldErrors } from "../utils/validate";
 import { addUser, updateUser, getUserById } from "../services/users_service";
-import { fetchUsers } from "../store/slices/userSlice";
-
-const EMPTY = { userId: null, userName: "", userEmail: "", userPassword: "", userRole: "USER", employeeId: "", department: "", phoneNumber: "", designation: "" };
+import { FormTextField, FormSelect } from "../components/FormFields";
 
 const ROLE_COLORS = { ADMIN: "#7c3aed", MANAGER: "#1976d2", USER: "#2e7d32" };
+
 function Section({ icon, title, index }) {
   return (
     <Box sx={{
@@ -55,24 +56,32 @@ const adorn = (icon) => (
 export default function UserFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  const queryClient = useQueryClient();
   const { page, search } = useSelector((s) => s.users);
   const isEdit = !!id;
 
-  const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(isEdit);
   const [showPass, setShowPass] = useState(false);
-  const [errors, setErrors] = useState({});
 
-  const onChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
+  const { control, handleSubmit, reset, setError } = useForm({
+    defaultValues: {
+      userName: "",
+      userEmail: "",
+      userPassword: "",
+      userRole: "USER",
+      employeeId: "",
+      department: "",
+      phoneNumber: "",
+      designation: "",
+    }
+  });
 
   useEffect(() => {
     if (isEdit) {
       getUserById(id).then((res) => {
         const d = res.data ?? res;
-        setForm({
-          userId: d.userId ?? d.id,
+        reset({
           userName: d.userName || "",
           userEmail: d.userEmail || "",
           userPassword: "",
@@ -83,59 +92,55 @@ export default function UserFormPage() {
           designation: d.designation || "",
         });
         setLoading(false);
-      }).catch(() => { toast.error("Failed to load user"); navigate("/home/users"); });
+      }).catch(() => {
+        toast.error("Failed to load user");
+        navigate("/home/users");
+      });
     }
-  }, [id]);
+  }, [id, isEdit, reset, navigate]);
 
-  const handleSave = async () => {
-    const e = {};
-    if (!required(form.userName) || form.userName.trim().length < 2)
-      e.userName = "Username is required (min 2 characters)";
-    if (!required(form.userEmail))
-      e.userEmail = "Email is required";
-    else if (!isValidEmail(form.userEmail))
-      e.userEmail = "Enter a valid email address";
-    if (!isEdit) {
-      if (!required(form.userPassword))
-        e.userPassword = "Password is required";
-      else if (!isStrongPassword(form.userPassword))
-        e.userPassword = "Min 8 chars with uppercase, lowercase, number & special char (@$!%*?&)";
-    } else if (form.userPassword && !isStrongPassword(form.userPassword)) {
-      e.userPassword = "Min 8 chars with uppercase, lowercase, number & special char (@$!%*?&)";
-    }
-    if (Object.keys(e).length > 0) {
-      setErrors(e);
-      toast.error("Please fix the highlighted fields");
-      return;
-    }
-    setErrors({});
+  const onSubmit = async (data) => {
     setSaving(true);
     try {
       const payload = {
-        userName: form.userName,
-        userEmail: form.userEmail,
-        userRole: form.userRole,
-        employeeId: form.employeeId || null,
-        department: form.department || null,
-        phoneNumber: form.phoneNumber || null,
-        designation: form.designation || null,
-        ...(form.userPassword ? { userPassword: form.userPassword } : {}),
+        userName: data.userName,
+        userEmail: data.userEmail,
+        userRole: data.userRole,
+        employeeId: data.employeeId || null,
+        department: data.department || null,
+        phoneNumber: data.phoneNumber || null,
+        designation: data.designation || null,
+        ...(data.userPassword ? { userPassword: data.userPassword } : {}),
       };
-      if (isEdit) { await updateUser(form.userId, payload); toast.success("User updated successfully"); }
-      else { await addUser(payload); toast.success("User created successfully"); }
-      dispatch(fetchUsers({ keyword: search, page, size: 10 }));
+      if (isEdit) {
+        await updateUser(id, payload);
+        toast.success("User updated successfully");
+      } else {
+        await addUser(payload);
+        toast.success("User created successfully");
+      }
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["userStats"] });
       navigate("/home/users");
     } catch (err) {
       if (err.response?.status === 409) {
         toast.error(err.response.data.message);
       } else if (err.response?.status === 400) {
         const fe = extractFieldErrors(err);
-        if (Object.keys(fe).length > 0) { setErrors(fe); toast.error("Please fix the highlighted fields"); }
-        else toast.error(err.response?.data?.message || "Failed to save user");
+        if (Object.keys(fe).length > 0) {
+          Object.keys(fe).forEach((key) => {
+            setError(key, { type: "server", message: fe[key] });
+          });
+          toast.error("Please fix the highlighted fields");
+        } else {
+          toast.error(err.response?.data?.message || "Failed to save user");
+        }
       } else {
         toast.error(err.response?.data?.message || "Failed to save user");
       }
-    } finally { setSaving(false); }
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) return (
@@ -146,7 +151,6 @@ export default function UserFormPage() {
 
   return (
     <Box sx={{ p: 0 }}>
-
       {/* ── Top bar ── */}
       <Box sx={{
         px: 1.5, py: 0.75, background: "#fff", borderBottom: `1px solid ${COLORS.borderLight}`,
@@ -175,7 +179,6 @@ export default function UserFormPage() {
 
       {/* ── Page content ── */}
       <Box sx={{ maxWidth: 500, mx: "auto", px: 1, py: 1 }}>
-
         {/* Page title */}
         <Box sx={{
           display: "flex", alignItems: "center", gap: 1.5, mb: 1.5,
@@ -213,23 +216,35 @@ export default function UserFormPage() {
           animation: "cardIn .45s cubic-bezier(.22,1,.36,1) .08s both",
           "@keyframes cardIn": { from: { opacity: 0, transform: "translateY(20px)" }, to: { opacity: 1, transform: "translateY(0)" } },
         }}>
-
           {/* Account Info */}
           <Section icon={<MdManageAccounts size={15} />} title="Account Information" index={0} />
           <Grid container spacing={1}>
             <Grid size={6} sx={anim(0)}>
-              <Typography sx={{ fontSize: 11, color: errors.userName ? "#c62828" : COLORS.textFaint, mb: 0.25 }}>Username *</Typography>
-              <TextField name="userName" placeholder="e.g. john_doe" value={form.userName} onChange={onChange}
-                size="small" fullWidth sx={inputSx}
-                error={!!errors.userName} helperText={errors.userName || ""}
-                slotProps={{ input: { startAdornment: adorn(<FaUser size={12} />) } }} />
+              <FormTextField
+                name="userName"
+                control={control}
+                rules={{
+                  required: "Username is required",
+                  minLength: { value: 2, message: "Username must be at least 2 characters" }
+                }}
+                label="Username *"
+                placeholder="e.g. john_doe"
+                slotProps={{ input: { startAdornment: adorn(<FaUser size={12} />) } }}
+              />
             </Grid>
             <Grid size={6} sx={anim(1)}>
-              <Typography sx={{ fontSize: 11, color: errors.userEmail ? "#c62828" : COLORS.textFaint, mb: 0.25 }}>Email Address *</Typography>
-              <TextField name="userEmail" placeholder="user@example.com" type="email" value={form.userEmail} onChange={onChange}
-                size="small" fullWidth sx={inputSx}
-                error={!!errors.userEmail} helperText={errors.userEmail || ""}
-                slotProps={{ input: { startAdornment: adorn(<FaEnvelope size={12} />) } }} />
+              <FormTextField
+                name="userEmail"
+                control={control}
+                rules={{
+                  required: "Email address is required",
+                  validate: (val) => isValidEmail(val) || "Enter a valid email address"
+                }}
+                label="Email Address *"
+                placeholder="user@example.com"
+                type="email"
+                slotProps={{ input: { startAdornment: adorn(<FaEnvelope size={12} />) } }}
+              />
             </Grid>
           </Grid>
 
@@ -237,16 +252,19 @@ export default function UserFormPage() {
           <Section icon={<FaLock size={12} />} title="Security" index={1} />
           <Grid container spacing={1}>
             <Grid size={12} sx={anim(2)}>
-              <Typography sx={{ fontSize: 11, color: errors.userPassword ? "#c62828" : COLORS.textFaint, mb: 0.25 }}>
-                Password {isEdit && <Box component="span" sx={{ color: "#bbb" }}>(leave blank to keep current)</Box>}
-              </Typography>
-              <TextField
+              <FormTextField
                 name="userPassword"
+                control={control}
+                rules={{
+                  required: !isEdit && "Password is required",
+                  validate: (val) => {
+                    if (!val && isEdit) return true;
+                    return isStrongPassword(val) || "Min 8 chars with uppercase, lowercase, number & special char (@$!%*?&)";
+                  }
+                }}
+                label={`Password ${isEdit ? "(leave blank to keep current)" : "*"}`}
                 placeholder={isEdit ? "Leave blank to keep current password" : "Enter password"}
                 type={showPass ? "text" : "password"}
-                value={form.userPassword} onChange={onChange}
-                size="small" fullWidth sx={inputSx}
-                error={!!errors.userPassword} helperText={errors.userPassword || ""}
                 slotProps={{
                   input: {
                     startAdornment: adorn(<FaLock size={12} />),
@@ -262,7 +280,8 @@ export default function UserFormPage() {
                       </InputAdornment>
                     ),
                   }
-                }} />
+                }}
+              />
             </Grid>
           </Grid>
 
@@ -270,28 +289,40 @@ export default function UserFormPage() {
           <Section icon={<FaBriefcase size={12} />} title="Professional Profile" index={2} />
           <Grid container spacing={1} sx={{ mb: 1.5 }}>
             <Grid size={6} sx={anim(4)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Employee ID</Typography>
-              <TextField name="employeeId" placeholder="e.g. EMP-0123" value={form.employeeId} onChange={onChange}
-                size="small" fullWidth sx={inputSx}
-                slotProps={{ input: { startAdornment: adorn(<FaIdCard size={12} />) } }} />
+              <FormTextField
+                name="employeeId"
+                control={control}
+                label="Employee ID"
+                placeholder="e.g. EMP-0123"
+                slotProps={{ input: { startAdornment: adorn(<FaIdCard size={12} />) } }}
+              />
             </Grid>
             <Grid size={6} sx={anim(5)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Phone Number</Typography>
-              <TextField name="phoneNumber" placeholder="e.g. +91 9876543210" value={form.phoneNumber} onChange={onChange}
-                size="small" fullWidth sx={inputSx}
-                slotProps={{ input: { startAdornment: adorn(<FaPhone size={12} />) } }} />
+              <FormTextField
+                name="phoneNumber"
+                control={control}
+                label="Phone Number"
+                placeholder="e.g. +91 9876543210"
+                slotProps={{ input: { startAdornment: adorn(<FaPhone size={12} />) } }}
+              />
             </Grid>
             <Grid size={6} sx={anim(6)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Department</Typography>
-              <TextField name="department" placeholder="e.g. Engineering" value={form.department} onChange={onChange}
-                size="small" fullWidth sx={inputSx}
-                slotProps={{ input: { startAdornment: adorn(<FaBuilding size={12} />) } }} />
+              <FormTextField
+                name="department"
+                control={control}
+                label="Department"
+                placeholder="e.g. Engineering"
+                slotProps={{ input: { startAdornment: adorn(<FaBuilding size={12} />) } }}
+              />
             </Grid>
             <Grid size={6} sx={anim(7)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>Designation</Typography>
-              <TextField name="designation" placeholder="e.g. Software Engineer" value={form.designation} onChange={onChange}
-                size="small" fullWidth sx={inputSx}
-                slotProps={{ input: { startAdornment: adorn(<FaBriefcase size={12} />) } }} />
+              <FormTextField
+                name="designation"
+                control={control}
+                label="Designation"
+                placeholder="e.g. Software Engineer"
+                slotProps={{ input: { startAdornment: adorn(<FaBriefcase size={12} />) } }}
+              />
             </Grid>
           </Grid>
 
@@ -299,19 +330,19 @@ export default function UserFormPage() {
           <Section icon={<FaUserTag size={12} />} title="Role & Permissions" index={3} />
           <Grid container spacing={1}>
             <Grid size={12} sx={anim(8)}>
-              <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mb: 0.25 }}>User Role</Typography>
-              <Select name="userRole" value={form.userRole} onChange={onChange} size="small" fullWidth sx={selectSx}>
-                {[
-                  { v: "ADMIN", label: "Admin", desc: "Full access" },
-                  { v: "MANAGER", label: "Manager", desc: "Manage users & assets" },
-                  { v: "USER", label: "User", desc: "View only" },
-                ].map(({ v, label }) => (
-                  <MenuItem key={v} value={v} sx={{ fontSize: 13 }}>{label}</MenuItem>
-                ))}
-              </Select>
+              <FormSelect
+                name="userRole"
+                control={control}
+                rules={{ required: "User role is required" }}
+                label="User Role"
+                options={[
+                  { value: "ADMIN", label: "Admin" },
+                  { value: "MANAGER", label: "Manager" },
+                  { value: "USER", label: "User" },
+                ]}
+              />
             </Grid>
           </Grid>
-
         </Box>
 
         {/* ── Action bar ── */}
@@ -326,13 +357,12 @@ export default function UserFormPage() {
           <Button variant="outlined" onClick={() => navigate("/home/users")} sx={outlinedBtnSx}>
             Cancel
           </Button>
-          <Button variant="contained" onClick={handleSave} disabled={saving}
+          <Button variant="contained" onClick={handleSubmit(onSubmit)} disabled={saving}
             startIcon={saving ? null : (isEdit ? <FaEdit size={12} /> : <FaCheckCircle size={12} />)}
             sx={{ ...primaryBtnSx, minWidth: 130 }}>
             {saving ? <CircularProgress size={16} sx={{ color: "#fff" }} /> : (isEdit ? "Update User" : "Save User")}
           </Button>
         </Box>
-
       </Box>
     </Box>
   );

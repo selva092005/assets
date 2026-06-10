@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Navigate, useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
   Box, Button, Select, MenuItem, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions,
@@ -10,10 +11,9 @@ import {
 import { FaFilter, FaFileExport, FaPlus, FaUpload, FaTimes, FaUsers, FaUserShield, FaUserTie, FaUser } from "react-icons/fa";
 import toast from "../utils/toast.jsx";
 import {
-  fetchUsers,
   setUserPage, setUserSearch, setUserFilter, resetUserFilters,
 } from "../store/slices/userSlice";
-import { deleteUser, getUserById, bulkUploadUsers, exportUsers, downloadUserTemplate, getUserSummaryStats } from "../services/users_service";
+import { deleteUser, getUserById, bulkUploadUsers, exportUsers, downloadUserTemplate, getUserSummaryStats, getUsers } from "../services/users_service";
 import { COLORS, outlinedBtnSx, primaryBtnSx, selectSx } from "../theme/tokens";
 
 import PageHeader from "../components/common/PageHeader";
@@ -26,8 +26,7 @@ import StatCard from "../components/common/StatCard";
 
 export default function UsersPage() {
   const dispatch = useDispatch();
-  const { items: users, totalPages, page, search, filterRole, loading } =
-    useSelector((s) => s.users);
+  const { page, search, filterRole } = useSelector((s) => s.users);
   const { userRole, userName } = useSelector((s) => s.auth);
   const isAdmin = userRole === "admin";
   const canExport = userRole === "admin" || userRole === "manager";
@@ -35,55 +34,62 @@ export default function UsersPage() {
   const [showCount, setShowCount] = useState(10);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
-  const [stats, setStats] = useState(null);
   const [exportLoading, setExportLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Re-fetch whenever page, showCount, or filterRole changes
-  useEffect(() => {
-    if (userRole === "manager" || userRole === "admin") {
-      dispatch(fetchUsers({ keyword: search, page, size: showCount, role: filterRole || undefined }));
-    }
-  }, [page, showCount, filterRole, dispatch, userRole]);
+  const queryClient = useQueryClient();
 
-  // Fetch summary counts once on mount
-  useEffect(() => {
-    if (userRole === "manager" || userRole === "admin") {
-      getUserSummaryStats()
-        .then((res) => setStats(res))
-        .catch(() => {});
-    }
-  }, [userRole]);
+  // ── Query Fetchers ──────────────────────────────────────────────────────────
+  const { data: usersData, isLoading: loading } = useQuery({
+    queryKey: ["users", search, page, showCount, filterRole],
+    queryFn: async () => {
+      const params = { username: search || undefined, page, size: showCount };
+      if (filterRole) params.role = filterRole;
+      const res = await getUsers(params);
+      return {
+        content:    res.data?.content    || res.content    || [],
+        totalPages: res.data?.totalPages || res.totalPages || 0,
+      };
+    },
+    enabled: userRole === "manager" || userRole === "admin",
+    placeholderData: keepPreviousData,
+  });
+
+  const users = usersData?.content || [];
+  const totalPages = usersData?.totalPages || 0;
+
+  const { data: stats = null } = useQuery({
+    queryKey: ["userStats"],
+    queryFn: async () => {
+      const res = await getUserSummaryStats();
+      return res;
+    },
+    enabled: userRole === "manager" || userRole === "admin",
+  });
 
   if (userRole !== "admin" && userRole !== "manager") return <Navigate to="/home" replace />;
 
   const reload = () => {
-    dispatch(fetchUsers({ keyword: search, page, size: showCount, role: filterRole || undefined }));
-    getUserSummaryStats()
-      .then((res) => setStats(res))
-      .catch(() => {});
+    queryClient.invalidateQueries({ queryKey: ["users"] });
+    queryClient.invalidateQueries({ queryKey: ["userStats"] });
   };
 
   const handleSearch = () => {
     dispatch(setUserPage(0));
-    dispatch(fetchUsers({ keyword: search, page: 0, size: showCount, role: filterRole || undefined }));
   };
 
   const handleReset = () => {
     dispatch(resetUserFilters());
-    dispatch(fetchUsers({ keyword: "", page: 0, size: showCount }));
   };
 
   const handleFilterChange = (value) => {
     dispatch(setUserFilter(value));
     dispatch(setUserPage(0));
-    // useEffect above will trigger the fetch on filterRole change
   };
 
   const handleShowCountChange = (value) => {
     setShowCount(Number(value));
     dispatch(setUserPage(0));
-    // useEffect above will trigger the fetch on showCount change
   };
 
   const handleExport = async () => {
@@ -221,10 +227,10 @@ export default function UsersPage() {
           to: { opacity: 1, transform: "translateY(0)" }
         }
       }}>
-        <StatCard label="Total Users" value={stats?.total ?? 0} icon={<FaUsers />} iconColor="#3949ab" />
-        <StatCard label="Administrators" value={stats?.adminCount ?? 0} icon={<FaUserShield />} iconColor="#2563eb" />
-        <StatCard label="Managers" value={stats?.managerCount ?? 0} icon={<FaUserTie />} iconColor="#10b981" />
-        <StatCard label="Regular Users" value={stats?.userCount ?? 0} icon={<FaUser />} iconColor="#d97706" />
+        <StatCard label="Total Users" value={stats?.total ?? 0} icon={<FaUsers />} iconColor="#3949ab" onClick={() => handleFilterChange("")} />
+        <StatCard label="Administrators" value={stats?.adminCount ?? 0} icon={<FaUserShield />} iconColor="#2563eb" onClick={() => handleFilterChange("ADMIN")} />
+        <StatCard label="Managers" value={stats?.managerCount ?? 0} icon={<FaUserTie />} iconColor="#10b981" onClick={() => handleFilterChange("MANAGER")} />
+        <StatCard label="Regular Users" value={stats?.userCount ?? 0} icon={<FaUser />} iconColor="#d97706" onClick={() => handleFilterChange("USER")} />
       </Box>
 
       <SearchBar

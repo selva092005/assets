@@ -19,6 +19,7 @@ import { getFullReport, exportAllocations, exportTransfers, exportDisposals } fr
 import { exportAssets } from "../services/assets_service";
 import { exportUsers } from "../services/users_service";
 import { COLORS } from "../theme/tokens";
+import CustomTooltip from "../components/common/CustomTooltip";
 
 // Custom Premium Colors
 const CHART_COLORS = ["#4f46e5", "#06b6d4", "#10b981", "#f59e0b", "#f43f5e", "#8b5cf6", "#ec4899"];
@@ -28,29 +29,7 @@ function mapToChartData(obj) {
   return Object.entries(obj).map(([name, value]) => ({ name, value: Number(value) }));
 }
 
-// Custom Compact Tooltip
-const CustomTooltip = ({ active, payload }) => {
-  if (active && payload && payload.length) {
-    return (
-      <Box sx={{
-        bgcolor: "#ffffff",
-        p: "6px 10px",
-        borderRadius: "6px",
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
-        border: "1px solid #e2e8f0",
-        pointerEvents: "none"
-      }}>
-        <Typography sx={{ fontSize: "9.5px", fontWeight: 700, color: "#1e293b", mb: 0.25 }}>
-          {payload[0].name}
-        </Typography>
-        <Typography sx={{ fontSize: "10px", fontWeight: 800, color: "#4f46e5" }}>
-          Count: {payload[0].value}
-        </Typography>
-      </Box>
-    );
-  }
-  return null;
-};
+
 
 // Custom Compact Legend
 const CustomPieLegend = ({ data, colors }) => {

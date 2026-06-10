@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Box, Typography, CircularProgress, Button, Divider, Avatar
 } from "@mui/material";
@@ -39,53 +40,30 @@ import { COLORS, outlinedBtnSx } from "../theme/tokens";
 import StatCard from "../components/common/StatCard";
 import PremiumCard from "../components/common/PremiumCard";
 import PageHeader from "../components/common/PageHeader";
+import CustomTooltip from "../components/common/CustomTooltip";
 
 const CHART_COLORS = ["#2563eb", "#10b981", "#d97706", "#f43f5e", "#8b5cf6", "#0891b2", "#f97316"];
 
-// Clean, high-contrast custom tooltip for graphs
-const CustomTooltip = ({ active, payload }) => {
-  if (active && payload && payload.length) {
-    return (
-      <Box sx={{
-        bgcolor: "#ffffff",
-        p: "6px 10px",
-        borderRadius: "6px",
-        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
-        border: "1px solid #e2e8f0",
-        pointerEvents: "none"
-      }}>
-        <Typography sx={{ fontSize: "9.5px", fontWeight: 700, color: "#1e293b" }}>
-          {payload[0].name}
-        </Typography>
-        <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#2563eb", mt: 0.25 }}>
-          {payload[0].value} Assets
-        </Typography>
-      </Box>
-    );
-  }
-  return null;
-};
-
 export default function Dashboard() {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [recentActivities, setRecentActivities] = useState([]);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      getDashboard(),
-      getAllAllocations({ page: 0, size: 5 })
-    ])
-      .then(([dashData, allocData]) => {
-        setStats(dashData);
-        const items = allocData?.data?.content || allocData?.content || [];
-        setRecentActivities(items);
-      })
-      .catch(() => toast.error("Failed to load dashboard data"))
-      .finally(() => setLoading(false));
-  }, []);
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ["dashboardStats"],
+    queryFn: async () => {
+      const res = await getDashboard();
+      return res;
+    },
+  });
+
+  const { data: recentActivities = [], isLoading: activitiesLoading } = useQuery({
+    queryKey: ["recentAllocationsLimit"],
+    queryFn: async () => {
+      const res = await getAllAllocations({ page: 0, size: 5 });
+      return res?.data?.content || res?.content || [];
+    },
+  });
+
+  const loading = statsLoading || activitiesLoading;
 
   if (loading) {
     return (
@@ -217,11 +195,11 @@ export default function Dashboard() {
         },
         gap: 2
       }}>
-        <StatCard label="Total Assets" value={totalAssets} icon={<FaBoxes />} iconBg="#e8eaf6" iconColor="#3949ab" />
-        <StatCard label="Available" value={available} icon={<FaCheckCircle />} iconBg="#ecfdf5" iconColor="#10b981" />
-        <StatCard label="Assigned" value={assigned} icon={<FaTools />} iconBg="#eff6ff" iconColor="#2563eb" />
-        <StatCard label="Maintenance" value={underMaintenance} icon={<FaWrench />} iconBg="#fffbeb" iconColor="#d97706" />
-        <StatCard label="Damaged" value={damaged} icon={<FaExclamationTriangle />} iconBg="#fff1f2" iconColor="#f43f5e" />
+        <StatCard label="Total Assets" value={totalAssets} icon={<FaBoxes />} iconBg="#e8eaf6" iconColor="#3949ab" onClick={() => navigate("/home/assets")} />
+        <StatCard label="Available" value={available} icon={<FaCheckCircle />} iconBg="#ecfdf5" iconColor="#10b981" onClick={() => navigate("/home/assets?status=AVAILABLE")} />
+        <StatCard label="Assigned" value={assigned} icon={<FaTools />} iconBg="#eff6ff" iconColor="#2563eb" onClick={() => navigate("/home/assets?status=ASSIGNED")} />
+        <StatCard label="Maintenance" value={underMaintenance} icon={<FaWrench />} iconBg="#fffbeb" iconColor="#d97706" onClick={() => navigate("/home/assets?status=UNDER_MAINTENANCE")} />
+        <StatCard label="Damaged" value={damaged} icon={<FaExclamationTriangle />} iconBg="#fff1f2" iconColor="#f43f5e" onClick={() => navigate("/home/assets?status=DAMAGED")} />
       </Box>
 
       {/* ── Main Layout Grid ── */}
@@ -248,7 +226,7 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#64748b", fontWeight: 750 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 9, fill: "#64748b", fontWeight: 750 }} tickLine={false} axisLine={false} />
-                  <ReTooltip content={<CustomTooltip />} />
+                  <ReTooltip content={<CustomTooltip unit="Assets" />} />
                   <Bar
                     dataKey="value"
                     fill="#2563eb"
@@ -280,7 +258,7 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#64748b", fontWeight: 750 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 9, fill: "#64748b", fontWeight: 750 }} tickLine={false} axisLine={false} />
-                  <ReTooltip content={<CustomTooltip />} />
+                  <ReTooltip content={<CustomTooltip unit="Assets" />} />
                   <Bar
                     dataKey="value"
                     fill="#8b5cf6"
@@ -323,7 +301,7 @@ export default function Dashboard() {
                       : <Cell fill="#e2e8f0" stroke="#ffffff" strokeWidth={1.5} />
                     }
                   </Pie>
-                  {statusData.length > 0 && <ReTooltip content={<CustomTooltip />} />}
+                  {statusData.length > 0 && <ReTooltip content={<CustomTooltip unit="Assets" />} />}
                 </PieChart>
               </ResponsiveContainer>
               <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center", pointerEvents: "none" }}>
