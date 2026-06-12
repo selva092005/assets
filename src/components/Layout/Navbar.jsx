@@ -355,15 +355,15 @@ const Navbar = () => {
                                 borderRadius: "999px",
                                 minWidth: 0,
                                 color: isTabActive ? "#2563eb" : "#475569",
-                                background: isTabActive 
-                                  ? "linear-gradient(135deg, #eff6ff, #dbeafe)" 
+                                background: isTabActive
+                                  ? "linear-gradient(135deg, #eff6ff, #dbeafe)"
                                   : "transparent",
                                 border: "1px solid",
                                 borderColor: isTabActive ? "rgba(37, 99, 235, 0.2)" : "transparent",
                                 transition: "all 250ms cubic-bezier(0.4, 0, 0.2, 1)",
                                 "&:hover": {
-                                  background: isTabActive 
-                                    ? "linear-gradient(135deg, #eff6ff, #dbeafe)" 
+                                  background: isTabActive
+                                    ? "linear-gradient(135deg, #eff6ff, #dbeafe)"
                                     : "rgba(241, 245, 249, 0.85)",
                                   color: "#2563eb",
                                   borderColor: isTabActive ? "rgba(37, 99, 235, 0.3)" : "rgba(226, 232, 240, 0.6)",

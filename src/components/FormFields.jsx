@@ -50,9 +50,14 @@ export const FormTextField = ({
                   onChange(e);
                 }
               }}
+              onBlur={(e) => {
+                if (fieldRest.onBlur) fieldRest.onBlur(e);
+                if (props.onBlur) props.onBlur(e);
+              }}
               size="small"
               sx={{
                 ...inputSx,
+                ...(props.multiline ? { "& .MuiOutlinedInput-root": { height: "auto !important" } } : {}),
                 ...props.sx,
               }}
             />

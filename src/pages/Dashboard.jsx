@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Box, Typography, CircularProgress, Button, Divider, Avatar
+  Box, Typography, CircularProgress, Button, Divider, Avatar, Select, MenuItem
 } from "@mui/material";
 import {
   ResponsiveContainer,
@@ -33,7 +33,7 @@ import {
   FaFileAlt
 } from "react-icons/fa";
 import toast from "../utils/toast.jsx";
-import { getDashboard, getImageUrl } from "../services/assets_service";
+import { getDashboard, getImageUrl, getAssets } from "../services/assets_service";
 import { getAllAllocations } from "../services/allocation_service";
 import { useNavigate } from "react-router-dom";
 import { COLORS, outlinedBtnSx } from "../theme/tokens";
@@ -46,6 +46,7 @@ const CHART_COLORS = ["#2563eb", "#10b981", "#d97706", "#f43f5e", "#8b5cf6", "#0
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [warrantyDays, setWarrantyDays] = useState(90);
 
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["dashboardStats"],
@@ -63,7 +64,15 @@ export default function Dashboard() {
     },
   });
 
-  const loading = statsLoading || activitiesLoading;
+  const { data: allAssetsRes, isLoading: assetsLoading } = useQuery({
+    queryKey: ["dashboardAllAssets"],
+    queryFn: async () => {
+      const res = await getAssets({ page: 0, size: 200 });
+      return res?.data?.content || res?.content || [];
+    }
+  });
+
+  const loading = statsLoading || activitiesLoading || assetsLoading;
 
   if (loading) {
     return (
@@ -108,6 +117,17 @@ export default function Dashboard() {
     { name: "Maintenance", value: Number(underMaintenance), color: "#d97706" },
     { name: "Damaged", value: Number(damaged), color: "#f43f5e" }
   ].filter(x => x.value > 0);
+
+  // Expiring warranties calculation
+  const expiringAssets = (allAssetsRes || []).filter(a => {
+    if (!a.warrantyExpiry) return false;
+    const exp = new Date(a.warrantyExpiry);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const diffTime = exp - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 && diffDays <= warrantyDays;
+  }).sort((a, b) => new Date(a.warrantyExpiry) - new Date(b.warrantyExpiry));
 
   const now = new Date();
   const dayVal = now.toLocaleDateString("en-US", { day: "2-digit" });
@@ -185,13 +205,13 @@ export default function Dashboard() {
         }
       />
 
-      {/* ── Stat Ribbon (5 Symmetrical Columns with Clean Top Color Accents) ── */}
+      {/* ── Stat Ribbon (6 Symmetrical Columns with Clean Top Color Accents) ── */}
       <Box sx={{
         display: "grid",
         gridTemplateColumns: {
           xs: "repeat(2, 1fr)",
           sm: "repeat(3, 1fr)",
-          md: "repeat(5, 1fr)"
+          md: "repeat(6, 1fr)"
         },
         gap: 2
       }}>
@@ -200,6 +220,7 @@ export default function Dashboard() {
         <StatCard label="Assigned" value={assigned} icon={<FaTools />} iconBg="#eff6ff" iconColor="#2563eb" onClick={() => navigate("/home/assets?status=ASSIGNED")} />
         <StatCard label="Maintenance" value={underMaintenance} icon={<FaWrench />} iconBg="#fffbeb" iconColor="#d97706" onClick={() => navigate("/home/assets?status=UNDER_MAINTENANCE")} />
         <StatCard label="Damaged" value={damaged} icon={<FaExclamationTriangle />} iconBg="#fff1f2" iconColor="#f43f5e" onClick={() => navigate("/home/assets?status=DAMAGED")} />
+        <StatCard label="Asset Utilization" value={totalAssets > 0 ? `${((assigned / totalAssets) * 100).toFixed(1)}%` : "0%"} icon={<FaChartPie />} iconBg="#f5f3ff" iconColor="#7c3aed" onClick={() => navigate("/home/allocation")} />
       </Box>
 
       {/* ── Main Layout Grid ── */}
@@ -670,6 +691,77 @@ export default function Dashboard() {
                 </Button>
               </Box>
             </Box>
+          </Box>
+        </PremiumCard>
+
+        {/* Card 7: Expiring Warranties */}
+        <PremiumCard
+          title="Expiring Warranties"
+          icon={<FaCalendarAlt />}
+          subtitle="Track upcoming hardware renewals"
+          actions={
+            <Select
+              value={warrantyDays}
+              onChange={(e) => setWarrantyDays(Number(e.target.value))}
+              size="small"
+              sx={{
+                height: 24,
+                fontSize: 10,
+                fontWeight: 700,
+                minWidth: 90,
+                "& .MuiSelect-select": { py: "2.5px", px: "8px" }
+              }}
+            >
+              <MenuItem value={30} sx={{ fontSize: 11 }}>30 Days</MenuItem>
+              <MenuItem value={60} sx={{ fontSize: 11 }}>60 Days</MenuItem>
+              <MenuItem value={90} sx={{ fontSize: 11 }}>90 Days</MenuItem>
+            </Select>
+          }
+        >
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 0.5, maxHeight: 180, overflowY: "auto" }}>
+            {expiringAssets.length === 0 ? (
+              <Box sx={{ textAlign: "center", py: 4 }}>
+                <Typography sx={{ fontSize: "10px", color: "#94a3b8" }}>No warranties expiring in {warrantyDays} days</Typography>
+              </Box>
+            ) : (
+              expiringAssets.slice(0, 5).map((asset) => {
+                const exp = new Date(asset.warrantyExpiry);
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                const diffDays = Math.ceil((exp - now) / (1000 * 60 * 60 * 24));
+                return (
+                  <Box
+                    key={asset.assetId}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      p: "6px 10px",
+                      bgcolor: "#f8fafc",
+                      borderRadius: "6px",
+                      border: "1px solid #e2e8f0"
+                    }}
+                  >
+                    <Box sx={{ minWidth: 0, mr: 1 }}>
+                      <Typography sx={{ fontSize: "10.5px", fontWeight: 800, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {asset.assetName}
+                      </Typography>
+                      <Typography sx={{ fontSize: "8.5px", color: "#64748b" }}>
+                        {asset.assetCode} • {asset.brand}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ textAlign: "right", flexShrink: 0 }}>
+                      <Typography sx={{ fontSize: "10px", fontWeight: 900, color: diffDays <= 30 ? "#ef4444" : "#f59e0b" }}>
+                        {diffDays} days left
+                      </Typography>
+                      <Typography sx={{ fontSize: "8px", color: "#94a3b8" }}>
+                        Exp: {asset.warrantyExpiry}
+                      </Typography>
+                    </Box>
+                  </Box>
+                );
+              })
+            )}
           </Box>
         </PremiumCard>
 

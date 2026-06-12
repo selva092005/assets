@@ -30,7 +30,7 @@ import TablePagination from "../components/common/TablePagination";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import StatCard from "../components/common/StatCard";
 import PremiumCard from "../components/common/PremiumCard";
-import { COLORS, outlinedBtnSx, primaryBtnSx, selectSx, premiumDialogPaperSx, premiumDialogTitleSx, denseCellSx } from "../theme/tokens";
+import { COLORS, outlinedBtnSx, primaryBtnSx, inputSx, selectSx, premiumDialogPaperSx, premiumDialogTitleSx, denseCellSx } from "../theme/tokens";
 import { required, isValidDate, isNotFutureDate, extractFieldErrors } from "../utils/validate";
 
 const DISPOSAL_METHODS = ["SOLD", "SCRAPPED", "DONATED", "DAMAGED"];
@@ -40,6 +40,23 @@ import EmptyState from "../components/common/EmptyState";
 import CustomTooltip from "../components/common/CustomTooltip";
 
 const CHART_COLORS = ["#2563eb", "#10b981", "#d97706", "#f43f5e", "#8b5cf6", "#0891b2", "#f97316"];
+
+// ── Declarative Debounce Hook ──────────────────────────────────────────────────
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 export default function AssetDisposalPage() {
   const { userRole, userName } = useSelector((s) => s.auth);
@@ -52,16 +69,17 @@ export default function AssetDisposalPage() {
 
   // Search & Filters State
   const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 600);
   const [methodFilter, setMethodFilter] = useState("");
   const [page, setPage] = useState(0);
   const [showCount, setShowCount] = useState(10);
 
   // ── Query Fetcher ──────────────────────────────────────────────────────────
   const { data: disposals = [], isLoading: loading } = useQuery({
-    queryKey: ["disposals", searchInput, methodFilter],
+    queryKey: ["disposals", debouncedSearch, methodFilter],
     queryFn: async () => {
       const params = {};
-      if (searchInput.trim()) params.search = searchInput.trim();
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
       if (methodFilter) params.method = methodFilter;
       const res = await getAllDisposals(params);
       return extractList(res);
@@ -125,7 +143,7 @@ export default function AssetDisposalPage() {
   const preselectedAssetId = Number(searchParams.get("assetId"));
 
   const disposableAssets = allAssets.filter(
-    (a) => a.status === "AVAILABLE" || a.status === "DAMAGED" || a.status === "UNDER_MAINTENANCE" || a.assetId === formAssetId || a.assetId === preselectedAssetId
+    (a) => a.status === "AVAILABLE" || a.status === "DAMAGED" || a.assetId === formAssetId || a.assetId === preselectedAssetId
   );
 
   const adminUsers = allUsers.filter((u) => u.userRole === "ADMIN" || u.userRole === "MANAGER").length > 0
@@ -360,7 +378,7 @@ export default function AssetDisposalPage() {
           displayEmpty
           sx={{ ...selectSx, minWidth: 150 }}
         >
-          <MenuItem value="">All Methods</MenuItem>
+          <MenuItem value="">All</MenuItem>
           {DISPOSAL_METHODS.map((m) => (
             <MenuItem key={m} value={m} sx={{ fontSize: 11.5 }}>{m}</MenuItem>
           ))}
@@ -651,12 +669,12 @@ export default function AssetDisposalPage() {
 
       {/* ── Dispose Modal ──────────────────────────────────────────────── */}
       <Dialog open={disposeOpen} onClose={() => { if (!saving) { setDisposeOpen(false); reset(); } }} maxWidth="sm" fullWidth slotProps={{ paper: { sx: { borderRadius: "12px" } } }}>
-        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1 }}>
-          <Typography fontWeight={700} fontSize={16}>Dispose Asset</Typography>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1, borderBottom: "1px solid " + COLORS.borderLight }}>
+          <Typography fontWeight={700} fontSize={13} sx={{ textTransform: "uppercase", letterSpacing: "0.05em" }}>Dispose Asset</Typography>
           <IconButton size="small" onClick={() => { if (!saving) { setDisposeOpen(false); reset(); } }}><FaTimes size={14} /></IconButton>
         </DialogTitle>
 
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "12px !important" }}>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "16px !important" }}>
 
           {/* Warning banner */}
           <Box sx={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: "8px", p: 1.5 }}>
@@ -671,12 +689,12 @@ export default function AssetDisposalPage() {
             control={control}
             rules={{ required: "Select an asset to dispose" }}
             render={({ field, fieldState: { error } }) => (
-              <FormControl fullWidth size="small" error={!!error}>
-                <InputLabel shrink sx={{ fontSize: 13, ...(error ? { color: "#c62828 !important" } : {}) }}>Asset *</InputLabel>
+              <FormControl fullWidth error={!!error} sx={{ mb: 1.5 }}>
+                <Typography sx={{ fontSize: 11.5, color: COLORS.textMuted, mb: 0.5, fontWeight: 600 }}>
+                  Asset *
+                </Typography>
                 <OutlinedInput
                   readOnly
-                  notched
-                  label="Asset *"
                   size="small"
                   value={disposableAssets.find((a) => a.assetId === field.value)
                     ? `${disposableAssets.find((a) => a.assetId === field.value).assetName}${disposableAssets.find((a) => a.assetId === field.value).assetCode ? ` (${disposableAssets.find((a) => a.assetId === field.value).assetCode})` : ""}`
@@ -685,9 +703,29 @@ export default function AssetDisposalPage() {
                   onClick={(e) => setAssetAnchor(e.currentTarget)}
                   error={!!error}
                   endAdornment={<InputAdornment position="end"><Typography fontSize={12} color="#aaa">▾</Typography></InputAdornment>}
-                  sx={{ fontSize: 13, borderRadius: "8px", cursor: "pointer", caretColor: "transparent" }}
+                  sx={{
+                    background: "#ffffff",
+                    borderRadius: "6px",
+                    height: 30,
+                    fontSize: 11.5,
+                    cursor: "pointer",
+                    caretColor: "transparent",
+                    transition: "all 100ms ease",
+                    "& .MuiOutlinedInput-input": {
+                      py: "4px !important",
+                      px: "8px !important",
+                      cursor: "pointer"
+                    },
+                    "& fieldset": { borderColor: "#cbd5e1", transition: "all 100ms ease" },
+                    "&:hover fieldset": { borderColor: "#000000" },
+                    "&.Mui-focused fieldset": { borderColor: "#000000", borderWidth: "1px !important" },
+                    "&.Mui-focused": {
+                      background: "#ffffff",
+                      boxShadow: "0 0 0 3px rgba(0, 0, 0, 0.05)",
+                    }
+                  }}
                 />
-                {error && <Typography color="error" sx={{ fontSize: 11, mt: 0.5 }}>{error.message}</Typography>}
+                {error && <FormHelperText error sx={{ mx: 0, mt: 0.5, fontSize: 11 }}>{error.message}</FormHelperText>}
                 <Popover
                   open={Boolean(assetAnchor)}
                   anchorEl={assetAnchor}
@@ -704,7 +742,7 @@ export default function AssetDisposalPage() {
                       value={assetSearch}
                       onChange={(e) => setAssetSearch(e.target.value)}
                       slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
-                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }}
+                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 11.5 } }}
                     />
                   </Box>
                   <List dense sx={{ overflowY: "auto", flex: 1 }}>
@@ -721,13 +759,13 @@ export default function AssetDisposalPage() {
                           sx={{ py: 0.5 }}
                         >
                           <ListItemText
-                            primary={<Typography sx={{ fontSize: 13 }}>{a.assetName}</Typography>}
-                            secondary={<Typography sx={{ fontSize: 11, color: "#64748b" }}>{a.assetCode || ""}</Typography>}
+                            primary={<Typography sx={{ fontSize: 12 }}>{a.assetName}</Typography>}
+                            secondary={<Typography sx={{ fontSize: 10.5, color: "#64748b" }}>{a.assetCode || ""}</Typography>}
                           />
                         </ListItemButton>
                       )) : (
                         <ListItemButton disabled>
-                          <ListItemText primary={<Typography sx={{ fontSize: 13 }}>No assets found</Typography>} />
+                          <ListItemText primary={<Typography sx={{ fontSize: 12 }}>No assets found</Typography>} />
                         </ListItemButton>
                       );
                     })()}
@@ -746,7 +784,7 @@ export default function AssetDisposalPage() {
             disabled={saving}
           >
             {DISPOSAL_METHODS.map((m) => (
-              <MenuItem key={m} value={m} sx={{ fontSize: 13 }}>{m}</MenuItem>
+              <MenuItem key={m} value={m} sx={{ fontSize: 12 }}>{m}</MenuItem>
             ))}
           </FormSelect>
 
@@ -763,26 +801,32 @@ export default function AssetDisposalPage() {
             rows={2}
             disabled={saving}
             slotProps={{ htmlInput: { maxLength: 250 } }}
-            sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
           />
 
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, mb: 1.5 }}>
             <Controller
               name="disposedBy"
               control={control}
               render={({ field }) => (
-                <FormControl fullWidth size="small">
-                  <InputLabel shrink sx={{ fontSize: 13 }}>Disposed By</InputLabel>
+                <FormControl fullWidth>
+                  <Typography sx={{ fontSize: 11.5, color: COLORS.textMuted, mb: 0.5, fontWeight: 600 }}>
+                    Disposed By
+                  </Typography>
                   <OutlinedInput
                     disabled
-                    notched
-                    label="Disposed By"
                     size="small"
                     value={field.value || userName || ""}
                     sx={{
-                      fontSize: 13,
-                      borderRadius: "8px",
-                      bgcolor: "#f8fafc",
+                      background: "#f8fafc",
+                      borderRadius: "6px",
+                      height: 30,
+                      fontSize: 11.5,
+                      transition: "all 100ms ease",
+                      "& .MuiOutlinedInput-input": {
+                        py: "4px !important",
+                        px: "8px !important",
+                      },
+                      "& fieldset": { borderColor: "#cbd5e1" },
                       "& .MuiOutlinedInput-input.Mui-disabled": {
                         WebkitTextFillColor: "#475569",
                       }
@@ -801,8 +845,6 @@ export default function AssetDisposalPage() {
               label="Disposal Date *"
               type="date"
               disabled={saving}
-              slotProps={{ inputLabel: { shrink: true } }}
-              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
             />
           </Box>
 
@@ -815,12 +857,11 @@ export default function AssetDisposalPage() {
             label="Disposal Value (optional)"
             type="number"
             disabled={saving}
-            slotProps={{ input: { startAdornment: <InputAdornment position="start"><Typography fontSize={13}>₹</Typography></InputAdornment> } }}
-            sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px", fontSize: 13 } }}
+            slotProps={{ input: { startAdornment: <InputAdornment position="start"><Typography fontSize={11.5}>₹</Typography></InputAdornment> } }}
           />
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1.5, borderTop: "1px solid " + COLORS.borderLight, gap: 1 }}>
           <Button onClick={() => { setDisposeOpen(false); reset(); }} sx={outlinedBtnSx}>Cancel</Button>
           <Button
             variant="contained"

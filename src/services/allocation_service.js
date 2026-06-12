@@ -25,7 +25,8 @@ export const allocateAsset = async (data) => {
 };
 
 // PUT /api/allocations/{id}/return
-export const returnAsset = async (allocationId) => {
-  const res = await API.put(`/api/allocations/${allocationId}/return`);
+export const returnAsset = async (allocationId, returnDate) => {
+  const params = returnDate ? { returnDate } : {};
+  const res = await API.put(`/api/allocations/${allocationId}/return`, null, { params });
   return res.data;
 };

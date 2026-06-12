@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
 import {
   Box, Button, CircularProgress, Typography, Select, MenuItem,
   Table, TableBody, TableCell, TableHead, TableRow, IconButton, Card,
@@ -124,6 +125,8 @@ export default function BulkUploadPage({ mode = "assets" }) {
 
   const [wizardStep, setWizardStep] = useState(1);
   const [file, setFile] = useState(null);
+  const [parsedRows, setParsedRows] = useState([]);
+  const [parsedHeaders, setParsedHeaders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
   const [result, setResult] = useState(null);
@@ -193,6 +196,28 @@ export default function BulkUploadPage({ mode = "assets" }) {
     setFile(f);
     setResult(null);
     setErrPage(0);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        if (json.length > 0) {
+          setParsedHeaders(json[0] || []);
+          setParsedRows(json.slice(1) || []);
+        } else {
+          setParsedHeaders([]);
+          setParsedRows([]);
+        }
+      } catch (err) {
+        toast.error("Failed to parse Excel file for preview");
+      }
+    };
+    reader.readAsArrayBuffer(f);
+
     // Proceed to Step 2 automatically once a file is selected
     setWizardStep(2);
   };
@@ -246,6 +271,8 @@ export default function BulkUploadPage({ mode = "assets" }) {
     setFile(null);
     setResult(null);
     setErrPage(0);
+    setParsedRows([]);
+    setParsedHeaders([]);
     setWizardStep(1);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -520,7 +547,7 @@ export default function BulkUploadPage({ mode = "assets" }) {
                             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                                 <FaFileExcel size={10} color="#16a34a" />
                                 <Typography fontSize={11.5} fontWeight={700} color="#1e293b" fontFamily="monospace">
-                                  {col.header}
+                                  {parsedHeaders[col.index] || col.header}
                                 </Typography>
                             </Box>
                           </TableCell>
@@ -528,41 +555,28 @@ export default function BulkUploadPage({ mode = "assets" }) {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {/* Row 5 */}
-                      <TableRow sx={{ background: "#fff", "&:hover": { background: "#fafafa" } }}>
-                        <TableCell sx={{ fontWeight: 700, color: "#64748b", fontSize: 9.5, textAlign: "center", py: 1, px: 1, background: "#f1f5f9", borderRight: "2px solid #cbd5e1" }}>
-                          Row 5
-                        </TableCell>
-                        {columns.map((col) => (
-                          <TableCell key={col.index} sx={{ py: 1, px: 1.5, fontSize: 11, color: "#475569", fontFamily: "monospace" }}>
-                            {col.sampleRows[0]}
+                      {parsedRows.slice(0, 5).map((row, rIdx) => (
+                        <TableRow key={rIdx} sx={{ background: "#fff", "&:hover": { background: "#fafafa" } }}>
+                          <TableCell sx={{ fontWeight: 700, color: "#64748b", fontSize: 9.5, textAlign: "center", py: 1, px: 1, background: "#f1f5f9", borderRight: "2px solid #cbd5e1" }}>
+                            Row {rIdx + 5}
                           </TableCell>
-                        ))}
-                      </TableRow>
-
-                      {/* Row 6 */}
-                      <TableRow sx={{ background: "#fff", "&:hover": { background: "#fafafa" } }}>
-                        <TableCell sx={{ fontWeight: 700, color: "#64748b", fontSize: 9.5, textAlign: "center", py: 1, px: 1, background: "#f1f5f9", borderRight: "2px solid #cbd5e1" }}>
-                          Row 6
-                        </TableCell>
-                        {columns.map((col) => (
-                          <TableCell key={col.index} sx={{ py: 1, px: 1.5, fontSize: 11, color: "#475569", fontFamily: "monospace" }}>
-                            {col.sampleRows[1]}
+                          {columns.map((col) => {
+                            const val = row[col.index];
+                            return (
+                              <TableCell key={col.index} sx={{ py: 1, px: 1.5, fontSize: 11, color: "#475569", fontFamily: "monospace" }}>
+                                {val !== undefined && val !== null ? String(val) : "—"}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))}
+                      {parsedRows.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={columns.length + 1} sx={{ textAlign: "center", py: 3, fontSize: 12, color: "#64748b" }}>
+                            No data rows found in sheet
                           </TableCell>
-                        ))}
-                      </TableRow>
-
-                      {/* Row 7 */}
-                      <TableRow sx={{ background: "#fff", "&:hover": { background: "#fafafa" } }}>
-                        <TableCell sx={{ fontWeight: 700, color: "#64748b", fontSize: 9.5, textAlign: "center", py: 1, px: 1, background: "#f1f5f9", borderRight: "2px solid #cbd5e1" }}>
-                          Row 7
-                        </TableCell>
-                        {columns.map((col) => (
-                          <TableCell key={col.index} sx={{ py: 1, px: 1.5, fontSize: 11, color: "#475569", fontFamily: "monospace" }}>
-                            {col.sampleRows[2]}
-                          </TableCell>
-                        ))}
-                      </TableRow>
+                        </TableRow>
+                      )}
                     </TableBody>
                   </Table>
                 </Box>

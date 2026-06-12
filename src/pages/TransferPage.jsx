@@ -7,10 +7,12 @@ import {
   ListItemText, MenuItem, Select, Tab, Tabs, Table, TableBody,
   TableCell, TableHead, TableRow, TextField, Typography,
   FormControl, InputLabel, InputAdornment, OutlinedInput, Popover,
+  Checkbox, Collapse, Tooltip
 } from "@mui/material";
 import { useForm, Controller } from "react-hook-form";
 import { FormTextField, FormSelect } from "../components/FormFields";
-import { FaExchangeAlt, FaCheck, FaTimes, FaSearch, FaClock } from "react-icons/fa";
+import { FaExchangeAlt, FaCheck, FaTimes, FaSearch, FaClock, FaTruck, FaChevronDown, FaChevronUp, FaCheckCircle, FaTimesCircle, FaFileExport, FaFilter } from "react-icons/fa";
+import { MdRefresh } from "react-icons/md";
 import toast from "../utils/toast.jsx";
 import PageHeader from "../components/common/PageHeader";
 import TableCard from "../components/common/TableCard";
@@ -22,8 +24,10 @@ import EmptyState from "../components/common/EmptyState";
 import { COLORS, primaryBtnSx, outlinedBtnSx, inputSx, selectSx, chipSx, tabSx, premiumDialogPaperSx, premiumDialogTitleSx, premiumFormGroupSx } from "../theme/tokens";
 import { required, extractFieldErrors } from "../utils/validate";
 import {
-  requestTransfer, approveTransfer, rejectTransfer,
+  requestTransfer, approveTransfer, rejectTransfer, receiveTransfer,
   getAllTransfers, getTransferOverview, getAllLocations,
+  approveBulkTransfers, rejectBulkTransfers, receiveBulkTransfers,
+  exportTransfersToExcel,
 } from "../services/transfer_service";
 import { getAssets } from "../services/assets_service";
 
@@ -45,6 +49,61 @@ function fmt(dt) {
   return new Date(dt).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
 }
 
+const CustomCheckboxIcon = () => (
+  <Box sx={{
+    width: 14,
+    height: 14,
+    borderRadius: "3px",
+    border: "1.2px solid #cbd5e1",
+    bgcolor: "#ffffff",
+    transition: "all 120ms cubic-bezier(0.4, 0, 0.2, 1)",
+    "&:hover": {
+      borderColor: "#94a3b8",
+      bgcolor: "#f8fafc",
+    }
+  }} />
+);
+
+const CustomCheckboxCheckedIcon = () => (
+  <Box sx={{
+    width: 14,
+    height: 14,
+    borderRadius: "3px",
+    background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+    border: "1.2px solid #2563eb",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 1px 3px rgba(37, 99, 235, 0.25)",
+    color: "#ffffff",
+    transform: "scale(1.05)",
+    transition: "all 150ms cubic-bezier(0.175, 0.885, 0.32, 1.15)"
+  }}>
+    <svg width="7" height="7" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M1.5 4L3 5.5L6.5 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  </Box>
+);
+
+const CustomCheckboxIndeterminateIcon = () => (
+  <Box sx={{
+    width: 14,
+    height: 14,
+    borderRadius: "3px",
+    background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+    border: "1.2px solid #2563eb",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    boxShadow: "0 1px 3px rgba(37, 99, 235, 0.25)",
+    color: "#ffffff",
+    transform: "scale(1.05)",
+    transition: "all 150ms cubic-bezier(0.175, 0.885, 0.32, 1.15)"
+  }}>
+    <Box sx={{ width: 6, height: 1.5, bgcolor: "#ffffff", borderRadius: "0.5px" }} />
+  </Box>
+);
+
 export default function TransferPage() {
   const { userRole, userName } = useSelector((s) => s.auth);
   const isAdmin = userRole === "admin";
@@ -54,14 +113,112 @@ export default function TransferPage() {
   const [page, setPage] = useState(0);
   const [showCount, setShowCount] = useState(10);
   const [statusFilter, setStatusFilter] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [expandedId, setExpandedId] = useState(null);
+  const [exportLoading, setExportLoading] = useState(false);
+
+  const handleExport = async () => {
+    try {
+      setExportLoading(true);
+      await exportTransfersToExcel();
+      toast.success("Transfer history exported successfully!");
+    } catch (err) {
+      toast.error("Failed to export transfer history.");
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const handleResetFilters = () => {
+    setStatusFilter("");
+    setStartDate("");
+    setEndDate("");
+    setPage(0);
+    setSelectedIds([]);
+    setExpandedId(null);
+  };
+
+  // Bulk action states
+  const [bulkActionOpen, setBulkActionOpen] = useState(false);
+  const [bulkActionType, setBulkActionType] = useState(""); // "APPROVE" | "REJECT" | "RECEIVE"
+  const [bulkRemarks, setBulkRemarks] = useState("");
+  const [bulkSaving, setBulkSaving] = useState(false);
+
+  const isCheckable = (row) => {
+    if (tab === 0) {
+      return isAdmin && row.status === "PENDING";
+    } else {
+      return (isAdmin || userRole === "manager") && row.status === "IN_TRANSIT";
+    }
+  };
+
+  const handleSelectOne = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      const checkableIds = transfers.filter(isCheckable).map((t) => t.transferId);
+      setSelectedIds(checkableIds);
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const openBulkAction = (type) => {
+    setBulkActionType(type);
+    setBulkRemarks("");
+    setBulkActionOpen(true);
+  };
+
+  const handleBulkActionSubmit = async () => {
+    if (bulkActionType === "REJECT" && !bulkRemarks.trim()) {
+      toast.error("Remarks are required to reject transfers");
+      return;
+    }
+    setBulkSaving(true);
+    try {
+      let fn;
+      if (bulkActionType === "APPROVE") fn = approveBulkTransfers;
+      else if (bulkActionType === "REJECT") fn = rejectBulkTransfers;
+      else if (bulkActionType === "RECEIVE") fn = receiveBulkTransfers;
+
+      await fn({
+        transferIds: selectedIds,
+        resolvedBy: userName,
+        remarks: bulkRemarks,
+      });
+
+      toast.success(`Bulk action '${bulkActionType}' completed successfully!`);
+      setSelectedIds([]);
+      setBulkActionOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["transfers"] });
+      queryClient.invalidateQueries({ queryKey: ["transferOverview"] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Bulk action failed");
+    } finally {
+      setBulkSaving(false);
+    }
+  };
 
   const queryClient = useQueryClient();
 
   // ── Query Fetchers ──────────────────────────────────────────────────────────
   const { data: transfersData, isLoading: loading } = useQuery({
-    queryKey: ["transfers", tab, page, showCount, statusFilter],
+    queryKey: ["transfers", tab, page, showCount, statusFilter, startDate, endDate],
     queryFn: async () => {
-      const params = { page, size: showCount, ...(statusFilter ? { status: statusFilter } : {}) };
+      const params = {
+        page,
+        size: showCount,
+        ...(statusFilter ? { status: statusFilter } : {}),
+        ...(startDate ? { startDate } : {}),
+        ...(endDate ? { endDate } : {})
+      };
       if (tab === 0 && !statusFilter) params.status = "PENDING";
       const res = await getAllTransfers(params);
       return extractPage(res);
@@ -72,7 +229,7 @@ export default function TransferPage() {
   const transfers = transfersData?.content || [];
   const totalPages = transfersData?.totalPages || 1;
 
-  const { data: overview = { total: 0, pending: 0, approved: 0, rejected: 0 } } = useQuery({
+  const { data: overview = { total: 0, pending: 0, approved: 0, rejected: 0, inTransit: 0 } } = useQuery({
     queryKey: ["transferOverview"],
     queryFn: async () => {
       const res = await getTransferOverview();
@@ -85,7 +242,6 @@ export default function TransferPage() {
   const [reqSaving, setReqSaving] = useState(false);
   const [assetSearch, setAssetSearch] = useState("");
   const [assetAnchor, setAssetAnchor] = useState(null);
-  const [fromLocation, setFromLocation] = useState("");
 
   const { data: assets = [] } = useQuery({
     queryKey: ["assets", "simple"],
@@ -134,7 +290,6 @@ export default function TransferPage() {
   // ── Open request modal ─────────────────────────────────────────────────────
   const openRequest = () => {
     reqReset({ assetId: "", toLocation: "", reason: "", expectedDate: "", priority: "MEDIUM" });
-    setFromLocation("");
     setAssetSearch("");
     setReqOpen(true);
   };
@@ -142,7 +297,6 @@ export default function TransferPage() {
   const handleAssetSelect = (a, onChangeField) => {
     onChangeField(a.assetId);
     reqSetValue("toLocation", "");
-    setFromLocation(a.locationName || "");
     setAssetAnchor(null);
     setAssetSearch("");
   };
@@ -204,27 +358,89 @@ export default function TransferPage() {
     } finally { setActionSaving(false); }
   };
 
-  const selectedAsset = assets.find((a) => a.assetId === reqAssetId);
+  // ── Receive / Confirm Receipt Modal States & Handlers ───────────────────
+  const [receiveOpen, setReceiveOpen] = useState(false);
+  const [receiveTransferItem, setReceiveTransferItem] = useState(null);
+  const [receiveSaving, setReceiveSaving] = useState(false);
+
+  const { control: receiveControl, handleSubmit: handleReceiveSubmit, reset: receiveReset } = useForm({
+    defaultValues: {
+      remarks: "",
+    }
+  });
+
+  const openReceive = (transfer) => {
+    setReceiveTransferItem(transfer);
+    receiveReset({ remarks: "" });
+    setReceiveOpen(true);
+  };
+
+  const onConfirmReceive = async (data) => {
+    setReceiveSaving(true);
+    try {
+      await receiveTransfer(receiveTransferItem.transferId, {
+        resolvedBy: userName,
+        remarks: data.remarks
+      });
+      toast.success("Transfer completed: Receipt confirmed!");
+      setReceiveOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["transfers"] });
+      queryClient.invalidateQueries({ queryKey: ["transferOverview"] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Failed to confirm receipt");
+    } finally {
+      setReceiveSaving(false);
+    }
+  };
+
+  const selectedAsset = reqAssetId ? assets.find((a) => Number(a.assetId) === Number(reqAssetId)) : null;
+  const fromLocation = selectedAsset?.locationName || "";
+
   const availableLocations = locations.filter((l) => {
     // 1. Cannot transfer to the exact same location
     if (l.locationName?.trim().toLowerCase() === fromLocation?.trim().toLowerCase()) return false;
 
     // 2. Ensure location belongs to the same company as the selected asset
     if (selectedAsset) {
-      if (selectedAsset.companyId != null && l.companyId != null) {
-        if (Number(selectedAsset.companyId) !== Number(l.companyId)) {
-          return false;
-        }
-      } else {
-        const assetComp = selectedAsset.companyName?.trim().toLowerCase();
-        const locComp = l.companyName?.trim().toLowerCase();
-        if (assetComp && locComp && assetComp !== locComp) {
-          return false;
-        }
+      const assetComp = (selectedAsset.companyName || "").trim().toLowerCase();
+      const locComp = (l.companyName || "").trim().toLowerCase();
+      if (assetComp && locComp && assetComp !== locComp) {
+        return false;
       }
     }
     return true;
   });
+
+  const getStepStatus = (stepIndex, status) => {
+    if (status === "REJECTED") {
+      if (stepIndex === 0) return { label: "Requested", state: "done" };
+      if (stepIndex === 1) return { label: "Rejected", state: "error" };
+      return { label: "Cancelled", state: "disabled" };
+    }
+    if (status === "PENDING") {
+      if (stepIndex === 0) return { label: "Requested", state: "done" };
+      if (stepIndex === 1) return { label: "Approval Pending", state: "active" };
+      return { label: "Transit", state: "disabled" };
+    }
+    if (status === "IN_TRANSIT") {
+      if (stepIndex === 0) return { label: "Requested", state: "done" };
+      if (stepIndex === 1) return { label: "Approved", state: "done" };
+      if (stepIndex === 2) return { label: "In Transit", state: "active" };
+      return { label: "Confirm Receipt", state: "disabled" };
+    }
+    if (status === "APPROVED") {
+      return {
+        label: stepIndex === 1 ? "Approved" : (stepIndex === 2 ? "In Transit" : (stepIndex === 3 ? "Completed" : "Requested")),
+        state: "done"
+      };
+    }
+    return { label: "", state: "disabled" };
+  };
+
+  const checkableTransfers = transfers.filter(isCheckable);
+  const allCheckedOnPage = checkableTransfers.length > 0 && checkableTransfers.every(t => selectedIds.includes(t.transferId));
+  const partialChecked = checkableTransfers.length > 0 && checkableTransfers.some(t => selectedIds.includes(t.transferId)) && !allCheckedOnPage;
 
   return (
     <Box sx={{ p: 0 }}>
@@ -249,6 +465,22 @@ export default function TransferPage() {
               </Select>
             </Box>
 
+            {(userRole === "admin" || userRole === "manager") && (
+              <Tooltip title="Export transfer logs to Excel">
+                <span>
+                  <Button
+                    variant="outlined"
+                    startIcon={exportLoading ? <CircularProgress size={11} /> : <FaFileExport size={10} />}
+                    onClick={handleExport}
+                    disabled={exportLoading}
+                    sx={outlinedBtnSx}
+                  >
+                    Export
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
+
             {canRequest && (
               <Button
                 variant="contained"
@@ -268,7 +500,7 @@ export default function TransferPage() {
         display: "grid",
         gridTemplateColumns: {
           xs: "repeat(2, 1fr)",
-          sm: "repeat(4, 1fr)"
+          sm: "repeat(5, 1fr)"
         },
         gap: 2,
         mb: 2,
@@ -280,13 +512,14 @@ export default function TransferPage() {
       }}>
         <StatCard label="Total" value={overview.total} icon={<FaExchangeAlt size={15} />} iconBg="#e8eaf6" iconColor="#3949ab" onClick={() => { setTab(1); setStatusFilter(""); setPage(0); }} />
         <StatCard label="Pending" value={overview.pending} icon={<FaClock size={15} />} iconBg="#fffbeb" iconColor="#d97706" onClick={() => { setTab(0); setStatusFilter(""); setPage(0); }} />
+        <StatCard label="In Transit" value={overview.inTransit || 0} icon={<FaTruck size={15} />} iconBg="#e0f2fe" iconColor="#0284c7" onClick={() => { setTab(1); setStatusFilter("IN_TRANSIT"); setPage(0); }} />
         <StatCard label="Approved" value={overview.approved} icon={<FaCheck size={15} />} iconBg="#ecfdf5" iconColor="#10b981" onClick={() => { setTab(1); setStatusFilter("APPROVED"); setPage(0); }} />
         <StatCard label="Rejected" value={overview.rejected} icon={<FaTimes size={15} />} iconBg="#ffe4e6" iconColor="#f43f5e" onClick={() => { setTab(1); setStatusFilter("REJECTED"); setPage(0); }} />
       </Box>
 
       {/* ── Tabs ─────────────────────────────────────────────────────────── */}
       <Box sx={{ borderBottom: "1px solid #e5e7eb", mb: 2 }}>
-        <Tabs value={tab} onChange={(_, v) => { setTab(v); setPage(0); setStatusFilter(""); }}
+        <Tabs value={tab} onChange={(_, v) => { setTab(v); setPage(0); setStatusFilter(""); setSelectedIds([]); setExpandedId(null); }}
           sx={{ "& .MuiTabs-indicator": { backgroundColor: COLORS.primary, height: 2 }, minHeight: 0 }}>
           <Tab label={<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}><FaClock size={10} />Pending Requests</Box>}
             sx={{ ...tabSx, minHeight: 0, py: 1 }} />
@@ -297,17 +530,96 @@ export default function TransferPage() {
 
       {/* ── Filter (All Transfers tab only) ──────────────────────────────── */}
       {tab === 1 && (
-        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-          <FormControl size="small" sx={{ minWidth: 160 }}>
-            <InputLabel sx={{ fontSize: 11.5, transform: "translate(8px, 6px) scale(1)", "&.MuiInputLabel-shrink": { transform: "translate(8px, -6px) scale(0.85)" } }}>Status</InputLabel>
-            <Select value={statusFilter} label="Status" onChange={(e) => setStatusFilter(e.target.value)}
-              sx={selectSx}>
-              <MenuItem value="" sx={{ fontSize: 11.5 }}>All</MenuItem>
-              <MenuItem value="PENDING" sx={{ fontSize: 11.5 }}>Pending</MenuItem>
-              <MenuItem value="APPROVED" sx={{ fontSize: 12 }}>Approved</MenuItem>
-              <MenuItem value="REJECTED" sx={{ fontSize: 12 }}>Rejected</MenuItem>
-            </Select>
-          </FormControl>
+        <Box sx={{ display: "flex", gap: 1.5, mb: 2, alignItems: "center", flexWrap: "wrap" }}>
+          <Select
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setSelectedIds([]); setExpandedId(null); }}
+            displayEmpty
+            size="small"
+            sx={{ ...selectSx, minWidth: 130 }}
+            startAdornment={
+              <InputAdornment position="start" sx={{ mr: 0.25, pl: 0.5 }}>
+                <FaFilter size={9} color={COLORS.textMuted} />
+              </InputAdornment>
+            }
+          >
+            <MenuItem value="" sx={{ fontSize: 11.5 }}>All</MenuItem>
+            <MenuItem value="PENDING" sx={{ fontSize: 11.5 }}>Pending</MenuItem>
+            <MenuItem value="IN_TRANSIT" sx={{ fontSize: 11.5 }}>In Transit</MenuItem>
+            <MenuItem value="APPROVED" sx={{ fontSize: 11.5 }}>Approved</MenuItem>
+            <MenuItem value="REJECTED" sx={{ fontSize: 11.5 }}>Rejected</MenuItem>
+          </Select>
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography sx={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>From</Typography>
+            <TextField
+              type="date"
+              size="small"
+              value={startDate}
+              onChange={(e) => { setStartDate(e.target.value); setPage(0); }}
+              sx={{
+                ...inputSx,
+                width: 130,
+                "& .MuiOutlinedInput-root": {
+                  height: 26,
+                  fontSize: 11,
+                },
+                "& .MuiOutlinedInput-input": {
+                  py: "0px !important",
+                  px: "8px !important",
+                  height: "24px",
+                  lineHeight: "24px",
+                }
+              }}
+            />
+          </Box>
+
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography sx={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>To</Typography>
+            <TextField
+              type="date"
+              size="small"
+              value={endDate}
+              onChange={(e) => { setEndDate(e.target.value); setPage(0); }}
+              sx={{
+                ...inputSx,
+                width: 130,
+                "& .MuiOutlinedInput-root": {
+                  height: 26,
+                  fontSize: 11,
+                },
+                "& .MuiOutlinedInput-input": {
+                  py: "0px !important",
+                  px: "8px !important",
+                  height: "24px",
+                  lineHeight: "24px",
+                }
+              }}
+            />
+          </Box>
+
+          {/* Filter reset button */}
+          <Tooltip title="Reset filters">
+            <IconButton
+              onClick={handleResetFilters}
+              aria-label="Reset"
+              sx={{
+                border: "1px solid #e0e0e0",
+                borderRadius: "6px",
+                width: 26,
+                height: 26,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                p: 0,
+                background: "#fff",
+                color: "#757575",
+                "&:hover": { background: "#f5f5f5", borderColor: "#bbb", color: COLORS.primary },
+              }}
+            >
+              <MdRefresh size={14} />
+            </IconButton>
+          </Tooltip>
         </Box>
       )}
 
@@ -322,65 +634,252 @@ export default function TransferPage() {
             <Table size="small" sx={{ minWidth: 750, borderCollapse: "collapse" }}>
               <TableHead>
                 <TableRow>
-                  {["#", "Asset", "Code", "From → To", "Priority", "Expected Date", "Reason", "Requested By", "Date", "Status", ...(isAdmin && tab === 0 ? ["Actions"] : [])].map((h) => (
+                  {((isAdmin || userRole === "manager")) && (
+                    <TableCell sx={{ p: "4px 8px", width: 40, textAlign: "center", background: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>
+                      <Checkbox
+                        size="small"
+                        icon={<CustomCheckboxIcon />}
+                        checkedIcon={<CustomCheckboxCheckedIcon />}
+                        indeterminateIcon={<CustomCheckboxIndeterminateIcon />}
+                        checked={allCheckedOnPage}
+                        indeterminate={partialChecked}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        disabled={checkableTransfers.length === 0}
+                      />
+                    </TableCell>
+                  )}
+                  {((isAdmin || userRole === "manager")) && (
+                    <TableCell sx={{ width: 40, background: "#f8fafc", borderBottom: "2px solid #e2e8f0" }} />
+                  )}
+                  {["#", "Asset", "Code", "From → To", "Priority", "Expected Date", "Reason", "Requested By", "Date", "Status", ...((isAdmin || userRole === "manager") ? ["Actions"] : [])].map((h) => (
                     <TableCell key={h} sx={{ fontWeight: 700, color: "#64748b", whiteSpace: "nowrap", background: "#f8fafc", borderBottom: "2px solid #e2e8f0", textTransform: "uppercase", fontSize: 11 }}>{h}</TableCell>
                   ))}
                 </TableRow>
               </TableHead>
               <TableBody>
-                {transfers.map((row, i) => (
-                  <TableRow key={row.transferId}
-                    sx={{ "&:last-child td": { border: 0 }, "& td": { background: i % 2 === 0 ? "#fff" : "#f8faff", borderBottom: "1px solid #f1f5f9" }, "&:hover td": { background: "#f0f7ff" } }}>
-                    <TableCell sx={{ color: COLORS.textFaint, fontSize: 11 }}>{page * 10 + i + 1}</TableCell>
-                    <TableCell sx={{ fontSize: 11, fontWeight: 600, color: "#1e1b4b" }}>{row.assetName}</TableCell>
-                    <TableCell>
-                      <Chip label={row.assetCode || "—"} size="small"
-                        sx={{ fontSize: 9.5, height: 18, background: "#dbeafe", color: "#1e40af", borderRadius: "5px", "& .MuiChip-label": { px: "6px" } }} />
-                    </TableCell>
-                    <TableCell sx={{ fontSize: 11 }}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, whiteSpace: "nowrap" }}>
-                        <Typography sx={{ fontSize: 11, color: "#374151" }}>{row.fromLocation}</Typography>
-                        <Typography sx={{ fontSize: 14, color: "#2563eb", fontWeight: 700 }}>→</Typography>
-                        <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#2563eb" }}>{row.toLocation}</Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip label={row.priority || "MEDIUM"} size="small"
+                {transfers.map((row, i) => {
+                  const isSelected = selectedIds.includes(row.transferId);
+                  const isExpanded = expandedId === row.transferId;
+                  const canSelectRow = isCheckable(row);
+
+                  return (
+                    <tr key={row.transferId} style={{ display: "contents" }}>
+                      <TableRow
                         sx={{
-                          fontSize: 9.5,
-                          height: 18,
-                          fontWeight: 700,
-                          background: row.priority === "HIGH" ? "rgba(239, 68, 68, 0.08)" : row.priority === "LOW" ? "rgba(100, 116, 139, 0.08)" : "rgba(245, 158, 11, 0.08)",
-                          color: row.priority === "HIGH" ? "#ef4444" : row.priority === "LOW" ? "#64748b" : "#f59e0b",
-                          border: `1px solid ${row.priority === "HIGH" ? "rgba(239, 68, 68, 0.2)" : row.priority === "LOW" ? "rgba(100, 116, 139, 0.2)" : "rgba(245, 158, 11, 0.2)"}`,
-                          borderRadius: "5px",
-                          textTransform: "uppercase",
-                          "& .MuiChip-label": { px: "6px" }
-                        }} />
-                    </TableCell>
-                    <TableCell sx={{ fontSize: 11, whiteSpace: "nowrap" }}>{row.expectedDate ? fmt(row.expectedDate) : "—"}</TableCell>
-                    <TableCell sx={{ fontSize: 11, color: COLORS.textMuted, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.reason}</TableCell>
-                    <TableCell sx={{ fontSize: 11, color: COLORS.textMuted }}>{row.requestedBy}</TableCell>
-                    <TableCell sx={{ fontSize: 11, whiteSpace: "nowrap" }}>{fmt(row.requestedAt)}</TableCell>
-                    <TableCell><StatusBadge status={row.status} /></TableCell>
-                    {isAdmin && tab === 0 && (
-                      <TableCell>
-                        <Box sx={{ display: "flex", gap: 0.5 }}>
-                          <Button size="small" variant="contained" startIcon={<FaCheck size={9} />}
-                            onClick={() => openAction(row, "APPROVE")}
-                            sx={{ textTransform: "none", fontSize: 10, fontWeight: 700, py: "2px", px: "6px", borderRadius: "4px", background: "#16a34a", boxShadow: "none", minWidth: 0, "&:hover": { background: "#15803d", boxShadow: "none" } }}>
-                            Approve
-                          </Button>
-                          <Button size="small" variant="contained" startIcon={<FaTimes size={9} />}
-                            onClick={() => openAction(row, "REJECT")}
-                            sx={{ textTransform: "none", fontSize: 10, fontWeight: 700, py: "2px", px: "6px", borderRadius: "4px", background: "#dc2626", boxShadow: "none", minWidth: 0, "&:hover": { background: "#b91c1c", boxShadow: "none" } }}>
-                            Reject
-                          </Button>
-                        </Box>
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))}
+                          borderLeft: isSelected ? `3px solid ${COLORS.primary}` : "3px solid transparent",
+                          background: isSelected ? "linear-gradient(90deg, rgba(37, 99, 235, 0.04) 0%, rgba(255, 255, 255, 0) 100%)" : "transparent",
+                          transition: "all 180ms ease",
+                          "&:hover": {
+                            borderLeft: `3px solid ${COLORS.primary}`,
+                            background: isSelected ? "linear-gradient(90deg, rgba(37, 99, 235, 0.08) 0%, rgba(255, 255, 255, 0) 100%)" : "#f0f7ff",
+                          },
+                          "& td": {
+                            borderBottom: "1px solid #f1f5f9",
+                            background: isSelected ? "transparent" : (i % 2 === 0 ? "#fff" : "#f8faff"),
+                          }
+                        }}
+                      >
+                        {((isAdmin || userRole === "manager")) && (
+                          <TableCell sx={{ p: "4px 8px", textAlign: "center", verticalAlign: "middle" }}>
+                            <Checkbox
+                              size="small"
+                              icon={<CustomCheckboxIcon />}
+                              checkedIcon={<CustomCheckboxCheckedIcon />}
+                              indeterminateIcon={<CustomCheckboxIndeterminateIcon />}
+                              disabled={!canSelectRow}
+                              checked={isSelected}
+                              onChange={() => handleSelectOne(row.transferId)}
+                              sx={{ p: 0.5 }}
+                            />
+                          </TableCell>
+                        )}
+                        {((isAdmin || userRole === "manager")) && (
+                          <TableCell sx={{ p: "4px 8px", textAlign: "center", verticalAlign: "middle" }}>
+                            <IconButton
+                              size="small"
+                              onClick={() => setExpandedId(isExpanded ? null : row.transferId)}
+                              sx={{ color: COLORS.textMuted }}
+                            >
+                              {isExpanded ? <FaChevronUp size={11} /> : <FaChevronDown size={11} />}
+                            </IconButton>
+                          </TableCell>
+                        )}
+                        <TableCell sx={{ color: COLORS.textFaint, fontSize: 11 }}>{page * 10 + i + 1}</TableCell>
+                        <TableCell sx={{ fontSize: 11, fontWeight: 600, color: "#1e1b4b" }}>{row.assetName}</TableCell>
+                        <TableCell>
+                          <Chip label={row.assetCode || "—"} size="small"
+                            sx={{ fontSize: 9.5, height: 18, background: "#dbeafe", color: "#1e40af", borderRadius: "5px", "& .MuiChip-label": { px: "6px" } }} />
+                        </TableCell>
+                        <TableCell sx={{ fontSize: 11 }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, whiteSpace: "nowrap" }}>
+                            <Typography sx={{ fontSize: 11, color: "#374151" }}>{row.fromLocation}</Typography>
+                            <Typography sx={{ fontSize: 14, color: "#2563eb", fontWeight: 700 }}>→</Typography>
+                            <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#2563eb" }}>{row.toLocation}</Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Chip label={row.priority || "MEDIUM"} size="small"
+                            sx={{
+                              fontSize: 9.5,
+                              height: 18,
+                              fontWeight: 700,
+                              background: row.priority === "HIGH" ? "rgba(239, 68, 68, 0.08)" : row.priority === "LOW" ? "rgba(100, 116, 139, 0.08)" : "rgba(245, 158, 11, 0.08)",
+                              color: row.priority === "HIGH" ? "#ef4444" : row.priority === "LOW" ? "#64748b" : "#f59e0b",
+                              border: `1px solid ${row.priority === "HIGH" ? "rgba(239, 68, 68, 0.2)" : row.priority === "LOW" ? "rgba(100, 116, 139, 0.2)" : "rgba(245, 158, 11, 0.2)"}`,
+                              borderRadius: "5px",
+                              textTransform: "uppercase",
+                              "& .MuiChip-label": { px: "6px" }
+                            }} />
+                        </TableCell>
+                        <TableCell sx={{ fontSize: 11, whiteSpace: "nowrap" }}>{row.expectedDate ? fmt(row.expectedDate) : "—"}</TableCell>
+                        <TableCell sx={{ fontSize: 11, color: COLORS.textMuted, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.reason}</TableCell>
+                        <TableCell sx={{ fontSize: 11, color: COLORS.textMuted }}>{row.requestedBy}</TableCell>
+                        <TableCell sx={{ fontSize: 11, whiteSpace: "nowrap" }}>{fmt(row.requestedAt)}</TableCell>
+                        <TableCell><StatusBadge status={row.status} /></TableCell>
+                        {((isAdmin || userRole === "manager")) && (
+                          <TableCell>
+                            <Box sx={{ display: "flex", gap: 0.5 }}>
+                              {row.status === "PENDING" && isAdmin && tab === 0 && (
+                                <>
+                                  <Button size="small" variant="contained" startIcon={<FaCheck size={9} />}
+                                    onClick={() => openAction(row, "APPROVE")}
+                                    sx={{ textTransform: "none", fontSize: 10, fontWeight: 700, py: "2px", px: "6px", borderRadius: "4px", background: "#16a34a", boxShadow: "none", minWidth: 0, "&:hover": { background: "#15803d", boxShadow: "none" } }}>
+                                    Approve
+                                  </Button>
+                                  <Button size="small" variant="contained" startIcon={<FaTimes size={9} />}
+                                    onClick={() => openAction(row, "REJECT")}
+                                    sx={{ textTransform: "none", fontSize: 10, fontWeight: 700, py: "2px", px: "6px", borderRadius: "4px", background: "#dc2626", boxShadow: "none", minWidth: 0, "&:hover": { background: "#b91c1c", boxShadow: "none" } }}>
+                                    Reject
+                                  </Button>
+                                </>
+                              )}
+                              {row.status === "IN_TRANSIT" && (
+                                <Button size="small" variant="contained" startIcon={<FaTruck size={9} />}
+                                  onClick={() => openReceive(row)}
+                                  sx={{ textTransform: "none", fontSize: 10, fontWeight: 700, py: "2px", px: "6px", borderRadius: "4px", background: "#2563eb", boxShadow: "none", minWidth: 0, "&:hover": { background: "#1d4ed8", boxShadow: "none" } }}>
+                                  Confirm Receipt
+                                </Button>
+                              )}
+                            </Box>
+                          </TableCell>
+                        )}
+                      </TableRow>
+
+                      {isExpanded && (
+                        <TableRow sx={{ background: "#f8fafc" }}>
+                          <TableCell colSpan={(isAdmin || userRole === "manager") ? 13 : 11} sx={{ p: 0, border: 0 }}>
+                            <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                              <Box sx={{ p: 3, pl: 6, borderBottom: "1px solid #e2e8f0" }}>
+                                <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#475569", mb: 2.5, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                                  Transit Progress Tracker
+                                </Typography>
+                                <Box sx={{ display: "flex", alignItems: "flex-start", width: "100%", overflowX: "auto", py: 1 }}>
+                                  <Box sx={{ display: "flex", width: "100%", justifyContent: "space-between", position: "relative", px: 2, minWidth: 600 }}>
+                                    {[0, 1, 2, 3].map((idx) => {
+                                      const stepInfo = getStepStatus(idx, row.status);
+                                      const isLast = idx === 3;
+
+                                      let bgColor = "#f1f5f9";
+                                      let border = "2px solid #cbd5e1";
+                                      let textColor = "#64748b";
+                                      let icon = <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "#94a3b8" }} />;
+
+                                      if (stepInfo.state === "done") {
+                                        bgColor = "#10b981";
+                                        border = "2px solid #10b981";
+                                        textColor = "#0f172a";
+                                        icon = <FaCheck size={9} color="#fff" />;
+                                      } else if (stepInfo.state === "active") {
+                                        bgColor = "#e0f2fe";
+                                        border = "2px solid #0284c7";
+                                        textColor = "#0284c7";
+                                        icon = <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#0284c7" }} />;
+                                      } else if (stepInfo.state === "error") {
+                                        bgColor = "#ffe4e6";
+                                        border = "2px solid #f43f5e";
+                                        textColor = "#f43f5e";
+                                        icon = <FaTimes size={9} color="#fff" />;
+                                      }
+
+                                      const nextStepInfo = !isLast ? getStepStatus(idx + 1, row.status) : null;
+                                      const connectorColor = (nextStepInfo && (nextStepInfo.state === "done" || nextStepInfo.state === "active")) ? "#2563eb" : "#e2e8f0";
+
+                                      let dateStr = "";
+                                      let actorStr = "";
+                                      let descStr = "";
+                                      if (idx === 0) {
+                                        dateStr = fmt(row.requestedAt);
+                                        actorStr = `By ${row.requestedBy}`;
+                                      } else if (idx === 1) {
+                                        dateStr = row.resolvedAt ? fmt(row.resolvedAt) : "";
+                                        actorStr = row.status === "PENDING" ? "Awaiting admin" : `By ${row.resolvedBy || "Admin"}`;
+                                        descStr = row.remarks && (row.status === "APPROVED" || row.status === "IN_TRANSIT" || row.status === "REJECTED") ? `"${row.remarks}"` : "";
+                                      } else if (idx === 2) {
+                                        dateStr = row.expectedDate ? `Expected: ${fmt(row.expectedDate)}` : "";
+                                        actorStr = row.status === "APPROVED" ? "Delivered" : (row.status === "IN_TRANSIT" ? "On the way" : "");
+                                      } else if (idx === 3) {
+                                        dateStr = (row.status === "APPROVED" && row.resolvedAt) ? fmt(row.resolvedAt) : "";
+                                        actorStr = row.status === "APPROVED" ? `By ${row.resolvedBy || "Recipient"}` : "";
+                                        descStr = row.status === "APPROVED" && row.remarks ? `"${row.remarks}"` : "";
+                                      }
+
+                                      return (
+                                        <Box key={idx} sx={{ flex: isLast ? "none" : 1, display: "flex", position: "relative" }}>
+                                          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", width: 130, zIndex: 2 }}>
+                                            <Box sx={{
+                                              width: 26,
+                                              height: 26,
+                                              borderRadius: "50%",
+                                              bgcolor: bgColor,
+                                              border: border,
+                                              display: "flex",
+                                              alignItems: "center",
+                                              justifyContent: "center",
+                                              mb: 1,
+                                              boxShadow: stepInfo.state === "active" ? "0 0 0 3px rgba(2, 132, 199, 0.15)" : "none",
+                                            }}>
+                                              {icon}
+                                            </Box>
+                                            <Typography sx={{ fontSize: 11, fontWeight: 700, color: textColor }}>
+                                              {stepInfo.label}
+                                            </Typography>
+                                            <Typography sx={{ fontSize: 9.5, color: "#64748b", mt: 0.5, fontWeight: 500 }}>
+                                              {actorStr}
+                                            </Typography>
+                                            <Typography sx={{ fontSize: 9, color: "#94a3b8", mt: 0.25 }}>
+                                              {dateStr}
+                                            </Typography>
+                                            {descStr && (
+                                              <Typography sx={{ fontSize: 9.5, color: "#475569", mt: 0.75, fontStyle: "italic", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                                                {descStr}
+                                              </Typography>
+                                            )}
+                                          </Box>
+
+                                          {!isLast && (
+                                            <Box sx={{
+                                              position: "absolute",
+                                              top: 13,
+                                              left: 80,
+                                              right: -50,
+                                              height: 2,
+                                              bgcolor: connectorColor,
+                                              zIndex: 1,
+                                            }} />
+                                          )}
+                                        </Box>
+                                      );
+                                    })}
+                                  </Box>
+                                </Box>
+                              </Box>
+                            </Collapse>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </tr >
+                  );
+                })}
               </TableBody>
             </Table>
           </Box>
@@ -403,29 +902,41 @@ export default function TransferPage() {
             control={reqControl}
             rules={{ required: "Select an asset to transfer" }}
             render={({ field, fieldState: { error } }) => (
-              <FormControl fullWidth size="small" error={!!error}>
-                <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: error ? "#c62828" : COLORS.textMuted, mb: 0.5 }}>
+              <FormControl fullWidth error={!!error} sx={{ mb: 1.5 }}>
+                <Typography sx={{ fontSize: 11.5, color: COLORS.textMuted, mb: 0.5, fontWeight: 600 }}>
                   Asset *
                 </Typography>
                 <OutlinedInput
-                  readOnly notched={false} label="" size="small"
+                  readOnly
+                  size="small"
                   value={selectedAsset ? `${selectedAsset.assetName}${selectedAsset.assetCode ? ` (${selectedAsset.assetCode})` : ""}` : ""}
                   placeholder="Select asset to transfer..."
                   onClick={(e) => setAssetAnchor(e.currentTarget)}
                   error={!!error}
                   endAdornment={<InputAdornment position="end"><Typography fontSize={11} color="#aaa">▾</Typography></InputAdornment>}
                   sx={{
-                    ...inputSx["& .MuiOutlinedInput-root"],
-                    fontSize: 11.5,
+                    background: "#ffffff",
+                    borderRadius: "6px",
                     height: 30,
+                    fontSize: 11.5,
                     cursor: "pointer",
                     caretColor: "transparent",
-                    background: "#f8fafc",
-                    borderColor: error ? "#c62828" : "#cbd5e1",
-                    "& fieldset": { border: "1px solid", borderColor: error ? "#c62828 !important" : "#cbd5e1" }
+                    transition: "all 100ms ease",
+                    "& .MuiOutlinedInput-input": {
+                      py: "4px !important",
+                      px: "8px !important",
+                      cursor: "pointer"
+                    },
+                    "& fieldset": { borderColor: "#cbd5e1", transition: "all 100ms ease" },
+                    "&:hover fieldset": { borderColor: "#000000" },
+                    "&.Mui-focused fieldset": { borderColor: "#000000", borderWidth: "1px !important" },
+                    "&.Mui-focused": {
+                      background: "#ffffff",
+                      boxShadow: "0 0 0 3px rgba(0, 0, 0, 0.05)",
+                    }
                   }}
                 />
-                {error && <Typography color="error" sx={{ fontSize: 10.5, mt: 0.25 }}>{error.message}</Typography>}
+                {error && <FormHelperText error sx={{ mx: 0, mt: 0.5, fontSize: 11 }}>{error.message}</FormHelperText>}
                 <Popover open={Boolean(assetAnchor)} anchorEl={assetAnchor}
                   onClose={() => { setAssetAnchor(null); setAssetSearch(""); }}
                   anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
@@ -457,104 +968,91 @@ export default function TransferPage() {
 
           {/* From / To location */}
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
-            <Box>
-              <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.textMuted, mb: 0.5 }}>
+            <FormControl fullWidth sx={{ mb: 1.5 }}>
+              <Typography sx={{ fontSize: 11.5, color: COLORS.textMuted, mb: 0.5, fontWeight: 600 }}>
                 From Location
               </Typography>
-              <TextField size="small" value={fromLocation || "—"} disabled
+              <OutlinedInput
+                disabled
+                size="small"
+                value={fromLocation || "—"}
                 sx={{
-                  ...inputSx,
-                  "& .MuiOutlinedInput-root": { ...inputSx["& .MuiOutlinedInput-root"], height: 30, fontSize: 11.5, bgcolor: "#f8fafc" }
-                }} />
-            </Box>
-            <Box>
-              <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.textMuted, mb: 0.5 }}>
-                To Location *
-              </Typography>
-              <FormSelect
-                name="toLocation"
-                control={reqControl}
-                rules={{ required: "Select a destination location" }}
-                disabled={reqSaving}
-                sx={{
-                  ...selectSx,
+                  background: "#f8fafc",
+                  borderRadius: "6px",
                   height: 30,
-                  "& .MuiSelect-select": { height: "28px", lineHeight: "28px" }
+                  fontSize: 11.5,
+                  transition: "all 100ms ease",
+                  "& .MuiOutlinedInput-input": {
+                    py: "4px !important",
+                    px: "8px !important",
+                  },
+                  "& fieldset": { borderColor: "#cbd5e1" },
+                  "& .MuiOutlinedInput-input.Mui-disabled": {
+                    WebkitTextFillColor: "#475569",
+                  }
                 }}
-              >
-                {availableLocations.map((l) => (
-                  <MenuItem key={l.locationId || l.locationName} value={l.locationName} sx={{ fontSize: 11.5 }}>
-                    {l.locationName}
-                  </MenuItem>
-                ))}
-              </FormSelect>
-            </Box>
+              />
+            </FormControl>
+
+            <FormSelect
+              name="toLocation"
+              control={reqControl}
+              rules={{ required: "Select a destination location" }}
+              label="To Location *"
+              disabled={reqSaving || !reqAssetId}
+              displayEmpty
+              renderValue={(value) => {
+                if (!value) {
+                  return <span style={{ color: "#aaa" }}>{!reqAssetId ? "Select an asset first..." : "Select destination..."}</span>;
+                }
+                return value;
+              }}
+            >
+              {availableLocations.map((l) => (
+                <MenuItem key={l.locationId || l.locationName} value={l.locationName} sx={{ fontSize: 11.5 }}>
+                  {l.locationName}
+                </MenuItem>
+              ))}
+            </FormSelect>
           </Box>
 
           {/* Priority & Expected Date */}
           <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
-            <Box>
-              <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.textMuted, mb: 0.5 }}>
-                Priority *
-              </Typography>
-              <FormSelect
-                name="priority"
-                control={reqControl}
-                rules={{ required: "Priority is required" }}
-                disabled={reqSaving}
-                sx={{
-                  ...selectSx,
-                  height: 30,
-                  "& .MuiSelect-select": { height: "28px", lineHeight: "28px" }
-                }}
-              >
-                <MenuItem value="LOW" sx={{ fontSize: 11.5 }}>Low</MenuItem>
-                <MenuItem value="MEDIUM" sx={{ fontSize: 11.5 }}>Medium</MenuItem>
-                <MenuItem value="HIGH" sx={{ fontSize: 11.5 }}>High</MenuItem>
-              </FormSelect>
-            </Box>
-            <Box>
-              <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.textMuted, mb: 0.5 }}>
-                Expected Date *
-              </Typography>
-              <FormTextField
-                name="expectedDate"
-                control={reqControl}
-                rules={{ required: "Expected transfer date is required" }}
-                type="date"
-                disabled={reqSaving}
-                slotProps={{
-                  inputLabel: { shrink: true }
-                }}
-                sx={{
-                  ...inputSx,
-                  "& .MuiOutlinedInput-root": { ...inputSx["& .MuiOutlinedInput-root"], height: 30, fontSize: 11.5 }
-                }}
-              />
-            </Box>
-          </Box>
-
-          <Box>
-            <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.textMuted, mb: 0.5 }}>
-              Reason *
-            </Typography>
-            <FormTextField
-              name="reason"
+            <FormSelect
+              name="priority"
               control={reqControl}
-              rules={{
-                required: "Transfer reason is required",
-                minLength: { value: 5, message: "Reason must be at least 5 characters" }
-              }}
-              placeholder="Why is this asset being transferred?"
-              multiline
-              rows={2}
+              rules={{ required: "Priority is required" }}
+              label="Priority *"
               disabled={reqSaving}
-              sx={{
-                ...inputSx,
-                "& .MuiOutlinedInput-root": { ...inputSx["& .MuiOutlinedInput-root"], height: "auto", fontSize: 11.5, py: "6px !important" }
-              }}
+            >
+              <MenuItem value="LOW" sx={{ fontSize: 11.5 }}>Low</MenuItem>
+              <MenuItem value="MEDIUM" sx={{ fontSize: 11.5 }}>Medium</MenuItem>
+              <MenuItem value="HIGH" sx={{ fontSize: 11.5 }}>High</MenuItem>
+            </FormSelect>
+
+            <FormTextField
+              name="expectedDate"
+              control={reqControl}
+              rules={{ required: "Expected transfer date is required" }}
+              label="Expected Date *"
+              type="date"
+              disabled={reqSaving}
             />
           </Box>
+
+          <FormTextField
+            name="reason"
+            control={reqControl}
+            rules={{
+              required: "Transfer reason is required",
+              minLength: { value: 5, message: "Reason must be at least 5 characters" }
+            }}
+            label="Reason *"
+            placeholder="Why is this asset being transferred?"
+            multiline
+            rows={2}
+            disabled={reqSaving}
+          />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5, gap: 1, borderTop: "1px solid #f1f5f9", pt: 1.5 }}>
           <Button onClick={() => { if (!reqSaving) { setReqOpen(false); reqReset(); } }} sx={outlinedBtnSx}>Cancel</Button>
@@ -587,26 +1085,18 @@ export default function TransferPage() {
               <Typography fontSize={10.5} color={COLORS.textFaint}>{actionTransfer.reason}</Typography>
             </Box>
           )}
-          <Box>
-            <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.textMuted, mb: 0.5 }}>
-              Remarks {actionType === "REJECT" ? "*" : "(optional)"}
-            </Typography>
-            <FormTextField
-              name="remarks"
-              control={actionControl}
-              rules={{
-                required: actionType === "REJECT" ? "Remarks/reason is required for rejection" : false
-              }}
-              placeholder="Add a note or remark..."
-              multiline
-              rows={2}
-              disabled={actionSaving}
-              sx={{
-                ...inputSx,
-                "& .MuiOutlinedInput-root": { ...inputSx["& .MuiOutlinedInput-root"], height: "auto", fontSize: 11.5, py: "6px !important" }
-              }}
-            />
-          </Box>
+          <FormTextField
+            name="remarks"
+            control={actionControl}
+            rules={{
+              required: actionType === "REJECT" ? "Remarks/reason is required for rejection" : false
+            }}
+            label={actionType === "REJECT" ? "Remarks *" : "Remarks (optional)"}
+            placeholder="Add a note or remark..."
+            multiline
+            rows={2}
+            disabled={actionSaving}
+          />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5, gap: 1, borderTop: "1px solid #f1f5f9", pt: 1.5 }}>
           <Button onClick={() => { if (!actionSaving) { setActionOpen(false); actionReset(); } }} sx={outlinedBtnSx}>Cancel</Button>
@@ -614,6 +1104,47 @@ export default function TransferPage() {
             startIcon={actionSaving ? <CircularProgress size={11} color="inherit" /> : actionType === "APPROVE" ? <FaCheck size={10} /> : <FaTimes size={10} />}
             sx={{ ...primaryBtnSx, background: actionType === "APPROVE" ? "#16a34a" : "#dc2626", "&:hover": { background: actionType === "APPROVE" ? "#15803d" : "#b91c1c" } }}>
             {actionSaving ? "Saving..." : actionType === "APPROVE" ? "Approve" : "Reject"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Confirm Receipt Action Modal ──────────────────────────────── */}
+      <Dialog open={receiveOpen} onClose={() => { if (!receiveSaving) { setReceiveOpen(false); receiveReset(); } }} maxWidth="xs" fullWidth
+        slotProps={{ paper: { sx: premiumDialogPaperSx } }}>
+        <DialogTitle sx={premiumDialogTitleSx}>
+          <span style={{ display: "flex", alignItems: "center", gap: "8px", color: "#2563eb", fontWeight: 700 }}>
+            <FaTruck size={14} /> Confirm Asset Receipt
+          </span>
+          <IconButton size="small" onClick={() => { if (!receiveSaving) { setReceiveOpen(false); receiveReset(); } }} sx={{ color: COLORS.textFaint }}><FaTimes size={13} /></IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.75, pt: "18px !important", pb: 2 }}>
+          {receiveTransferItem && (
+            <Box sx={{ background: "#fbfcfd", borderRadius: "8px", p: 1.5, border: "1px solid #e2e8f0" }}>
+              <Typography fontSize={12} fontWeight={700} color="#1e1b4b" mb={0.5}>{receiveTransferItem.assetName}</Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1 }}>
+                <Typography fontSize={10.5} sx={{ color: COLORS.textMuted }}>{receiveTransferItem.fromLocation}</Typography>
+                <Typography fontSize={12} sx={{ color: "#2563eb", fontWeight: 700 }}>→</Typography>
+                <Typography fontSize={10.5} sx={{ color: "#2563eb", fontWeight: 600 }}>{receiveTransferItem.toLocation}</Typography>
+              </Box>
+              <Typography fontSize={10.5} color={COLORS.textFaint}>Please confirm that the asset has physically arrived and is in good condition.</Typography>
+            </Box>
+          )}
+          <FormTextField
+            name="remarks"
+            control={receiveControl}
+            label="Remarks (optional)"
+            placeholder="Add delivery note or verification remark..."
+            multiline
+            rows={2}
+            disabled={receiveSaving}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1, borderTop: "1px solid #f1f5f9", pt: 1.5 }}>
+          <Button onClick={() => { if (!receiveSaving) { setReceiveOpen(false); receiveReset(); } }} sx={outlinedBtnSx}>Cancel</Button>
+          <Button variant="contained" onClick={handleReceiveSubmit(onConfirmReceive)} disabled={receiveSaving}
+            startIcon={receiveSaving ? <CircularProgress size={11} color="inherit" /> : <FaCheck size={10} />}
+            sx={{ ...primaryBtnSx, background: "#2563eb", "&:hover": { background: "#1d4ed8" } }}>
+            {receiveSaving ? "Saving..." : "Confirm Receipt"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -626,6 +1157,132 @@ export default function TransferPage() {
         onCancel={() => setConfirmOpen(false)}
         confirmLabel={actionType === "APPROVE" ? "Yes, Approve" : "Yes, Reject"}
       />
+
+      {/* ── Floating Bulk Action Ribbon ─────────────────────────────────── */}
+      {selectedIds.length > 0 && (
+        <Box sx={{
+          position: "fixed",
+          bottom: 24,
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 1000,
+          bgcolor: "#0f172a",
+          color: "#ffffff",
+          px: 3,
+          py: 1.25,
+          borderRadius: 3,
+          boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+          display: "flex",
+          alignItems: "center",
+          gap: 3,
+          animation: "slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both",
+          "@keyframes slideUp": {
+            from: { transform: "translate(-50%, 40px)", opacity: 0 },
+            to: { transform: "translate(-50%, 0)", opacity: 1 }
+          }
+        }}>
+          <Typography sx={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.02em" }}>
+            {selectedIds.length} {selectedIds.length === 1 ? "Transfer" : "Transfers"} Selected
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+            {tab === 0 ? (
+              <>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<FaCheck size={9} />}
+                  onClick={() => openBulkAction("APPROVE")}
+                  sx={{ bgcolor: "#16a34a", "&:hover": { bgcolor: "#15803d" }, textTransform: "none", py: 0.5, px: 2, borderRadius: "6px", fontWeight: 700, fontSize: 11.5, boxShadow: "none" }}
+                >
+                  Bulk Approve
+                </Button>
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={<FaTimes size={9} />}
+                  onClick={() => openBulkAction("REJECT")}
+                  sx={{ bgcolor: "#dc2626", "&:hover": { bgcolor: "#b91c1c" }, textTransform: "none", py: 0.5, px: 2, borderRadius: "6px", fontWeight: 700, fontSize: 11.5, boxShadow: "none" }}
+                >
+                  Bulk Reject
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<FaTruck size={10} />}
+                onClick={() => openBulkAction("RECEIVE")}
+                sx={{ bgcolor: "#2563eb", "&:hover": { bgcolor: "#1d4ed8" }, textTransform: "none", py: 0.5, px: 2, borderRadius: "6px", fontWeight: 700, fontSize: 11.5, boxShadow: "none" }}
+              >
+                Bulk Confirm Receipt
+              </Button>
+            )}
+            <Button
+              variant="text"
+              size="small"
+              onClick={() => setSelectedIds([])}
+              sx={{ color: "#94a3b8", "&:hover": { color: "#ffffff" }, textTransform: "none", fontSize: 11.5 }}
+            >
+              Cancel
+            </Button>
+          </Box>
+        </Box>
+      )}
+
+      {/* ── Bulk Action Dialog ─────────────────────────────────────────── */}
+      <Dialog open={bulkActionOpen} onClose={() => { if (!bulkSaving) { setBulkActionOpen(false); } }} maxWidth="xs" fullWidth
+        slotProps={{ paper: { sx: premiumDialogPaperSx } }}>
+        <DialogTitle sx={premiumDialogTitleSx}>
+          <span style={{ display: "flex", alignItems: "center", gap: "8px", color: bulkActionType === "APPROVE" ? "#16a34a" : bulkActionType === "REJECT" ? "#dc2626" : "#2563eb", fontWeight: 700 }}>
+            {bulkActionType === "APPROVE" && <FaCheckCircle size={14} />}
+            {bulkActionType === "REJECT" && <FaTimesCircle size={14} />}
+            {bulkActionType === "RECEIVE" && <FaTruck size={14} />}
+            {bulkActionType === "APPROVE" && "Bulk Approve Transfers"}
+            {bulkActionType === "REJECT" && "Bulk Reject Transfers"}
+            {bulkActionType === "RECEIVE" && "Bulk Confirm Receipt"}
+          </span>
+          <IconButton size="small" onClick={() => { if (!bulkSaving) { setBulkActionOpen(false); } }} sx={{ color: COLORS.textFaint }}><FaTimes size={13} /></IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.75, pt: "18px !important", pb: 2 }}>
+          <Box sx={{ background: "#fbfcfd", borderRadius: "8px", p: 1.5, border: "1px solid #e2e8f0", mb: 1 }}>
+            <Typography fontSize={11.5} fontWeight={600} color="#1e1b4b">
+              You are applying this action to {selectedIds.length} selected transfer {selectedIds.length === 1 ? "request" : "requests"}.
+            </Typography>
+            <Typography fontSize={10.5} color={COLORS.textFaint} mt={0.5}>
+              This operation is atomic. If any validation fails, the entire batch will be rolled back.
+            </Typography>
+          </Box>
+          <TextField
+            label={bulkActionType === "REJECT" ? "Remarks *" : "Remarks (optional)"}
+            placeholder={bulkActionType === "REJECT" ? "Remarks/reason is required for rejection..." : "Add comments for this batch operation..."}
+            multiline
+            rows={2}
+            value={bulkRemarks}
+            onChange={(e) => setBulkRemarks(e.target.value)}
+            disabled={bulkSaving}
+            fullWidth
+            sx={inputSx}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1, borderTop: "1px solid #f1f5f9", pt: 1.5 }}>
+          <Button onClick={() => { if (!bulkSaving) { setBulkActionOpen(false); } }} sx={outlinedBtnSx}>Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={handleBulkActionSubmit}
+            disabled={bulkSaving}
+            startIcon={bulkSaving ? <CircularProgress size={11} color="inherit" /> : <FaCheck size={10} />}
+            sx={{
+              ...primaryBtnSx,
+              background: bulkActionType === "APPROVE" ? "#16a34a" : bulkActionType === "REJECT" ? "#dc2626" : "#2563eb",
+              "&:hover": {
+                background: bulkActionType === "APPROVE" ? "#15803d" : bulkActionType === "REJECT" ? "#b91c1c" : "#1d4ed8"
+              }
+            }}
+          >
+            {bulkSaving ? "Processing..." : (bulkActionType === "RECEIVE" ? "Confirm Receipt" : "Submit Action")}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

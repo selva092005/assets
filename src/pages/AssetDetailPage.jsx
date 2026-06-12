@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Box, Button, Chip, CircularProgress, Typography, IconButton, Divider, Modal, Table, TableBody, TableCell, TableRow, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import { useForm } from "react-hook-form";
 import { FormTextField } from "../components/FormFields";
-import { FaArrowLeft, FaEdit, FaBox, FaTrash, FaLayerGroup, FaPrint, FaMapMarkerAlt, FaExchangeAlt, FaTimes } from "react-icons/fa";
+import { FaArrowLeft, FaEdit, FaBox, FaTrash, FaLayerGroup, FaPrint, FaMapMarkerAlt, FaExchangeAlt, FaTimes, FaUser, FaCalendarAlt, FaHistory } from "react-icons/fa";
 import { useSelector } from "react-redux";
 import toast from "../utils/toast.jsx";
 
@@ -250,9 +250,16 @@ export default function AssetDetailPage() {
                 <TableRow sx={{ background: "#fcfcfd" }}>
                   <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Current Location</TableCell>
                   <TableCell sx={denseCellSx} colSpan={3}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap" }}>
                       <FaMapMarkerAlt size={9} color={COLORS.primary} />
-                      {data.locationName || "—"}
+                      <Typography component="span" sx={{ fontSize: 11, fontWeight: 600, color: COLORS.text }}>
+                        {data.locationName || "—"}
+                      </Typography>
+                      {data.latitude !== null && data.longitude !== null && data.latitude !== undefined && (
+                        <Typography component="span" sx={{ fontSize: 9.5, color: COLORS.textMuted, fontFamily: "monospace", ml: 1, bgcolor: "#f1f5f9", px: 0.75, py: 0.25, borderRadius: "3px" }}>
+                          GPS: {data.latitude.toFixed(6)}, {data.longitude.toFixed(6)}
+                        </Typography>
+                      )}
                     </Box>
                   </TableCell>
                 </TableRow>
@@ -288,31 +295,101 @@ export default function AssetDetailPage() {
               </>
             )}
 
-            {/* Section 4: History Table */}
-            <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.primary, mb: 0.75, textTransform: "uppercase", letterSpacing: "0.05em" }}>Allocation / Movement History</Typography>
+            {/* Section: Live Location Map */}
+            {data.latitude != null && data.longitude != null && (
+              <>
+                <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.primary, mb: 0.75, textTransform: "uppercase", letterSpacing: "0.05em" }}>Live Location Map</Typography>
+                <Box sx={{
+                  width: "100%",
+                  height: 180,
+                  border: "1px solid " + COLORS.borderLight,
+                  borderRadius: "4px",
+                  overflow: "hidden",
+                  mb: 2,
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                  background: "#f1f5f9",
+                  position: "relative"
+                }}>
+                  <iframe
+                    title="Location Map"
+                    width="100%"
+                    height="100%"
+                    frameBorder="0"
+                    marginHeight="0"
+                    marginWidth="0"
+                    src={`https://maps.google.com/maps?q=${data.latitude},${data.longitude}&z=15&output=embed`}
+                    style={{ border: 0 }}
+                  />
+                </Box>
+              </>
+            )}
+
+            {/* Section 4: History Timeline */}
+            <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.primary, mb: 1.5, textTransform: "uppercase", letterSpacing: "0.05em" }}>Movement & Allocation Timeline</Typography>
             {historyData.length === 0 ? (
               <Typography sx={{ fontSize: 10.5, color: COLORS.textMuted, fontStyle: "italic", p: 1.25, border: "1px solid " + COLORS.borderLight, borderRadius: "3px", textAlign: "center" }}>No movement history found.</Typography>
             ) : (
-              <Table size="small" sx={{ border: "1px solid " + COLORS.borderLight }}>
-                <TableBody>
-                  <TableRow sx={{ background: "#f1f5f9" }}>
-                    <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: "#475569" }}>Moved At</TableCell>
-                    <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: "#475569" }}>From → To</TableCell>
-                    <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: "#475569" }}>Moved By</TableCell>
-                    <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: "#475569" }}>Reason</TableCell>
-                  </TableRow>
-                  {historyData.map((item, idx) => (
-                    <TableRow key={idx} sx={{ "&:nth-of-type(even)": { background: "#fcfcfd" } }}>
-                      <TableCell sx={denseCellSx}>{item.movedAt ? new Date(item.movedAt).toLocaleString() : "—"}</TableCell>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 600 }}>
-                        {item.fromLocationName || item.fromLocation || "Register"} → {item.toLocationName || item.toLocation || item.locationName}
-                      </TableCell>
-                      <TableCell sx={denseCellSx}>{item.movedByName || item.movedBy || "System"}</TableCell>
-                      <TableCell sx={denseCellSx}>{item.reason || "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <Box sx={{ position: "relative", pl: 3.5, borderLeft: `2px solid ${COLORS.borderLight}`, ml: 1.5, display: "flex", flexDirection: "column", gap: 3, py: 1 }}>
+                {historyData.map((item, idx) => (
+                  <Box key={idx} sx={{ position: "relative" }}>
+                    {/* Timeline dot */}
+                    <Box sx={{
+                      position: "absolute",
+                      left: -42,
+                      top: 0,
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      background: idx === 0 ? "rgba(37, 99, 235, 0.1)" : "#f1f5f9",
+                      border: `2px solid ${idx === 0 ? "#2563eb" : "#cbd5e1"}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      zIndex: 2,
+                      color: idx === 0 ? "#2563eb" : "#64748b",
+                      boxShadow: idx === 0 ? "0 0 0 3px rgba(37, 99, 235, 0.15)" : "none"
+                    }}>
+                      <FaHistory size={11} />
+                    </Box>
+                    {/* Timeline card/content */}
+                    <Box sx={{
+                      background: idx === 0 ? "#f8faff" : "#fff",
+                      border: `1px solid ${idx === 0 ? "#dbeafe" : COLORS.borderLight}`,
+                      borderRadius: "6px",
+                      p: 1.5,
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
+                    }}>
+                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1, mb: 0.75 }}>
+                        <Typography sx={{ fontSize: 11, fontWeight: 700, color: idx === 0 ? "#1e40af" : COLORS.text }}>
+                          {item.fromLocationName || item.fromLocation || "Register"} → {item.toLocationName || item.toLocation || item.locationName}
+                        </Typography>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: COLORS.textMuted }}>
+                          <FaCalendarAlt size={9} />
+                          <Typography sx={{ fontSize: 9.5, fontWeight: 500 }}>
+                            {item.movedAt ? new Date(item.movedAt).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, bgcolor: "#f1f5f9", px: 0.75, py: 0.25, borderRadius: "4px" }}>
+                          <FaUser size={8} color="#64748b" />
+                          <Typography sx={{ fontSize: 9.5, fontWeight: 600, color: "#475569" }}>
+                            {item.movedByName || item.movedBy || "System"}
+                          </Typography>
+                        </Box>
+                        {idx === 0 && (
+                          <Chip label="Latest Move" size="small" sx={{ height: 16, fontSize: 8.5, fontWeight: 700, bgcolor: "#dbeafe", color: "#1e40af" }} />
+                        )}
+                      </Box>
+                      {item.reason && (
+                        <Typography sx={{ fontSize: 10, color: COLORS.textMuted, borderLeft: "2px solid #cbd5e1", pl: 1, py: 0.25, fontStyle: "italic" }}>
+                          {item.reason}
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
             )}
 
             {/* System Metadata */}

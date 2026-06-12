@@ -258,6 +258,23 @@ function extractList(res) {
   return [];
 }
 
+// ── Declarative Debounce Hook ──────────────────────────────────────────────────
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function AssetAllocationPage() {
   const { userRole, userName } = useSelector((s) => s.auth);
   const dispatch = useDispatch();
@@ -270,22 +287,21 @@ export default function AssetAllocationPage() {
   const [showCount, setShowCount] = useState(10);
 
   // ── Filter state ──────────────────────────────────────────────────────────
-  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 600);
   const [statusFilter, setStatusFilter] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const debounceRef = useRef(null);
 
   // ── Allocate modal state ──────────────────────────────────────────────────
   const [allocateOpen, setAllocateOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const { data: allocationsData, isLoading: loading } = useQuery({
-    queryKey: ["allocations", page, showCount, search, statusFilter, fromDate, toDate],
+    queryKey: ["allocations", page, showCount, debouncedSearch, statusFilter, fromDate, toDate],
     queryFn: async () => {
       const params = { page, size: showCount };
-      if (search) params.search = search;
+      if (debouncedSearch) params.search = debouncedSearch;
       if (statusFilter) params.status = statusFilter;
       if (fromDate) params.fromDate = fromDate;
       if (toDate) params.toDate = toDate;
@@ -377,17 +393,12 @@ export default function AssetAllocationPage() {
   // ── Return / View state ───────────────────────────────────────────────────
   const [returnConfirm, setReturnConfirm] = useState(false);
   const [returnId, setReturnId] = useState(null);
+  const [returnAssignedDate, setReturnAssignedDate] = useState("");
+  const [returnDate, setReturnDate] = useState("");
+  const [returnDateError, setReturnDateError] = useState("");
   const [viewOpen, setViewOpen] = useState(false);
   const [viewData, setViewData] = useState(null);
   const [viewLoading, setViewLoading] = useState(false);
-
-  // ── Search debounce ───────────────────────────────────────────────────────
-  const handleSearchChange = (e) => {
-    const val = e.target.value;
-    setSearchInput(val);
-    clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => { setSearch(val); setPage(0); }, 400);
-  };
 
   const handleStatusChange = (e) => { setStatusFilter(e.target.value); setPage(0); };
   const handleFromDate = (e) => { setFromDate(e.target.value); setPage(0); };
@@ -395,7 +406,7 @@ export default function AssetAllocationPage() {
 
   // ── Clear / Reset all filters ─────────────────────────────────────────────
   const clearFilters = () => {
-    setSearchInput(""); setSearch(""); setStatusFilter("");
+    setSearch(""); setStatusFilter("");
     setFromDate(""); setToDate(""); setPage(0);
   };
 
@@ -481,17 +492,35 @@ export default function AssetAllocationPage() {
     } finally { setSaving(false); }
   };
 
-  const handleReturnConfirm = async () => {
+  const handleReturnClick = (row) => {
+    setReturnId(row.allocationId);
+    setReturnAssignedDate(row.assignedDate || "");
+    setReturnDate(new Date().toISOString().split("T")[0]);
+    setReturnDateError("");
+    setReturnConfirm(true);
+  };
+
+  const handleReturnConfirmSubmit = async () => {
+    if (!returnDate) {
+      setReturnDateError("Actual return date is required");
+      return;
+    }
+    if (returnAssignedDate && returnDate < returnAssignedDate) {
+      setReturnDateError(`Return date cannot be before assigned date (${returnAssignedDate})`);
+      return;
+    }
     try {
-      await returnAsset(returnId);
+      await returnAsset(returnId, returnDate);
       toast.success("Asset returned successfully");
       queryClient.invalidateQueries({ queryKey: ["allocations"] });
       queryClient.invalidateQueries({ queryKey: ["allocationOverview"] });
       queryClient.invalidateQueries({ queryKey: ["recentAllocations"] });
       queryClient.invalidateQueries({ queryKey: ["assets"] });
+      setReturnConfirm(false);
+      setReturnId(null);
     } catch (e) {
       toast.error(e.response?.data?.message || "Return failed");
-    } finally { setReturnConfirm(false); setReturnId(null); }
+    }
   };
 
 
@@ -572,8 +601,8 @@ export default function AssetAllocationPage() {
         <TextField
           size="small"
           placeholder="Search asset, code, employee…"
-          value={searchInput}
-          onChange={handleSearchChange}
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
           slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
           sx={{ minWidth: 240, "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 11.5, height: 30 } }}
         />
@@ -581,7 +610,7 @@ export default function AssetAllocationPage() {
           size="small" value={statusFilter} onChange={handleStatusChange} displayEmpty
           sx={{ ...selectSx, minWidth: 130 }}
         >
-          <MenuItem value="">All Status</MenuItem>
+          <MenuItem value="">All</MenuItem>
           <MenuItem value="ACTIVE">Active</MenuItem>
           <MenuItem value="RETURNED">Returned</MenuItem>
         </Select>
@@ -698,7 +727,7 @@ export default function AssetAllocationPage() {
                             <Tooltip title="Mark as Returned" arrow>
                               <IconButton
                                 size="small"
-                                onClick={() => { setReturnId(row.allocationId); setReturnConfirm(true); }}
+                                onClick={() => handleReturnClick(row)}
                                 sx={{
                                   width: 22,
                                   height: 22,
@@ -749,29 +778,43 @@ export default function AssetAllocationPage() {
             control={control}
             rules={{ required: "Select an asset to allocate" }}
             render={({ field, fieldState: { error } }) => (
-              <FormControl fullWidth size="small" error={!!error}>
-                <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: error ? "#c62828" : COLORS.textMuted, mb: 0.5 }}>
+              <FormControl fullWidth error={!!error} sx={{ mb: 1.5 }}>
+                <Typography sx={{ fontSize: 11.5, color: COLORS.textMuted, mb: 0.5, fontWeight: 600 }}>
                   Asset *
                 </Typography>
-                <OutlinedInput readOnly notched={false} label="" size="small"
+                <OutlinedInput
+                  readOnly
+                  size="small"
                   value={availableAssets.find((a) => a.assetId === field.value)
                     ? `${availableAssets.find((a) => a.assetId === field.value).assetName}${availableAssets.find((a) => a.assetId === field.value).assetCode ? ` (${availableAssets.find((a) => a.assetId === field.value).assetCode})` : ""}`
                     : ""}
-                  placeholder="Select asset to allocate..." onClick={(e) => setAssetAnchor(e.currentTarget)}
+                  placeholder="Select asset to allocate..."
+                  onClick={(e) => setAssetAnchor(e.currentTarget)}
                   error={!!error}
                   endAdornment={<InputAdornment position="end"><Typography fontSize={11} color="#aaa">▾</Typography></InputAdornment>}
                   sx={{
-                    ...inputSx["& .MuiOutlinedInput-root"],
-                    fontSize: 11.5,
+                    background: "#ffffff",
+                    borderRadius: "6px",
                     height: 30,
+                    fontSize: 11.5,
                     cursor: "pointer",
                     caretColor: "transparent",
-                    background: "#f8fafc",
-                    borderColor: error ? "#c62828" : "#cbd5e1",
-                    "& fieldset": { border: "1px solid", borderColor: error ? "#c62828 !important" : "#cbd5e1" }
+                    transition: "all 100ms ease",
+                    "& .MuiOutlinedInput-input": {
+                      py: "4px !important",
+                      px: "8px !important",
+                      cursor: "pointer"
+                    },
+                    "& fieldset": { borderColor: "#cbd5e1", transition: "all 100ms ease" },
+                    "&:hover fieldset": { borderColor: "#000000" },
+                    "&.Mui-focused fieldset": { borderColor: "#000000", borderWidth: "1px !important" },
+                    "&.Mui-focused": {
+                      background: "#ffffff",
+                      boxShadow: "0 0 0 3px rgba(0, 0, 0, 0.05)",
+                    }
                   }}
                 />
-                {error && <Typography color="error" sx={{ fontSize: 10.5, mt: 0.25 }}>{error.message}</Typography>}
+                {error && <FormHelperText error sx={{ mx: 0, mt: 0.5, fontSize: 11 }}>{error.message}</FormHelperText>}
                 <Popover open={Boolean(assetAnchor)} anchorEl={assetAnchor}
                   onClose={() => { setAssetAnchor(null); setAssetSearch(""); }}
                   anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
@@ -780,7 +823,7 @@ export default function AssetAllocationPage() {
                     <TextField autoFocus size="small" fullWidth placeholder="Search asset..."
                       value={assetSearch} onChange={(e) => setAssetSearch(e.target.value)}
                       slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
-                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }} />
+                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 11.5 } }} />
                   </Box>
                   <List dense sx={{ overflowY: "auto", flex: 1 }}>
                     {(() => {
@@ -790,11 +833,11 @@ export default function AssetAllocationPage() {
                         <ListItemButton key={a.assetId} selected={field.value === a.assetId}
                           onClick={() => { field.onChange(a.assetId); setAssetAnchor(null); setAssetSearch(""); }} sx={{ py: 0.5 }}>
                           <ListItemText
-                            primary={<Typography sx={{ fontSize: 13 }}>{a.assetName}</Typography>}
-                            secondary={<Typography sx={{ fontSize: 11, color: "#64748b" }}>{a.assetCode || ""}</Typography>}
+                            primary={<Typography sx={{ fontSize: 12 }}>{a.assetName}</Typography>}
+                            secondary={<Typography sx={{ fontSize: 10.5, color: "#64748b" }}>{a.assetCode || ""}</Typography>}
                           />
                         </ListItemButton>
-                      )) : <ListItemButton disabled><ListItemText primary={<Typography sx={{ fontSize: 13 }}>No assets found</Typography>} /></ListItemButton>;
+                      )) : <ListItemButton disabled><ListItemText primary={<Typography sx={{ fontSize: 12 }}>No assets found</Typography>} /></ListItemButton>;
                     })()}
                   </List>
                 </Popover>
@@ -811,26 +854,41 @@ export default function AssetAllocationPage() {
               validate: (val) => val !== userName || "You cannot allocate an asset to yourself"
             }}
             render={({ field, fieldState: { error } }) => (
-              <FormControl fullWidth size="small" error={!!error}>
-                <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: error ? "#c62828" : COLORS.textMuted, mb: 0.5 }}>
+              <FormControl fullWidth error={!!error} sx={{ mb: 1.5 }}>
+                <Typography sx={{ fontSize: 11.5, color: COLORS.textMuted, mb: 0.5, fontWeight: 600 }}>
                   Assigned To *
                 </Typography>
-                <OutlinedInput readOnly notched={false} label="" size="small"
-                  value={field.value || ""} placeholder="Select employee..." onClick={(e) => setAssignedToAnchor(e.currentTarget)}
+                <OutlinedInput
+                  readOnly
+                  size="small"
+                  value={field.value || ""}
+                  placeholder="Select employee..."
+                  onClick={(e) => setAssignedToAnchor(e.currentTarget)}
                   error={!!error}
                   endAdornment={<InputAdornment position="end"><Typography fontSize={11} color="#aaa">▾</Typography></InputAdornment>}
                   sx={{
-                    ...inputSx["& .MuiOutlinedInput-root"],
-                    fontSize: 11.5,
+                    background: "#ffffff",
+                    borderRadius: "6px",
                     height: 30,
+                    fontSize: 11.5,
                     cursor: "pointer",
                     caretColor: "transparent",
-                    background: "#f8fafc",
-                    borderColor: error ? "#c62828" : "#cbd5e1",
-                    "& fieldset": { border: "1px solid", borderColor: error ? "#c62828 !important" : "#cbd5e1" }
+                    transition: "all 100ms ease",
+                    "& .MuiOutlinedInput-input": {
+                      py: "4px !important",
+                      px: "8px !important",
+                      cursor: "pointer"
+                    },
+                    "& fieldset": { borderColor: "#cbd5e1", transition: "all 100ms ease" },
+                    "&:hover fieldset": { borderColor: "#000000" },
+                    "&.Mui-focused fieldset": { borderColor: "#000000", borderWidth: "1px !important" },
+                    "&.Mui-focused": {
+                      background: "#ffffff",
+                      boxShadow: "0 0 0 3px rgba(0, 0, 0, 0.05)",
+                    }
                   }}
                 />
-                {error && <Typography color="error" sx={{ fontSize: 10.5, mt: 0.25 }}>{error.message}</Typography>}
+                {error && <FormHelperText error sx={{ mx: 0, mt: 0.5, fontSize: 11 }}>{error.message}</FormHelperText>}
                 <Popover open={Boolean(assignedToAnchor)} anchorEl={assignedToAnchor}
                   onClose={() => { setAssignedToAnchor(null); setAssignedToSearch(""); }}
                   anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
@@ -839,7 +897,7 @@ export default function AssetAllocationPage() {
                     <TextField autoFocus size="small" fullWidth placeholder="Search employee..."
                       value={assignedToSearch} onChange={(e) => setAssignedToSearch(e.target.value)}
                       slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
-                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 } }} />
+                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 11.5 } }} />
                   </Box>
                   <List dense sx={{ overflowY: "auto", flex: 1 }}>
                     {(() => {
@@ -851,7 +909,7 @@ export default function AssetAllocationPage() {
                           <ListItemText
                             primary={
                               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                <Typography sx={{ fontSize: 13, fontWeight: 500 }}>{u.userName}</Typography>
+                                <Typography sx={{ fontSize: 12, fontWeight: 500 }}>{u.userName}</Typography>
                                 {u.userRole && (
                                   <Chip
                                     label={u.userRole}
@@ -869,10 +927,10 @@ export default function AssetAllocationPage() {
                                 )}
                               </Box>
                             }
-                            secondary={<Typography sx={{ fontSize: 11, color: "#64748b" }}>{u.userEmail}</Typography>}
+                            secondary={<Typography sx={{ fontSize: 10.5, color: "#64748b" }}>{u.userEmail}</Typography>}
                           />
                         </ListItemButton>
-                      )) : <ListItemButton disabled><ListItemText primary={<Typography sx={{ fontSize: 13 }}>No users found</Typography>} /></ListItemButton>;
+                      )) : <ListItemButton disabled><ListItemText primary={<Typography sx={{ fontSize: 12 }}>No users found</Typography>} /></ListItemButton>;
                     })()}
                   </List>
                 </Popover>
@@ -885,21 +943,25 @@ export default function AssetAllocationPage() {
             name="assignedBy"
             control={control}
             render={({ field }) => (
-              <FormControl fullWidth size="small">
-                <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.textMuted, mb: 0.5 }}>
+              <FormControl fullWidth sx={{ mb: 1.5 }}>
+                <Typography sx={{ fontSize: 11.5, color: COLORS.textMuted, mb: 0.5, fontWeight: 600 }}>
                   Assigned By
                 </Typography>
                 <OutlinedInput
                   disabled
-                  notched={false}
-                  label=""
                   size="small"
                   value={field.value || userName || ""}
                   sx={{
-                    ...inputSx["& .MuiOutlinedInput-root"],
-                    fontSize: 11.5,
+                    background: "#f8fafc",
+                    borderRadius: "6px",
                     height: 30,
-                    bgcolor: "#f8fafc",
+                    fontSize: 11.5,
+                    transition: "all 100ms ease",
+                    "& .MuiOutlinedInput-input": {
+                      py: "4px !important",
+                      px: "8px !important",
+                    },
+                    "& fieldset": { borderColor: "#cbd5e1" },
                     "& .MuiOutlinedInput-input.Mui-disabled": {
                       WebkitTextFillColor: "#475569",
                     }
@@ -1069,15 +1131,41 @@ export default function AssetAllocationPage() {
         </DialogActions>
       </Dialog>
 
-      {/* ── Return Confirm ───────────────────────────────────────────────── */}
-      <ConfirmDialog
+      {/* ── Return Confirm Dialog Modal ── */}
+      <Dialog
         open={returnConfirm}
-        title="Return Asset"
-        message="Mark this asset as returned? The asset status will be set back to Available."
-        onConfirm={handleReturnConfirm}
-        onCancel={() => { setReturnConfirm(false); setReturnId(null); }}
-        confirmLabel="Return"
-      />
+        onClose={() => { setReturnConfirm(false); setReturnId(null); }}
+        PaperProps={{ sx: premiumDialogPaperSx }}
+      >
+        <DialogTitle sx={premiumDialogTitleSx}>Return Asset</DialogTitle>
+        <DialogContent sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2 }}>
+          <Typography sx={{ fontSize: 12, color: "#64748b" }}>
+            Specify the actual return date for this asset. The asset status will be updated to Available.
+          </Typography>
+          <TextField
+            label="Actual Return Date"
+            type="date"
+            fullWidth
+            value={returnDate}
+            onChange={(e) => {
+              setReturnDate(e.target.value);
+              setReturnDateError("");
+            }}
+            error={!!returnDateError}
+            helperText={returnDateError}
+            slotProps={{ inputLabel: { shrink: true } }}
+            sx={inputSx}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => { setReturnConfirm(false); setReturnId(null); }} sx={outlinedBtnSx}>
+            Cancel
+          </Button>
+          <Button onClick={handleReturnConfirmSubmit} variant="contained" sx={primaryBtnSx}>
+            Return Asset
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -8,8 +8,8 @@ import { COLORS, inputSx, outlinedBtnSx } from "../../theme/tokens";
 
 export default function MoveAssetModal({ open, asset, locations, onMove, onClose }) {
   const [newLocation, setNewLocation] = useState("");
-  const [reason,      setReason]      = useState("");
-  const [loading,     setLoading]     = useState(false);
+  const [reason, setReason] = useState("");
+  const [loading, setLoading] = useState(false);
   const [validationError, setValidationError] = useState("");
 
   const handleSubmit = async () => {
@@ -96,7 +96,15 @@ export default function MoveAssetModal({ open, asset, locations, onMove, onClose
             sx={inputSx}
           >
             {locations
-              .filter((l) => l.locationName !== asset?.locationName)
+              .filter((l) => {
+                // 1. Cannot move to the exact same location
+                if (l.locationName?.trim().toLowerCase() === asset?.locationName?.trim().toLowerCase()) return false;
+                // 2. Must belong to the same company
+                const assetComp = (asset?.companyName || "").trim().toLowerCase();
+                const locComp = (l.companyName || "").trim().toLowerCase();
+                if (assetComp && locComp && assetComp !== locComp) return false;
+                return true;
+              })
               .map((l) => (
                 <MenuItem key={l.locationId} value={l.locationName} sx={{ fontSize: 13 }}>
                   {l.locationName}

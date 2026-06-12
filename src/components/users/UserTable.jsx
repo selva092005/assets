@@ -58,14 +58,27 @@ export default function UserTable({ users, loading, currentUserName, userRole = 
                 <ActionBtn title="View" color="#1976d2" hoverBg="#e3f2fd" onClick={() => onView(item)}><FaEye size={11} /></ActionBtn>
                 {canManage && <ActionBtn title="Edit" color="#f59e0b" hoverBg="#fffbeb" onClick={() => onEdit(item)}><FaEdit size={11} /></ActionBtn>}
                 {canManage && (
-                  <Tooltip title={item.userName === currentUserName ? "You cannot delete your own account" : "Delete user"} arrow>
+                  <Tooltip
+                    title={
+                      item.userName === currentUserName
+                        ? "You cannot delete your own account"
+                        : item.hasActiveAllocations
+                        ? "Cannot delete user with active allocations. Return their assets first."
+                        : "Delete user"
+                    }
+                    arrow
+                  >
                     <span>
                       <ActionBtn
                         title="Delete"
                         color="#ef4444"
                         hoverBg="#fef2f2"
-                        onClick={() => item.userName !== currentUserName && onDelete(item.userId || item.id)}
-                        disabled={item.userName === currentUserName}
+                        onClick={() =>
+                          item.userName !== currentUserName &&
+                          !item.hasActiveAllocations &&
+                          onDelete(item.userId || item.id)
+                        }
+                        disabled={item.userName === currentUserName || item.hasActiveAllocations}
                       >
                         <FaTrash size={11} />
                       </ActionBtn>

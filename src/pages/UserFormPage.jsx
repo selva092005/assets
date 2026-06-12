@@ -150,11 +150,12 @@ export default function UserFormPage() {
   );
 
   return (
-    <Box sx={{ p: 0 }}>
+    <Box sx={{ height: "calc(100vh - 70px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* ── Top bar ── */}
       <Box sx={{
         px: 1.5, py: 0.75, background: "#fff", borderBottom: `1px solid ${COLORS.borderLight}`,
         display: "flex", alignItems: "center", justifyContent: "space-between",
+        flexShrink: 0,
         animation: "topIn .35s ease both",
         "@keyframes topIn": { from: { opacity: 0, transform: "translateY(-8px)" }, to: { opacity: 1, transform: "translateY(0)" } },
       }}>
@@ -178,10 +179,10 @@ export default function UserFormPage() {
       </Box>
 
       {/* ── Page content ── */}
-      <Box sx={{ maxWidth: 500, mx: "auto", px: 1, py: 1 }}>
+      <Box sx={{ flex: 1, display: "flex", flexDirection: "column", p: 2, overflow: "hidden", maxWidth: 1100, width: "100%", mx: "auto" }}>
         {/* Page title */}
         <Box sx={{
-          display: "flex", alignItems: "center", gap: 1.5, mb: 1.5,
+          display: "flex", alignItems: "center", gap: 1.5, mb: 1.5, flexShrink: 0,
           animation: "titleIn .4s ease .05s both",
           "@keyframes titleIn": { from: { opacity: 0, transform: "translateY(12px)" }, to: { opacity: 1, transform: "translateY(0)" } },
         }}>
@@ -206,20 +207,22 @@ export default function UserFormPage() {
 
         {/* ── Card ── */}
         <Box sx={{
+          flex: 1,
           background: "rgba(255, 255, 255, 0.98)",
           borderRadius: "14px",
           border: `1px solid rgba(226, 232, 240, 0.8)`,
           boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04)",
-          p: 2,
-          position: "relative",
+          p: 3,
+          display: "flex",
+          flexDirection: "column",
           overflow: "hidden",
           animation: "cardIn .45s cubic-bezier(.22,1,.36,1) .08s both",
           "@keyframes cardIn": { from: { opacity: 0, transform: "translateY(20px)" }, to: { opacity: 1, transform: "translateY(0)" } },
         }}>
-          {/* Account Info */}
-          <Section icon={<MdManageAccounts size={15} />} title="Account Information" index={0} />
-          <Grid container spacing={1}>
-            <Grid size={6} sx={anim(0)}>
+          <Grid container spacing={4} sx={{ flex: 1, overflow: "hidden" }}>
+            {/* Left Column: Account Credentials & Roles */}
+            <Grid size={{ xs: 12, md: 6 }} sx={{ display: "flex", flexDirection: "column", gap: 1.5, height: "100%", overflowY: "auto", pr: 2 }}>
+              <Section icon={<MdManageAccounts size={15} />} title="Account Credentials" index={0} />
               <FormTextField
                 name="userName"
                 control={control}
@@ -231,8 +234,6 @@ export default function UserFormPage() {
                 placeholder="e.g. john_doe"
                 slotProps={{ input: { startAdornment: adorn(<FaUser size={12} />) } }}
               />
-            </Grid>
-            <Grid size={6} sx={anim(1)}>
               <FormTextField
                 name="userEmail"
                 control={control}
@@ -245,13 +246,6 @@ export default function UserFormPage() {
                 type="email"
                 slotProps={{ input: { startAdornment: adorn(<FaEnvelope size={12} />) } }}
               />
-            </Grid>
-          </Grid>
-
-          {/* Security */}
-          <Section icon={<FaLock size={12} />} title="Security" index={1} />
-          <Grid container spacing={1}>
-            <Grid size={12} sx={anim(2)}>
               <FormTextField
                 name="userPassword"
                 control={control}
@@ -282,13 +276,25 @@ export default function UserFormPage() {
                   }
                 }}
               />
+              <Box sx={{ mt: 1.5 }}>
+                <Section icon={<FaUserTag size={12} />} title="Role & Permissions" index={2} />
+                <FormSelect
+                  name="userRole"
+                  control={control}
+                  rules={{ required: "User role is required" }}
+                  label="User Role"
+                  options={[
+                    { value: "ADMIN", label: "Admin" },
+                    { value: "MANAGER", label: "Manager" },
+                    { value: "USER", label: "User" },
+                  ]}
+                />
+              </Box>
             </Grid>
-          </Grid>
 
-          {/* Professional Profile */}
-          <Section icon={<FaBriefcase size={12} />} title="Professional Profile" index={2} />
-          <Grid container spacing={1} sx={{ mb: 1.5 }}>
-            <Grid size={6} sx={anim(4)}>
+            {/* Right Column: Professional Profile */}
+            <Grid size={{ xs: 12, md: 6 }} sx={{ display: "flex", flexDirection: "column", gap: 1.5, height: "100%", overflowY: "auto", pl: 2, borderLeft: { md: "1px solid #f1f5f9" } }}>
+              <Section icon={<FaBriefcase size={12} />} title="Professional Profile" index={1} />
               <FormTextField
                 name="employeeId"
                 control={control}
@@ -296,8 +302,6 @@ export default function UserFormPage() {
                 placeholder="e.g. EMP-0123"
                 slotProps={{ input: { startAdornment: adorn(<FaIdCard size={12} />) } }}
               />
-            </Grid>
-            <Grid size={6} sx={anim(5)}>
               <FormTextField
                 name="phoneNumber"
                 control={control}
@@ -305,8 +309,6 @@ export default function UserFormPage() {
                 placeholder="e.g. +91 9876543210"
                 slotProps={{ input: { startAdornment: adorn(<FaPhone size={12} />) } }}
               />
-            </Grid>
-            <Grid size={6} sx={anim(6)}>
               <FormTextField
                 name="department"
                 control={control}
@@ -314,8 +316,6 @@ export default function UserFormPage() {
                 placeholder="e.g. Engineering"
                 slotProps={{ input: { startAdornment: adorn(<FaBuilding size={12} />) } }}
               />
-            </Grid>
-            <Grid size={6} sx={anim(7)}>
               <FormTextField
                 name="designation"
                 control={control}
@@ -326,42 +326,26 @@ export default function UserFormPage() {
             </Grid>
           </Grid>
 
-          {/* Role */}
-          <Section icon={<FaUserTag size={12} />} title="Role & Permissions" index={3} />
-          <Grid container spacing={1}>
-            <Grid size={12} sx={anim(8)}>
-              <FormSelect
-                name="userRole"
-                control={control}
-                rules={{ required: "User role is required" }}
-                label="User Role"
-                options={[
-                  { value: "ADMIN", label: "Admin" },
-                  { value: "MANAGER", label: "Manager" },
-                  { value: "USER", label: "User" },
-                ]}
-              />
-            </Grid>
-          </Grid>
-        </Box>
-
-        {/* ── Action bar ── */}
-        <Box sx={{
-          display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 1.5, mt: 3,
-          animation: "barIn .4s ease .2s both",
-          "@keyframes barIn": { from: { opacity: 0, transform: "translateY(10px)" }, to: { opacity: 1, transform: "translateY(0)" } },
-        }}>
-          <Typography sx={{ fontSize: 12, color: COLORS.textFaint, flex: 1 }}>
-            * Required fields must be filled before saving
-          </Typography>
-          <Button variant="outlined" onClick={() => navigate("/home/users")} sx={outlinedBtnSx}>
-            Cancel
-          </Button>
-          <Button variant="contained" onClick={handleSubmit(onSubmit)} disabled={saving}
-            startIcon={saving ? null : (isEdit ? <FaEdit size={12} /> : <FaCheckCircle size={12} />)}
-            sx={{ ...primaryBtnSx, minWidth: 130 }}>
-            {saving ? <CircularProgress size={16} sx={{ color: "#fff" }} /> : (isEdit ? "Update User" : "Save User")}
-          </Button>
+          {/* ── Action bar ── */}
+          <Box sx={{
+            display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 1.5, mt: 2, pt: 1.5,
+            borderTop: `1px solid ${COLORS.borderLight}`,
+            flexShrink: 0,
+            animation: "barIn .4s ease .2s both",
+            "@keyframes barIn": { from: { opacity: 0, transform: "translateY(10px)" }, to: { opacity: 1, transform: "translateY(0)" } },
+          }}>
+            <Typography sx={{ fontSize: 11.5, color: COLORS.textFaint, flex: 1 }}>
+              * Required fields must be filled before saving
+            </Typography>
+            <Button variant="outlined" onClick={() => navigate("/home/users")} sx={outlinedBtnSx}>
+              Cancel
+            </Button>
+            <Button variant="contained" onClick={handleSubmit(onSubmit)} disabled={saving}
+              startIcon={saving ? null : (isEdit ? <FaEdit size={12} /> : <FaCheckCircle size={12} />)}
+              sx={{ ...primaryBtnSx, minWidth: 130 }}>
+              {saving ? <CircularProgress size={16} sx={{ color: "#fff" }} /> : (isEdit ? "Update User" : "Save User")}
+            </Button>
+          </Box>
         </Box>
       </Box>
     </Box>

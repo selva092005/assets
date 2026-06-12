@@ -7,6 +7,7 @@ const EXTRA_STYLES = {
   PENDING: { bg: "#fef3c7", color: "#b45309" },
   APPROVED: { bg: "#d1fae5", color: "#065f46" },
   REJECTED: { bg: "#fee2e2", color: "#991b1b" },
+  IN_TRANSIT: { bg: "#e0f2fe", color: "#0369a1" },
 
   // Disposal Methods
   SOLD: { bg: "#e8f5e9", color: "#2e7d32" },
@@ -39,6 +40,7 @@ export default function StatusBadge({ status, label }) {
   if (key === "COMPLETED_WITH_ERRORS") displayLabel = "Errors Found";
   else if (key === "COMPLETED" || key === "SUCCESS") displayLabel = "Success";
   else if (key === "FAILED") displayLabel = "Failed";
+  else if (key === "IN_TRANSIT") displayLabel = "In Transit";
 
   return (
     <Chip

@@ -175,3 +175,52 @@ Calculation: ₹10,000 + ₹5,000 = ₹15,000
 
 Redis speeds up the connection between your Backend and the Database.
 TanStack Query speeds up the connection between your Frontend and the Backend.
+
+
+n a professional enterprise Asset Management System (AMS), we store GPS coordinates (latitude & longitude) exclusively on Locations, and never directly on Assets.
+
+Here is the exact logical reasoning why:
+
+Reason 1: Physical Reality (Fixed vs. Moving Objects)
+Locations are fixed on Earth: A building, warehouse, or office branch (e.g., "Chennai Office") is a permanent physical structure. It has a single, unchanging GPS coordinate.
+Assets are movable: Laptops, servers, phones, and chairs move around. A laptop doesn't have a permanent GPS coordinate; it only has a coordinate because it is currently sitting inside a specific office.
+Reason 2: Data Duplication (DRY Principle)
+Imagine you have 500 laptops in your "Headquarters" office.
+
+If we put coordinates on Assets: You would have to manually type 13.0827, 80.2707 500 separate times (once for every single laptop). If the headquarters moves to a new building, you would have to edit 500 different records in your database.
+If we put coordinates on Locations: You type 13.0827, 80.2707 once on the Location page. All 500 assets automatically inherit those coordinates. If the office moves, you update the location once, and all 500 assets are updated instantly.
+Reason 3: Relational History & Auditing
+In professional asset tracking, you need to track movements (Transfers):
+
+When you transfer a laptop from Chennai Office to Cuddalore Office, you register a "Move Asset" event.
+The system only needs to change the asset's location to Cuddalore Office.
+The laptop instantly inherits the Cuddalore coordinates. If coordinates were saved on the asset, the user would have to manually look up and type the new coordinates during the transfer, which leads to human error.
+Summary
+Storing coordinates on the Location and resolving them dynamically for the Asset is the correct, professional logic. It prevents duplicate data entry, eliminates spelling/typing mistakes, and ensures automatic updates when assets move.
+
+
+GPS Proximity Matching (Haversine Formula):
+
+Added physical distance calculation helper using the Haversine Formula in 
+
+AssetFormPage.jsx
+.
+When clicking "Detect my location", the system now calculates physical distances between the user's GPS coordinates and all registered offices for the selected company.
+If a registered location is within a 20 km radius, it automatically selects it and displays a toast message, e.g., "Matched to nearest registered office: Coimbatore Branch (1.5 km away)".
+If no office is within the radius, it falls back to the smart city name matching.
+IP Geolocation Fallback:
+
+If browser Geolocation is unsupported, blocked, or timed out, the form now automatically falls back to an IP lookup calling the backend's /api/locations/current endpoint.
+It displays a loading status ("GPS unavailable. Falling back to IP detection...") and matches the auto-detected city name against your registered locations.
+
+
+6. Asset Transfers (TransferPage.jsx)
+Professional Logic:
+Exclusion & Isolation: Destination locations must belong to the asset's company, and cannot equal the asset's current location.
+Chain of Custody: High-priority transfers should trigger email alerts to the receiving facility manager.
+
+
+
+Spread the Cost: Instead of showing a huge loss the day you buy a laptop/server, you distribute its expense over the years it is actually used.
+Tax Savings: It lists asset wear-and-tear as a business expense, which reduces the company's taxable income.
+Upgrade Planning: It tracks the asset's current value so the company knows exactly when it is retired (salvage value) and needs to be replaced.

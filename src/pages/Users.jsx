@@ -24,9 +24,40 @@ import UserTable from "../components/users/UserTable";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import StatCard from "../components/common/StatCard";
 
+// ── Declarative Debounce Hook ──────────────────────────────────────────────────
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function UsersPage() {
   const dispatch = useDispatch();
   const { page, search, filterRole } = useSelector((s) => s.users);
+  const [inputValue, setInputValue] = useState(search);
+  const debouncedSearch = useDebounce(inputValue, 600);
+
+  useEffect(() => {
+    dispatch(setUserSearch(debouncedSearch));
+    dispatch(setUserPage(0));
+  }, [debouncedSearch, dispatch]);
+
+  useEffect(() => {
+    if (search === "") {
+      setInputValue("");
+    }
+  }, [search]);
+
   const { userRole, userName } = useSelector((s) => s.auth);
   const isAdmin = userRole === "admin";
   const canExport = userRole === "admin" || userRole === "manager";
@@ -75,10 +106,12 @@ export default function UsersPage() {
   };
 
   const handleSearch = () => {
+    dispatch(setUserSearch(inputValue));
     dispatch(setUserPage(0));
   };
 
   const handleReset = () => {
+    setInputValue("");
     dispatch(resetUserFilters());
   };
 
@@ -164,7 +197,7 @@ export default function UsersPage() {
                 </InputAdornment>
               }
             >
-              <MenuItem value="" sx={{ fontSize: 11 }}>All Roles</MenuItem>
+              <MenuItem value="" sx={{ fontSize: 11 }}>All</MenuItem>
               {["ADMIN", "MANAGER", "USER"].map((r) => (
                 <MenuItem key={r} value={r} sx={{ fontSize: 11 }}>{r}</MenuItem>
               ))}
@@ -234,9 +267,9 @@ export default function UsersPage() {
       </Box>
 
       <SearchBar
-        value={search}
+        value={inputValue}
         placeholder="Search by name, email..."
-        onChange={(e) => dispatch(setUserSearch(e.target.value))}
+        onChange={(e) => setInputValue(e.target.value)}
         onSearch={handleSearch}
         onReset={handleReset}
       />

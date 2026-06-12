@@ -9,8 +9,8 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
 } from "@mui/material";
 import { useForm } from "react-hook-form";
-import { FormTextField } from "../components/FormFields";
-import { FaFilter, FaFileExport, FaPlus, FaUpload, FaBoxes, FaCheckCircle, FaExclamationTriangle, FaWrench, FaTools } from "react-icons/fa";
+import { FormTextField, FormSelect } from "../components/FormFields";
+import { FaFilter, FaFileExport, FaPlus, FaUpload, FaBoxes, FaCheckCircle, FaExclamationTriangle, FaWrench, FaTools, FaExchangeAlt } from "react-icons/fa";
 import toast from "../utils/toast.jsx";
 import {
   setAssetPage, setAssetSearch, setAssetFilter, setAssetStatusFilter, resetAssetFilters,
@@ -20,6 +20,7 @@ import {
   exportAssets, getDashboard, createAssetType,
   getAssets
 } from "../services/assets_service";
+import { requestBulkTransfer, getAllLocations } from "../services/transfer_service";
 import { COLORS, primaryBtnSx, outlinedBtnSx, selectSx, inputSx } from "../theme/tokens";
 
 import PageHeader from "../components/common/PageHeader";
@@ -31,6 +32,23 @@ import AssetQR from "../components/assets/AssetQR";
 import LocationHistoryModal from "../components/assets/LocationHistoryModal";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import StatCard from "../components/common/StatCard";
+
+// ── Declarative Debounce Hook ──────────────────────────────────────────────────
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 export default function AssetsPage() {
   const dispatch = useDispatch();
@@ -50,7 +68,20 @@ export default function AssetsPage() {
     }
   }, [location.search, filterStatus, dispatch]);
 
-  const [inputValue, setInputValue] = useState("");
+  const [inputValue, setInputValue] = useState(search || "");
+  const debouncedSearch = useDebounce(inputValue, 600);
+
+  useEffect(() => {
+    dispatch(setAssetSearch(debouncedSearch));
+    dispatch(setAssetPage(0));
+  }, [debouncedSearch, dispatch]);
+
+  useEffect(() => {
+    if (search === "") {
+      setInputValue("");
+    }
+  }, [search]);
+
   const [showCount, setShowCount] = useState(10);
   const [warrantyDays, setWarrantyDays] = useState(null);
   const [qrModal, setQrModal] = useState(false);
@@ -69,6 +100,27 @@ export default function AssetsPage() {
 
   const typeForm = useForm({
     defaultValues: { newTypeName: "" }
+  });
+
+  const [selectedAssetIds, setSelectedAssetIds] = useState([]);
+  const [bulkTransferOpen, setBulkTransferOpen] = useState(false);
+  const [bulkTransferSaving, setBulkTransferSaving] = useState(false);
+
+  const bulkTransferForm = useForm({
+    defaultValues: { toLocation: "", reason: "", expectedDate: "", priority: "MEDIUM" }
+  });
+
+  // Reset selection on pagination/filter updates
+  useEffect(() => {
+    setSelectedAssetIds([]);
+  }, [page, search, filterStatus, filterType]);
+
+  const { data: locations = [] } = useQuery({
+    queryKey: ["locations"],
+    queryFn: async () => {
+      const res = await getAllLocations();
+      return Array.isArray(res) ? res : (res?.data || []);
+    }
   });
 
   // ── Query Fetchers ──────────────────────────────────────────────────────────
@@ -215,6 +267,43 @@ export default function AssetsPage() {
     }
   };
 
+  const handleSelectAsset = (assetId) => {
+    setSelectedAssetIds((prev) =>
+      prev.includes(assetId) ? prev.filter((id) => id !== assetId) : [...prev, assetId]
+    );
+  };
+
+  const handleSelectAllAssets = (ids) => {
+    setSelectedAssetIds((prev) => {
+      const otherIds = prev.filter((id) => !assets.map(a => a.assetId).includes(id));
+      return [...otherIds, ...ids];
+    });
+  };
+
+  const handleBulkTransferSubmit = async (formData) => {
+    setBulkTransferSaving(true);
+    try {
+      const payload = {
+        assetIds: selectedAssetIds,
+        toLocation: formData.toLocation,
+        expectedDate: formData.expectedDate || null,
+        priority: formData.priority || "MEDIUM",
+        reason: formData.reason,
+        requestedBy: userName || "System"
+      };
+      await requestBulkTransfer(payload);
+      toast.success(`Bulk transfer request submitted for ${selectedAssetIds.length} assets`);
+      setSelectedAssetIds([]);
+      setBulkTransferOpen(false);
+      bulkTransferForm.reset();
+      reload();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to submit bulk transfer");
+    } finally {
+      setBulkTransferSaving(false);
+    }
+  };
+
 
 
   // ── EXPORT ──────────────────────────────────────────────────────────────────
@@ -230,7 +319,18 @@ export default function AssetsPage() {
     }
   };
 
+  const selectedAssets = assets.filter(a => selectedAssetIds.includes(a.assetId));
+  const selectedCompanies = [...new Set(selectedAssets.map(a => a.companyName || a.location?.company?.companyName || "No Company").filter(Boolean))];
+  const isCrossCompany = selectedCompanies.length > 1;
+  const commonCompany = selectedCompanies.length === 1 ? selectedCompanies[0] : null;
 
+  const filteredLocations = locations.filter(loc => {
+    if (commonCompany && commonCompany !== "No Company") {
+      const locCompany = loc.companyName || loc.company?.companyName || "";
+      return locCompany.toLowerCase() === commonCompany.toLowerCase();
+    }
+    return true;
+  });
 
   return (
     <Box sx={{ p: 0 }}>
@@ -276,7 +376,7 @@ export default function AssetsPage() {
                 </InputAdornment>
               }
             >
-              <MenuItem value="" sx={{ fontSize: 11 }}>All Types</MenuItem>
+              <MenuItem value="" sx={{ fontSize: 11 }}>All</MenuItem>
               {types.map((t) => (
                 <MenuItem key={t.typeId} value={t.typeId} sx={{ fontSize: 11 }}>{t.typeName}</MenuItem>
               ))}
@@ -300,7 +400,7 @@ export default function AssetsPage() {
                 </InputAdornment>
               }
             >
-              <MenuItem value="" sx={{ fontSize: 11 }}>All Statuses</MenuItem>
+              <MenuItem value="" sx={{ fontSize: 11 }}>All</MenuItem>
               {['AVAILABLE', 'ASSIGNED', 'DAMAGED', 'DISPOSED', 'UNDER_MAINTENANCE'].map((status) => (
                 <MenuItem key={status} value={status} sx={{ fontSize: 11 }}>{status}</MenuItem>
               ))}
@@ -381,10 +481,78 @@ export default function AssetsPage() {
         onReset={handleReset}
       />
 
+      {selectedAssetIds.length > 0 && (
+        <Box sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          bgcolor: "rgba(37, 99, 235, 0.08)",
+          border: "1px solid #bfdbfe",
+          borderRadius: "8px",
+          p: 1.5,
+          mb: 2,
+          animation: "slideDown 300ms ease both",
+          "@keyframes slideDown": {
+            from: { opacity: 0, transform: "translateY(-10px)" },
+            to: { opacity: 1, transform: "translateY(0)" }
+          }
+        }}>
+          <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#1e40af" }}>
+            {selectedAssetIds.length} asset{selectedAssetIds.length > 1 ? "s" : ""} selected for bulk actions
+          </Typography>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => setBulkTransferOpen(true)}
+              startIcon={<FaExchangeAlt size={11} />}
+              sx={{
+                fontSize: 10.5,
+                fontWeight: 700,
+                textTransform: "none",
+                bgcolor: "#2563eb",
+                "&:hover": { bgcolor: "#1d4ed8" }
+              }}
+            >
+              Request Bulk Transfer
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => setSelectedAssetIds([])}
+              sx={{
+                fontSize: 10.5,
+                fontWeight: 600,
+                textTransform: "none",
+                color: "#64748b",
+                borderColor: "#cbd5e1",
+                "&:hover": { borderColor: "#94a3b8" }
+              }}
+            >
+              Clear Selection
+            </Button>
+          </Box>
+        </Box>
+      )}
+
       <TableCard>
         {loading
           ? <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
-          : <AssetTable assets={assets} loading={false} userRole={userRole} page={page} pageSize={showCount} onView={handleView} onEdit={handleEdit} onDelete={handleDelete} onQR={handleQR} onHistory={handleHistory} />
+          : <AssetTable
+              assets={assets}
+              loading={false}
+              userRole={userRole}
+              page={page}
+              pageSize={showCount}
+              onView={handleView}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onQR={handleQR}
+              onHistory={handleHistory}
+              selectedIds={selectedAssetIds}
+              onSelect={handleSelectAsset}
+              onSelectAll={handleSelectAllAssets}
+            />
         }
         <TablePagination page={page} totalPages={totalPages} onPageChange={(pg) => dispatch(setAssetPage(pg))} />
       </TableCard>
@@ -443,7 +611,7 @@ export default function AssetsPage() {
             disabled={typeDialogLoading}
           />
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 1.5, gap: 1 }}>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1.5, borderTop: `1px solid ${COLORS.borderLight || "#f1f5f9"}`, gap: 1 }}>
           <Button
             variant="outlined"
             onClick={() => { setTypeDialogOpen(false); typeForm.reset(); }}
@@ -459,6 +627,116 @@ export default function AssetsPage() {
             sx={{ ...primaryBtnSx, px: 2.5 }}
           >
             {typeDialogLoading ? <CircularProgress size={16} sx={{ color: "#fff" }} /> : "Add Type"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Dialog for bulk transfer ── */}
+      <Dialog
+        open={bulkTransferOpen}
+        onClose={() => { if (!bulkTransferSaving) { setBulkTransferOpen(false); bulkTransferForm.reset(); } }}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: "12px",
+              padding: 1,
+            }
+          }
+        }}
+      >
+        <DialogTitle sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          pb: 1,
+          fontWeight: 700,
+          fontSize: 15,
+          color: COLORS.text,
+          borderBottom: `1px solid ${COLORS.borderLight || "#f1f5f9"}`
+        }}>
+          Bulk Asset Transfer ({selectedAssetIds.length} Assets Selected)
+        </DialogTitle>
+        <DialogContent sx={{ pt: "16px !important", pb: 2, display: "flex", flexDirection: "column", gap: 1.5 }}>
+          {isCrossCompany && (
+            <Box sx={{
+              bgcolor: "#fef2f2",
+              border: "1px solid #fca5a5",
+              borderRadius: "8px",
+              p: 1.5,
+              mb: 1,
+              display: "flex",
+              alignItems: "center",
+              gap: 1
+            }}>
+              <FaExclamationTriangle color="#ef4444" size={14} />
+              <Typography sx={{ fontSize: 11.5, fontWeight: 600, color: "#991b1b" }}>
+                Cannot transfer: Selected assets belong to different companies ({selectedCompanies.join(", ")}). Bulk transfers must be restricted to assets of the same company.
+              </Typography>
+            </Box>
+          )}
+
+          <FormSelect
+            name="toLocation"
+            control={bulkTransferForm.control}
+            rules={{ required: !isCrossCompany ? "Destination location is required" : false }}
+            label="Destination Location *"
+            disabled={isCrossCompany}
+          >
+            {filteredLocations.map((loc) => (
+              <MenuItem key={loc.locationId} value={loc.locationName} sx={{ fontSize: 12 }}>
+                {loc.locationName} ({loc.companyName || "No Company"})
+              </MenuItem>
+            ))}
+          </FormSelect>
+
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+            <FormTextField
+              name="expectedDate"
+              control={bulkTransferForm.control}
+              type="date"
+              label="Expected Date"
+              InputLabelProps={{ shrink: true }}
+            />
+            <FormSelect
+              name="priority"
+              control={bulkTransferForm.control}
+              label="Priority"
+              options={[
+                { value: "LOW", label: "Low" },
+                { value: "MEDIUM", label: "Medium" },
+                { value: "HIGH", label: "High" }
+              ]}
+            />
+          </Box>
+
+          <FormTextField
+            name="reason"
+            control={bulkTransferForm.control}
+            rules={{ required: "Reason is required", minLength: { value: 5, message: "Reason must be at least 5 characters" } }}
+            label="Reason *"
+            placeholder="Reason for transferring these assets..."
+            multiline
+            rows={2}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1.5, borderTop: `1px solid ${COLORS.borderLight || "#f1f5f9"}`, gap: 1 }}>
+          <Button
+            variant="outlined"
+            onClick={() => { setBulkTransferOpen(false); bulkTransferForm.reset(); }}
+            disabled={bulkTransferSaving}
+            sx={outlinedBtnSx}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={bulkTransferForm.handleSubmit(handleBulkTransferSubmit)}
+            disabled={bulkTransferSaving || isCrossCompany}
+            sx={{ ...primaryBtnSx, px: 2.5 }}
+          >
+            {bulkTransferSaving ? <CircularProgress size={16} sx={{ color: "#fff" }} /> : "Submit Transfer"}
           </Button>
         </DialogActions>
       </Dialog>

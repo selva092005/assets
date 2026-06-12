@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import {
-  Box, CircularProgress, Grid, Typography, Button, Paper
+  Box, CircularProgress, Grid, Typography, Button, Paper,
+  TextField, MenuItem, Select, FormControl, InputLabel,
+  Table, TableBody, TableCell, TableHead, TableRow
 } from "@mui/material";
 import {
   PieChart, Pie, Cell, Tooltip as ReTooltip, BarChart, Bar, XAxis, YAxis,
@@ -62,11 +64,11 @@ const CustomPieLegend = ({ data, colors }) => {
 // Realistic high-end mock report data for fully-populated demo view
 const MOCK_REPORT_DATA = {
   totalAssets: 184,
-  availableAssets: 42,
-  assignedAssets: 128,
-  disposedAssets: 6,
-  damagedAssets: 4,
-  underMaintenanceAssets: 4,
+  available: 42,
+  assigned: 128,
+  disposed: 6,
+  damaged: 4,
+  underMaintenance: 4,
 
   byType: {
     "Laptops": 78,
@@ -111,6 +113,67 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState({});
   const [isDemoMode, setIsDemoMode] = useState(false);
+
+  // ── Depreciation Calculator States ──
+  const [calcCost, setCalcCost] = useState(100000);
+  const [calcSalvage, setCalcSalvage] = useState(10000);
+  const [calcLife, setCalcLife] = useState(5);
+  const [calcMethod, setCalcMethod] = useState("SL"); // "SL" or "DDB"
+
+  // Calculation function
+  const getDepreciationSchedule = () => {
+    const schedule = [];
+    const cost = Number(calcCost) || 0;
+    const salvage = Number(calcSalvage) || 0;
+    const life = Number(calcLife) || 1;
+
+    if (calcMethod === "SL") {
+      const annualDep = life > 0 ? (cost - salvage) / life : 0;
+      let accumDep = 0;
+      for (let y = 1; y <= life; y++) {
+        accumDep += annualDep;
+        const bookValue = cost - accumDep;
+        schedule.push({
+          year: y,
+          startingValue: cost - (accumDep - annualDep),
+          expense: annualDep,
+          accumulated: accumDep,
+          endingValue: bookValue
+        });
+      }
+    } else {
+      const rate = life > 0 ? 2 / life : 0;
+      let currentBookValue = cost;
+      let accumDep = 0;
+      for (let y = 1; y <= life; y++) {
+        let expense = currentBookValue * rate;
+        if (currentBookValue - expense < salvage) {
+          expense = Math.max(0, currentBookValue - salvage);
+        }
+        accumDep += expense;
+        const endingBookValue = currentBookValue - expense;
+        schedule.push({
+          year: y,
+          startingValue: currentBookValue,
+          expense: expense,
+          accumulated: accumDep,
+          endingValue: endingBookValue
+        });
+        currentBookValue = endingBookValue;
+      }
+    }
+    return schedule;
+  };
+
+  const schedule = getDepreciationSchedule();
+
+  const fmtCurrency = (val) => {
+    return new Intl.NumberFormat("en-IN", {
+      style: "currency",
+      currency: "INR",
+      maximumFractionDigits: 0
+    }).format(val);
+  };
 
   useEffect(() => {
     (async () => {
@@ -666,6 +729,109 @@ export default function ReportsPage() {
               </Box>
             </Box>
           </PremiumCard>
+      </Box>
+
+      {/* ── Depreciation Calculator Section ── */}
+      <Box sx={{ mt: 3, mb: 1 }}>
+        <PremiumCard
+          title="Asset Depreciation Calculator"
+          subtitle="Simulate and project asset value decline over time using Straight-Line or Double-Declining methods."
+          icon={<FaLaptop />}
+        >
+          <Box sx={{ display: "flex", gap: 3, flexDirection: { xs: "column", md: "row" }, p: 1 }}>
+            {/* Input fields */}
+            <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 2, minWidth: { md: 280 } }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#1e293b", mb: 0.5 }}>Calculator Inputs</Typography>
+              <TextField
+                label="Purchase Cost (INR)"
+                type="number"
+                fullWidth
+                size="small"
+                value={calcCost}
+                onChange={(e) => setCalcCost(Math.max(0, Number(e.target.value)))}
+                slotProps={{ htmlInput: { min: 0 } }}
+                sx={{
+                  "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 },
+                  "& .MuiInputLabel-root": { fontSize: 12 }
+                }}
+              />
+              <TextField
+                label="Salvage Value (INR)"
+                type="number"
+                fullWidth
+                size="small"
+                value={calcSalvage}
+                onChange={(e) => setCalcSalvage(Math.max(0, Number(e.target.value)))}
+                slotProps={{ htmlInput: { min: 0 } }}
+                sx={{
+                  "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 },
+                  "& .MuiInputLabel-root": { fontSize: 12 }
+                }}
+              />
+              <TextField
+                label="Useful Life (Years)"
+                type="number"
+                fullWidth
+                size="small"
+                value={calcLife}
+                onChange={(e) => setCalcLife(Math.max(1, Number(e.target.value)))}
+                slotProps={{ htmlInput: { min: 1, max: 50 } }}
+                sx={{
+                  "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 12 },
+                  "& .MuiInputLabel-root": { fontSize: 12 }
+                }}
+              />
+              <FormControl fullWidth size="small">
+                <InputLabel sx={{ fontSize: 12 }}>Depreciation Method</InputLabel>
+                <Select
+                  value={calcMethod}
+                  label="Depreciation Method"
+                  onChange={(e) => setCalcMethod(e.target.value)}
+                  sx={{ borderRadius: "6px", fontSize: 12 }}
+                >
+                  <MenuItem value="SL" sx={{ fontSize: 12 }}>Straight-Line (SL)</MenuItem>
+                  <MenuItem value="DDB" sx={{ fontSize: 12 }}>Double-Declining Balance (DDB)</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+
+            {/* Schedule Table */}
+            <Box sx={{ flex: 2, overflowX: "auto" }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#1e293b", mb: 1.5 }}>
+                Depreciation Schedule Projection
+              </Typography>
+              <Table size="small" sx={{ minWidth: 500, border: "1px solid #e2e8f0" }}>
+                <TableHead sx={{ bgcolor: "#f8fafc" }}>
+                  <TableRow>
+                    <TableCell sx={{ fontSize: 11, fontWeight: 700, color: "#475569" }}>Year</TableCell>
+                    <TableCell sx={{ fontSize: 11, fontWeight: 700, color: "#475569" }}>Starting Value</TableCell>
+                    <TableCell sx={{ fontSize: 11, fontWeight: 700, color: "#475569" }}>Depreciation Expense</TableCell>
+                    <TableCell sx={{ fontSize: 11, fontWeight: 700, color: "#475569" }}>Accumulated Depreciation</TableCell>
+                    <TableCell sx={{ fontSize: 11, fontWeight: 700, color: "#475569" }}>Book Value (Ending)</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {schedule.map((row) => (
+                    <TableRow key={row.year} sx={{ "&:nth-of-type(even)": { bgcolor: "#f8fafc" } }}>
+                      <TableCell sx={{ fontSize: 11, fontWeight: 600, color: "#0f172a" }}>{row.year}</TableCell>
+                      <TableCell sx={{ fontSize: 11, color: "#475569", fontFamily: "monospace" }}>{fmtCurrency(row.startingValue)}</TableCell>
+                      <TableCell sx={{ fontSize: 11, fontWeight: 600, color: "#b45309", fontFamily: "monospace" }}>{fmtCurrency(row.expense)}</TableCell>
+                      <TableCell sx={{ fontSize: 11, color: "#475569", fontFamily: "monospace" }}>{fmtCurrency(row.accumulated)}</TableCell>
+                      <TableCell sx={{ fontSize: 11, fontWeight: 700, color: "#15803d", fontFamily: "monospace" }}>{fmtCurrency(row.endingValue)}</TableCell>
+                    </TableRow>
+                  ))}
+                  {schedule.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center" sx={{ fontSize: 11, color: "#94a3b8", py: 3 }}>
+                        Enter values to generate projection schedule
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </Box>
+          </Box>
+        </PremiumCard>
       </Box>
     </Box>
   );

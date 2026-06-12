@@ -1,8 +1,11 @@
 import API from "../config/api";
 
 // GET /api/locations — fetch all active locations
-export const getAllLocations = async () => {
-  const res = await API.get("/api/locations");
+export const getAllLocations = async (type = "", search = "") => {
+  const params = {};
+  if (type) params.type = type;
+  if (search) params.search = search;
+  const res = await API.get("/api/locations", { params });
   return res.data;
 };
 

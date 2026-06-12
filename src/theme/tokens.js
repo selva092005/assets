@@ -553,14 +553,17 @@ export const premiumDialogPaperSx = {
 };
 
 export const premiumDialogTitleSx = {
-  p: "20px 24px 8px 24px",
+  p: "16px 24px",
   fontWeight: 700,
-  fontSize: "15px",
+  fontSize: "13px",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
   color: "#000000",
   background: "#ffffff",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
+  borderBottom: "1px solid #f1f5f9",
 };
 
 export const premiumFormGroupSx = {
