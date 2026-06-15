@@ -559,7 +559,9 @@ export const NotificationBell = () => {
                           },
                         }}
                       >
-                        <ListItemText
+                         <ListItemText
+                          primaryTypographyProps={{ component: "div" }}
+                          secondaryTypographyProps={{ component: "div" }}
                           primary={
                             <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.25 }}>
                               <Typography sx={{ fontSize: 10 }}>{parsed.icon}</Typography>

@@ -30,6 +30,12 @@ export const rejectTransfer = async (id, data) => {
   return res.data;
 };
 
+// PUT /api/transfers/{id}/cancel — original requester or admin cancels
+export const cancelTransfer = async (id, data) => {
+  const res = await API.put(`/api/transfers/${id}/cancel`, data);
+  return res.data;
+};
+
 // PUT /api/transfers/{id}/receive — confirm receipt (Admin + Manager)
 export const receiveTransfer = async (id, data) => {
   const res = await API.put(`/api/transfers/${id}/receive`, data);

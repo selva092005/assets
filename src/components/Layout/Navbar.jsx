@@ -251,12 +251,12 @@ const Navbar = () => {
 
           {/* Logo */}
           <Box component={Link} to="/home"
-            sx={{ alignItems: "center", color: "inherit", display: "flex", gap: 1.25, textDecoration: "none", transition: "transform 160ms ease", "&:hover": { transform: "translateY(-1px)" } }}>
+            sx={{ alignItems: "center", color: "inherit", display: "flex", gap: 0.35, ml: 2, textDecoration: "none", transition: "transform 160ms ease", "&:hover": { transform: "translateY(-1px)" } }}>
             <Box component="img" src={amsLogo} alt="AMS"
-              sx={{ height: { xs: 26, md: 30 }, objectFit: "contain", width: { xs: 26, md: 30 }, filter: "drop-shadow(0 2px 6px rgba(37,99,235,0.15))" }} />
+              sx={{ height: { xs: 30, md: 36 }, objectFit: "contain", width: { xs: 30, md: 36 }, filter: "drop-shadow(0 2px 6px rgba(37,99,235,0.15))" }} />
             <Box sx={{ lineHeight: 1.05 }}>
-              <Typography component="span" sx={{ color: "#2563eb", display: "block", fontFamily: '"Playfair Display",Georgia,serif', fontSize: 12, fontWeight: 800, lineHeight: 1 }}>Asset</Typography>
-              <Typography component="span" sx={{ color: "#111827", fontFamily: '"Manrope","Segoe UI",sans-serif', fontSize: 9, fontWeight: 700, lineHeight: 1.15 }}>Management System</Typography>
+              <Typography component="span" sx={{ color: "#2563eb", display: "block", fontFamily: '"Playfair Display",Georgia,serif', fontSize: 13.5, fontWeight: 800, lineHeight: 1 }}>Asset</Typography>
+              <Typography component="span" sx={{ color: "#111827", fontFamily: '"Manrope","Segoe UI",sans-serif', fontSize: 10, fontWeight: 700, lineHeight: 1.15 }}>Management System</Typography>
             </Box>
           </Box>
 
@@ -552,23 +552,23 @@ const Navbar = () => {
                     <ListItemButton component={Link} to={item.path}
                       onClick={() => setMobileAssetsOpen((p) => !p)}
                       sx={{ bgcolor: active ? "#eff6ff" : "transparent", borderBottom: "1px solid #f3f4f6", color: active ? "#1d4ed8" : "#111827", px: 1.25, py: 0.75, "&:hover": { bgcolor: "#eff6ff" } }}>
-                      <ListItemText primary={<Typography sx={{ fontSize: 13, fontWeight: active ? 700 : 500 }}>{item.label}</Typography>} />
-                      <KeyboardArrowDownIcon sx={{ fontSize: 15, transition: "transform 160ms ease", transform: mobileAssetsOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
+                    <ListItemText primary={<Typography component="span" sx={{ fontSize: 13, fontWeight: active ? 700 : 500 }}>{item.label}</Typography>} />
+                    <KeyboardArrowDownIcon sx={{ fontSize: 15, transition: "transform 160ms ease", transform: mobileAssetsOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
+                  </ListItemButton>
+                  {mobileAssetsOpen && visibleDropdown.map((d) => (
+                    <ListItemButton key={d.path} component={Link} to={d.path} onClick={() => { setMenuOpen(false); setMobileAssetsOpen(false); }}
+                      sx={{ bgcolor: location.pathname.startsWith(d.path) ? "#eff6ff" : "#f8fafc", borderBottom: "1px solid #f3f4f6", color: location.pathname.startsWith(d.path) ? "#1d4ed8" : "#374151", pl: 3, py: 0.6, "&:hover": { bgcolor: "#eff6ff" } }}>
+                      <ListItemText primary={<Typography component="span" sx={{ fontSize: 12, fontWeight: 500 }}>{d.label}</Typography>} />
                     </ListItemButton>
-                    {mobileAssetsOpen && visibleDropdown.map((d) => (
-                      <ListItemButton key={d.path} component={Link} to={d.path} onClick={() => { setMenuOpen(false); setMobileAssetsOpen(false); }}
-                        sx={{ bgcolor: location.pathname.startsWith(d.path) ? "#eff6ff" : "#f8fafc", borderBottom: "1px solid #f3f4f6", color: location.pathname.startsWith(d.path) ? "#1d4ed8" : "#374151", pl: 3, py: 0.6, "&:hover": { bgcolor: "#eff6ff" } }}>
-                        <ListItemText primary={<Typography sx={{ fontSize: 12, fontWeight: 500 }}>{d.label}</Typography>} />
-                      </ListItemButton>
-                    ))}
-                  </Box>
-                );
-              }
-              return (
-                <ListItemButton key={item.path} component={Link} to={item.path} onClick={() => setMenuOpen(false)}
-                  sx={{ bgcolor: active ? "#eff6ff" : "transparent", borderBottom: "1px solid #f3f4f6", color: active ? "#1d4ed8" : "#111827", px: 1.25, py: 0.75, "&:hover": { bgcolor: "#eff6ff" }, "&:last-child": { borderBottom: 0 } }}>
-                  <ListItemText primary={<Typography sx={{ fontSize: 13, fontWeight: active ? 700 : 500 }}>{item.label}</Typography>} />
-                </ListItemButton>
+                  ))}
+                </Box>
+              );
+            }
+            return (
+              <ListItemButton key={item.path} component={Link} to={item.path} onClick={() => setMenuOpen(false)}
+                sx={{ bgcolor: active ? "#eff6ff" : "transparent", borderBottom: "1px solid #f3f4f6", color: active ? "#1d4ed8" : "#111827", px: 1.25, py: 0.75, "&:hover": { bgcolor: "#eff6ff" }, "&:last-child": { borderBottom: 0 } }}>
+                <ListItemText primary={<Typography component="span" sx={{ fontSize: 13, fontWeight: active ? 700 : 500 }}>{item.label}</Typography>} />
+              </ListItemButton>
               );
             })}
           </List>

@@ -4,9 +4,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { useForm } from "react-hook-form";
 import {
   Box, Button, Grid, MenuItem,
-  IconButton, Tooltip, CircularProgress, Typography, InputAdornment,
-  Dialog, DialogTitle, DialogContent, DialogActions,
+  IconButton, Tooltip, Typography, InputAdornment,
+  Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress,
 } from "@mui/material";
+import SkeletonLoader from "../components/common/SkeletonLoader";
 import {
   FaArrowLeft, FaBox, FaBarcode, FaTrademark, FaCubes,
   FaCalendarAlt, FaShieldAlt, FaDollarSign, FaMapMarkerAlt,
@@ -390,8 +391,8 @@ export default function AssetFormPage() {
   };
 
   if (loading) return (
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh" }}>
-      <CircularProgress />
+    <Box sx={{ p: 2 }}>
+      <SkeletonLoader variant="detail" />
     </Box>
   );
 

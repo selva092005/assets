@@ -13,8 +13,8 @@ import {
   FaTimes
 } from "react-icons/fa";
 import toast from "../utils/toast.jsx";
-import { bulkUploadExcel, downloadTemplate, getBulkUploadHistory } from "../services/assets_service";
-import { bulkUploadUsers, downloadUserTemplate } from "../services/users_service";
+import { bulkUploadExcel, downloadTemplate, getBulkUploadHistory, downloadFailedRowsExcel } from "../services/assets_service";
+import { bulkUploadUsers, downloadUserTemplate, downloadUserFailedRowsExcel } from "../services/users_service";
 import { COLORS, selectSx } from "../theme/tokens";
 import TablePagination from "../components/common/TablePagination";
 import StatusBadge from "../components/common/StatusBadge";
@@ -161,30 +161,30 @@ export default function BulkUploadPage({ mode = "assets" }) {
   const [columnMapping, setColumnMapping] = useState(() =>
     mode === "users"
       ? {
-          userName: "userName*",
-          userEmail: "userEmail*",
-          userPassword: "userPassword*",
-          userRole: "userRole* (ADMIN/MANAGER/USER)",
-          employeeId: "employeeId",
-          department: "department",
-          phoneNumber: "phoneNumber",
-          designation: "designation"
-        }
+        userName: "userName*",
+        userEmail: "userEmail*",
+        userPassword: "userPassword*",
+        userRole: "userRole* (ADMIN/MANAGER/USER)",
+        employeeId: "employeeId",
+        department: "department",
+        phoneNumber: "phoneNumber",
+        designation: "designation"
+      }
       : {
-          name: "assetName*",
-          serial: "serialNumber",
-          brand: "brand",
-          model: "model",
-          purchaseDate: "purchaseDate* (YYYY-MM-DD)",
-          warrantyExpiry: "warrantyExpiry (YYYY-MM-DD)",
-          cost: "cost*",
-          status: "status*",
-          condition: "assetCondition",
-          notes: "notes",
-          typeName: "typeName*",
-          locationName: "locationName*",
-          companyName: "companyName*"
-        }
+        name: "assetName*",
+        serial: "serialNumber",
+        brand: "brand",
+        model: "model",
+        purchaseDate: "purchaseDate* (YYYY-MM-DD)",
+        warrantyExpiry: "warrantyExpiry (YYYY-MM-DD)",
+        cost: "cost*",
+        status: "status*",
+        condition: "assetCondition",
+        notes: "notes",
+        typeName: "typeName*",
+        locationName: "locationName*",
+        companyName: "companyName*"
+      }
   );
 
   const handleFile = (f) => {
@@ -196,30 +196,53 @@ export default function BulkUploadPage({ mode = "assets" }) {
     setFile(f);
     setResult(null);
     setErrPage(0);
+    setLoading(true);
 
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
+        const workbook = XLSX.read(data, { type: "array", cellDates: true });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
         if (json.length > 0) {
-          setParsedHeaders(json[0] || []);
-          setParsedRows(json.slice(1) || []);
+          const headers = (json[0] || []).map(h => h !== undefined && h !== null ? String(h).trim() : "");
+          const rows = json.slice(1).map(row =>
+            row.map(val => {
+              if (val === undefined || val === null) return "";
+              if (val instanceof Date) {
+                try {
+                  return val.toISOString().split('T')[0];
+                } catch (ex) {
+                  return String(val);
+                }
+              }
+              return String(val);
+            })
+          ).filter(row => row.some(val => val.trim() !== ""));
+
+          setParsedHeaders(headers);
+          setParsedRows(rows);
         } else {
           setParsedHeaders([]);
           setParsedRows([]);
         }
+        setWizardStep(2);
       } catch (err) {
         toast.error("Failed to parse Excel file for preview");
+        setFile(null);
+      } finally {
+        setLoading(false);
       }
     };
+    reader.onerror = () => {
+      toast.error("Failed to read Excel file");
+      setFile(null);
+      setLoading(false);
+    };
     reader.readAsArrayBuffer(f);
-
-    // Proceed to Step 2 automatically once a file is selected
-    setWizardStep(2);
   };
 
   const handleDrop = (e) => {
@@ -277,6 +300,22 @@ export default function BulkUploadPage({ mode = "assets" }) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handleDownloadFailedRows = async () => {
+    if (!file) {
+      toast.error("No file uploaded.");
+      return;
+    }
+    try {
+      if (mode === "users") {
+        await downloadUserFailedRowsExcel(file);
+      } else {
+        await downloadFailedRowsExcel(file);
+      }
+    } catch (err) {
+      toast.error("Failed to download failed rows report.");
+    }
+  };
+
   const getTotalErrRows = () => {
     if (filterType === "errors") return result?.errors || [];
     return result?.skipped || [];
@@ -288,6 +327,10 @@ export default function BulkUploadPage({ mode = "assets" }) {
   };
 
   const totalErrPages = Math.ceil(getTotalErrRows().length / ERR_PAGE_SIZE);
+
+  const fileHeaders = parsedHeaders && parsedHeaders.length > 0
+    ? parsedHeaders
+    : (mode === "users" ? USER_SPREADSHEET_COLUMNS.map(c => c.header) : SPREADSHEET_COLUMNS.map(c => c.header));
 
   return (
     <Box sx={{ p: 0 }}>
@@ -389,7 +432,7 @@ export default function BulkUploadPage({ mode = "assets" }) {
               fontSize: 10.5, fontWeight: 700,
               boxShadow: wizardStep === 2 ? `0 0 0 3px rgba(37,99,235,0.18)` : "none"
             }}>{wizardStep > 2 ? <FaCheckCircle size={11} /> : "2"}</Box>
-            <Typography sx={{ fontSize: 11.5, fontWeight: wizardStep === 2 ? 700 : 500, color: wizardStep === 2 ? "#0f172a" : "#64748b" }}>Map Columns</Typography>
+            <Typography sx={{ fontSize: 11.5, fontWeight: wizardStep === 2 ? 700 : 500, color: wizardStep === 2 ? "#0f172a" : "#64748b" }}>Preview Sheet</Typography>
           </Box>
 
           {/* Line */}
@@ -416,7 +459,18 @@ export default function BulkUploadPage({ mode = "assets" }) {
 
           {/* ────────────────── STEP 1: FILE SELECTION ────────────────── */}
           {wizardStep === 1 && (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 3.5 }}>
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 3.5, position: "relative" }}>
+              {loading && (
+                <Box sx={{
+                  position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+                  background: "rgba(255,255,255,0.7)", zIndex: 10,
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  borderRadius: "12px", minHeight: 200
+                }}>
+                  <CircularProgress size={36} sx={{ mb: 2 }} />
+                  <Typography fontSize={12} fontWeight={600} color="#1e293b">Parsing spreadsheet...</Typography>
+                </Box>
+              )}
               <Card
                 variant="outlined"
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -465,7 +519,7 @@ export default function BulkUploadPage({ mode = "assets" }) {
                     <li>
                       <strong>Start data from Row 5:</strong> Please input your actual records starting from <strong>Row 5</strong> onwards. Keep the first 4 rows (headers, requirements, and sample data) untouched, as the importer automatically skips them.
                     </li>
-                    <li>Ensure essential fields ({mode === "users" ? "User Name, User Email, Password, User Role" : "Asset Name, Purchase Date, Cost, Status, Type, Location, Company"}) are properly filled to pass validation checks.</li>
+                    <li>Ensure essential fields ({mode === "users" ? "User Name, User Email, Pas  sword, User Role" : "Asset Name, Purchase Date, Cost, Status, Type, Location, Company"}) are properly filled to pass validation checks.</li>
                   </Box>
                 </Box>
               </Box>
@@ -477,8 +531,8 @@ export default function BulkUploadPage({ mode = "assets" }) {
             <Card variant="outlined" sx={{ borderRadius: "12px", background: "#fff", overflow: "hidden" }}>
               <Box sx={{ p: 2, borderBottom: "1px solid #e2e8f0", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1.5 }}>
                 <Box>
-                  <Typography fontSize={13.5} fontWeight={800} color="#0f172a">Map Sheet Columns</Typography>
-                  <Typography fontSize={11} color="#64748b">Map the headers from <span style={{ fontWeight: 600 }}>{file.name}</span> to the AMS database fields.</Typography>
+                  <Typography fontSize={13.5} fontWeight={800} color="#0f172a">Spreadsheet Preview</Typography>
+                  <Typography fontSize={11} color="#64748b">Direct preview of the contents in <span style={{ fontWeight: 600 }}>{file.name}</span>.</Typography>
                 </Box>
                 <Button size="small" variant="text" color="error" startIcon={<FaTrash size={10} />} onClick={removeFile} sx={{ fontSize: 11, textTransform: "none", fontWeight: 600 }}>
                   Cancel
@@ -489,90 +543,93 @@ export default function BulkUploadPage({ mode = "assets" }) {
                 <Box sx={{ display: "flex", gap: 1.5, p: 2, borderRadius: "8px", border: "1px solid #bfdbfe", background: "#f0f9ff", mb: 3 }}>
                   <FaInfoCircle size={15} color="#0284c7" style={{ marginTop: 2, flexShrink: 0 }} />
                   <Box>
-                    <Typography fontSize={11.5} fontWeight={700} color="#0369a1">Spreadsheet Column Mapping & Data Preview</Typography>
+                    <Typography fontSize={11.5} fontWeight={700} color="#0369a1">Spreadsheet Data Preview</Typography>
                     <Typography fontSize={10.5} color="#0284c7" mt={0.5} lineHeight={1.4}>
-                      Below is a live preview of the first few rows of <strong>{file.name}</strong>. The columns in your sheet are mapped automatically to the database fields shown below. Required database fields are marked with an asterisk (*).
+                      Below is a live preview of the uploaded file. <strong>Row 1</strong> contains the headers, <strong>Row 2</strong> contains requirements, <strong>Rows 3 & 4</strong> show sample data, and the subsequent rows show the actual records.
                     </Typography>
                   </Box>
                 </Box>
 
-                <Box sx={{ overflowX: "auto", border: "1px solid #cbd5e1", borderRadius: "8px", background: "#f8fafc" }}>
-                  <Table sx={{ minWidth: 1600, borderCollapse: "collapse", "& td, & th": { border: "1px solid #e2e8f0", p: 1 } }}>
+                <Box sx={{ overflowX: "auto", overflowY: "auto", maxHeight: 500, border: "1px solid #cbd5e1", borderRadius: "8px", background: "#f8fafc" }}>
+                  <Table stickyHeader sx={{ minWidth: 1600, borderCollapse: "separate", "& td, & th": { border: "1px solid #e2e8f0", p: 1 } }}>
                     <TableHead>
-                      {/* Row 1: Column Letters */}
-                      <TableRow sx={{ background: "#f1f5f9" }}>
-                        <TableCell sx={{ width: 90, fontWeight: 700, color: "#64748b", fontSize: 9.5, textAlign: "center", py: 0.5, px: 1, background: "#cbd5e1", borderRight: "2px solid #cbd5e1" }}>
-                          COLUMN
+                      <TableRow>
+                        <TableCell sx={{
+                          width: 70,
+                          fontWeight: 700,
+                          color: "#64748b",
+                          fontSize: 9.5,
+                          textAlign: "center",
+                          py: 1.5,
+                          px: 1,
+                          background: "#cbd5e1",
+                          borderRight: "2px solid #cbd5e1",
+                          position: "sticky",
+                          left: 0,
+                          zIndex: 3
+                        }}>
+                          ROW
                         </TableCell>
-                        {columns.map((col) => (
-                          <TableCell key={col.index} sx={{ fontWeight: 800, color: "#475569", fontSize: 10.5, textAlign: "center", py: 0.5, background: "#e2e8f0" }}>
-                            {col.letter}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-
-                      {/* Row 2: Database Field Mapping (Static Labels) */}
-                      <TableRow sx={{ background: "#fff" }}>
-                        <TableCell sx={{ fontWeight: 800, color: "#0f172a", fontSize: 10, textAlign: "center", py: 1.5, px: 1, background: "#f1f5f9", borderRight: "2px solid #cbd5e1" }}>
-                          MAP TO FIELD
-                        </TableCell>
-                        {columns.map((col) => (
-                          <TableCell key={col.index} sx={{ py: 1.5, px: 1.5, background: "#fff" }}>
-                            {col.required ? (
-                              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                <FaCheckCircle size={12} color="#16a34a" />
-                                <Typography fontSize={11.5} fontWeight={800} color="#15803d">
-                                  {col.dbLabel} <span style={{ color: "#ef4444" }}>*</span>
-                                </Typography>
-                              </Box>
-                            ) : (
-                              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                <Box sx={{ width: 8, height: 8, borderRadius: "50%", background: "#94a3b8" }} />
-                                <Typography fontSize={11.5} fontWeight={700} color="#475569">
-                                  {col.dbLabel}
-                                </Typography>
-                              </Box>
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-
-                      {/* Row 3: Excel Headers */}
-                      <TableRow sx={{ background: "#f8fafc" }}>
-                        <TableCell sx={{ fontWeight: 700, color: "#64748b", fontSize: 9.5, textAlign: "center", py: 1.25, px: 1, background: "#f1f5f9", borderRight: "2px solid #cbd5e1" }}>
-                          Header (Row 4)
-                        </TableCell>
-                        {columns.map((col) => (
-                          <TableCell key={col.index} sx={{ py: 1.25, px: 1.5, background: "#f8fafc" }}>
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                <FaFileExcel size={10} color="#16a34a" />
-                                <Typography fontSize={11.5} fontWeight={700} color="#1e293b" fontFamily="monospace">
-                                  {parsedHeaders[col.index] || col.header}
-                                </Typography>
-                            </Box>
+                        {fileHeaders.map((hdr, colIdx) => (
+                          <TableCell key={colIdx} sx={{
+                            fontWeight: 800,
+                            color: "#0f172a",
+                            fontSize: 11,
+                            py: 1.5,
+                            px: 1.5,
+                            background: "#e2e8f0",
+                            fontFamily: "monospace",
+                            zIndex: 2
+                          }}>
+                            {hdr || `(Empty Column)`}
                           </TableCell>
                         ))}
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {parsedRows.slice(0, 5).map((row, rIdx) => (
-                        <TableRow key={rIdx} sx={{ background: "#fff", "&:hover": { background: "#fafafa" } }}>
-                          <TableCell sx={{ fontWeight: 700, color: "#64748b", fontSize: 9.5, textAlign: "center", py: 1, px: 1, background: "#f1f5f9", borderRight: "2px solid #cbd5e1" }}>
-                            Row {rIdx + 5}
-                          </TableCell>
-                          {columns.map((col) => {
-                            const val = row[col.index];
-                            return (
-                              <TableCell key={col.index} sx={{ py: 1, px: 1.5, fontSize: 11, color: "#475569", fontFamily: "monospace" }}>
-                                {val !== undefined && val !== null ? String(val) : "—"}
-                              </TableCell>
-                            );
-                          })}
-                        </TableRow>
-                      ))}
+                      {parsedRows.map((row, rIdx) => {
+                        const rowNum = rIdx + 2; // Row 1 is header, data starts at Row 2
+
+                        return (
+                          <TableRow key={rIdx} sx={{ background: "#fff", "&:hover": { background: "#fafafa" } }}>
+                            <TableCell sx={{
+                              fontWeight: 700,
+                              color: "#64748b",
+                              fontSize: 10,
+                              textAlign: "center",
+                              py: 1,
+                              px: 1,
+                              background: "#f1f5f9",
+                              borderRight: "2px solid #cbd5e1",
+                              position: "sticky",
+                              left: 0,
+                              zIndex: 1
+                            }}>
+                              {rowNum}
+                            </TableCell>
+                            {fileHeaders.map((_, colIdx) => {
+                              const val = row[colIdx];
+                              return (
+                                <TableCell
+                                  key={colIdx}
+                                  sx={{
+                                    py: 1,
+                                    px: 1.5,
+                                    fontSize: 11,
+                                    color: "#334155",
+                                    fontFamily: "monospace"
+                                  }}
+                                >
+                                  {val !== undefined && val !== null ? String(val) : ""}
+                                </TableCell>
+                              );
+                            })}
+                          </TableRow>
+                        );
+                      })}
                       {parsedRows.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={columns.length + 1} sx={{ textAlign: "center", py: 3, fontSize: 12, color: "#64748b" }}>
+                          <TableCell colSpan={fileHeaders.length + 1} sx={{ textAlign: "center", py: 3, fontSize: 12, color: "#64748b" }}>
                             No data rows found in sheet
                           </TableCell>
                         </TableRow>
@@ -631,8 +688,8 @@ export default function BulkUploadPage({ mode = "assets" }) {
                           {item.icon}
                         </Box>
                         <Box>
-                          <Typography fontSize={9.5} fontWeight={600} color="#64748b" textTransform="uppercase" letterSpacing={0.2}>{item.lab}</Typography>
-                          <Typography fontSize={19} fontWeight={800} color="#0f172a" mt={0.25} sx={{ lineHeight: 1 }}>{item.val}</Typography>
+                          <Typography sx={{ fontSize: 9.5, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.2 }}>{item.lab}</Typography>
+                          <Typography sx={{ fontSize: 19, fontWeight: 800, color: "#0f172a", mt: 0.25, lineHeight: 1 }}>{item.val}</Typography>
                         </Box>
                       </Box>
                     ))}
@@ -647,6 +704,26 @@ export default function BulkUploadPage({ mode = "assets" }) {
                         </Typography>
 
                         <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<FaDownload size={11} />}
+                            onClick={handleDownloadFailedRows}
+                            sx={{
+                              textTransform: "none",
+                              fontSize: 11,
+                              fontWeight: 600,
+                              height: 28,
+                              borderColor: "#fca5a5",
+                              color: "#dc2626",
+                              borderRadius: "6px",
+                              px: 1.5,
+                              background: "#fef2f2",
+                              "&:hover": { borderColor: "#f87171", background: "#fee2e2" }
+                            }}
+                          >
+                            Download Failed Rows
+                          </Button>
                           <Select
                             size="small"
                             value={filterType}

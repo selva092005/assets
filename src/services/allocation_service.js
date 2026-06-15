@@ -30,3 +30,9 @@ export const returnAsset = async (allocationId, returnDate) => {
   const res = await API.put(`/api/allocations/${allocationId}/return`, null, { params });
   return res.data;
 };
+
+// GET /api/allocations/asset/{assetId}
+export const getAllocationsByAsset = async (assetId) => {
+  const res = await API.get(`/api/allocations/asset/${assetId}`);
+  return res.data;
+};

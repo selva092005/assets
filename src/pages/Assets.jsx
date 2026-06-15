@@ -32,6 +32,8 @@ import AssetQR from "../components/assets/AssetQR";
 import LocationHistoryModal from "../components/assets/LocationHistoryModal";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import StatCard from "../components/common/StatCard";
+import ErrorState from "../components/common/ErrorState";
+import SkeletonLoader from "../components/common/SkeletonLoader";
 
 // ── Declarative Debounce Hook ──────────────────────────────────────────────────
 function useDebounce(value, delay) {
@@ -149,7 +151,7 @@ export default function AssetsPage() {
 
   const typeName = resolveTypeName(filterType, types);
 
-  const { data: assetsData, isLoading: loading } = useQuery({
+  const { data: assetsData, isLoading: loading, isError, error, refetch } = useQuery({
     queryKey: ["assets", search, page, showCount, typeName, filterStatus],
     queryFn: async () => {
       const params = {
@@ -331,6 +333,10 @@ export default function AssetsPage() {
     }
     return true;
   });
+
+  if (loading) {
+    return <SkeletonLoader variant="list" statCount={6} columnCount={10} />;
+  }
 
   return (
     <Box sx={{ p: 0 }}>
@@ -536,9 +542,10 @@ export default function AssetsPage() {
       )}
 
       <TableCard>
-        {loading
-          ? <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
-          : <AssetTable
+        {isError ? (
+          <ErrorState message={error?.message || error?.response?.data?.message} onRetry={refetch} />
+        ) : (
+          <AssetTable
               assets={assets}
               loading={false}
               userRole={userRole}
@@ -553,7 +560,7 @@ export default function AssetsPage() {
               onSelect={handleSelectAsset}
               onSelectAll={handleSelectAllAssets}
             />
-        }
+        )}
         <TablePagination page={page} totalPages={totalPages} onPageChange={(pg) => dispatch(setAssetPage(pg))} />
       </TableCard>
 

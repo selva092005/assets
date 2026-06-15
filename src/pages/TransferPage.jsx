@@ -11,7 +11,7 @@ import {
 } from "@mui/material";
 import { useForm, Controller } from "react-hook-form";
 import { FormTextField, FormSelect } from "../components/FormFields";
-import { FaExchangeAlt, FaCheck, FaTimes, FaSearch, FaClock, FaTruck, FaChevronDown, FaChevronUp, FaCheckCircle, FaTimesCircle, FaFileExport, FaFilter } from "react-icons/fa";
+import { FaExchangeAlt, FaCheck, FaTimes, FaSearch, FaClock, FaTruck, FaChevronDown, FaChevronUp, FaCheckCircle, FaTimesCircle, FaFileExport, FaFilter, FaEye, FaClipboardCheck } from "react-icons/fa";
 import { MdRefresh } from "react-icons/md";
 import toast from "../utils/toast.jsx";
 import PageHeader from "../components/common/PageHeader";
@@ -21,15 +21,20 @@ import StatCard from "../components/common/StatCard";
 import TablePagination from "../components/common/TablePagination";
 import StatusBadge from "../components/common/StatusBadge";
 import EmptyState from "../components/common/EmptyState";
-import { COLORS, primaryBtnSx, outlinedBtnSx, inputSx, selectSx, chipSx, tabSx, premiumDialogPaperSx, premiumDialogTitleSx, premiumFormGroupSx } from "../theme/tokens";
-import { required, extractFieldErrors } from "../utils/validate";
+import ActionBtn from "../components/common/ActionBtn";
+import ErrorState from "../components/common/ErrorState";
+import SkeletonLoader from "../components/common/SkeletonLoader";
+import { COLORS, primaryBtnSx, outlinedBtnSx, inputSx, selectSx, chipSx, tabSx, premiumDialogPaperSx, premiumDialogTitleSx, premiumFormGroupSx, denseCellSx, searchFieldSx, resetBtnSx, dateFieldSx } from "../theme/tokens";
+import { required, extractFieldErrors, isNotFutureDate } from "../utils/validate";
 import {
   requestTransfer, approveTransfer, rejectTransfer, receiveTransfer,
   getAllTransfers, getTransferOverview, getAllLocations,
   approveBulkTransfers, rejectBulkTransfers, receiveBulkTransfers,
-  exportTransfersToExcel,
+  exportTransfersToExcel, cancelTransfer, getTransferById,
 } from "../services/transfer_service";
 import { getAssets } from "../services/assets_service";
+
+import InfoRow from "../components/common/InfoRow";
 
 function extractList(res) {
   if (Array.isArray(res)) return res;
@@ -42,6 +47,10 @@ function extractList(res) {
 function extractPage(res) {
   const d = res?.data ?? res;
   return { content: d?.content ?? [], totalPages: d?.totalPages ?? 1, totalElements: d?.totalElements ?? 0 };
+}
+
+function today() {
+  return new Date().toISOString().split("T")[0];
 }
 
 function fmt(dt) {
@@ -105,7 +114,7 @@ const CustomCheckboxIndeterminateIcon = () => (
 );
 
 export default function TransferPage() {
-  const { userRole, userName } = useSelector((s) => s.auth);
+  const { userRole, userName, userEmail } = useSelector((s) => s.auth);
   const isAdmin = userRole === "admin";
   const canRequest = userRole === "admin" || userRole === "manager";
 
@@ -113,11 +122,29 @@ export default function TransferPage() {
   const [page, setPage] = useState(0);
   const [showCount, setShowCount] = useState(10);
   const [statusFilter, setStatusFilter] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("");
+  const [myRequestsOnly, setMyRequestsOnly] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
   const [exportLoading, setExportLoading] = useState(false);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Details dialog state
+  const [viewOpen, setViewOpen] = useState(false);
+  const [viewData, setViewData] = useState(null);
+  const [viewLoading, setViewLoading] = useState(false);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   const handleExport = async () => {
     try {
@@ -133,6 +160,9 @@ export default function TransferPage() {
 
   const handleResetFilters = () => {
     setStatusFilter("");
+    setPriorityFilter("");
+    setMyRequestsOnly(false);
+    setSearchQuery("");
     setStartDate("");
     setEndDate("");
     setPage(0);
@@ -209,13 +239,16 @@ export default function TransferPage() {
   const queryClient = useQueryClient();
 
   // ── Query Fetchers ──────────────────────────────────────────────────────────
-  const { data: transfersData, isLoading: loading } = useQuery({
-    queryKey: ["transfers", tab, page, showCount, statusFilter, startDate, endDate],
+  const { data: transfersData, isLoading: loading, isError, error, refetch } = useQuery({
+    queryKey: ["transfers", tab, page, showCount, debouncedSearch, statusFilter, priorityFilter, myRequestsOnly, startDate, endDate],
     queryFn: async () => {
       const params = {
         page,
         size: showCount,
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
         ...(statusFilter ? { status: statusFilter } : {}),
+        ...(priorityFilter ? { priority: priorityFilter } : {}),
+        ...(myRequestsOnly ? { requestedBy: userName || userEmail } : {}),
         ...(startDate ? { startDate } : {}),
         ...(endDate ? { endDate } : {})
       };
@@ -366,13 +399,59 @@ export default function TransferPage() {
   const { control: receiveControl, handleSubmit: handleReceiveSubmit, reset: receiveReset } = useForm({
     defaultValues: {
       remarks: "",
+      receivedDate: today(),
     }
   });
 
   const openReceive = (transfer) => {
     setReceiveTransferItem(transfer);
-    receiveReset({ remarks: "" });
+    receiveReset({ remarks: "", receivedDate: today() });
     setReceiveOpen(true);
+  };
+
+  // ── Self-cancellation States & Handlers ────────────────────────────────
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
+  const [cancelTransferItem, setCancelTransferItem] = useState(null);
+  const [cancelSaving, setCancelSaving] = useState(false);
+
+  const openCancel = (transfer) => {
+    setCancelTransferItem(transfer);
+    setCancelConfirmOpen(true);
+  };
+
+  const confirmCancel = async () => {
+    if (!cancelTransferItem) return;
+    setCancelConfirmOpen(false);
+    setCancelSaving(true);
+    try {
+      await cancelTransfer(cancelTransferItem.transferId, {
+        resolvedBy: userName,
+        remarks: "Cancelled by requester"
+      });
+      toast.success("Transfer request cancelled successfully");
+      queryClient.invalidateQueries({ queryKey: ["transfers"] });
+      queryClient.invalidateQueries({ queryKey: ["transferOverview"] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Failed to cancel transfer");
+    } finally {
+      setCancelSaving(false);
+    }
+  };
+
+  const handleViewDetails = async (row) => {
+    setViewOpen(true);
+    setViewData(null);
+    setViewLoading(true);
+    try {
+      const res = await getTransferById(row.transferId);
+      setViewData(res?.data || res);
+    } catch (err) {
+      toast.error("Failed to load transfer details");
+      setViewOpen(false);
+    } finally {
+      setViewLoading(false);
+    }
   };
 
   const onConfirmReceive = async (data) => {
@@ -380,7 +459,8 @@ export default function TransferPage() {
     try {
       await receiveTransfer(receiveTransferItem.transferId, {
         resolvedBy: userName,
-        remarks: data.remarks
+        remarks: data.remarks,
+        receivedDate: data.receivedDate
       });
       toast.success("Transfer completed: Receipt confirmed!");
       setReceiveOpen(false);
@@ -441,6 +521,10 @@ export default function TransferPage() {
   const checkableTransfers = transfers.filter(isCheckable);
   const allCheckedOnPage = checkableTransfers.length > 0 && checkableTransfers.every(t => selectedIds.includes(t.transferId));
   const partialChecked = checkableTransfers.length > 0 && checkableTransfers.some(t => selectedIds.includes(t.transferId)) && !allCheckedOnPage;
+
+  if (loading) {
+    return <SkeletonLoader variant="list" statCount={5} columnCount={11} hasTabs={true} />;
+  }
 
   return (
     <Box sx={{ p: 0 }}>
@@ -519,21 +603,51 @@ export default function TransferPage() {
 
       {/* ── Tabs ─────────────────────────────────────────────────────────── */}
       <Box sx={{ borderBottom: "1px solid #e5e7eb", mb: 2 }}>
-        <Tabs value={tab} onChange={(_, v) => { setTab(v); setPage(0); setStatusFilter(""); setSelectedIds([]); setExpandedId(null); }}
+        <Tabs value={tab} onChange={(_, v) => { setTab(v); setPage(0); setStatusFilter(""); setPriorityFilter(""); setMyRequestsOnly(false); setSearchQuery(""); setStartDate(""); setEndDate(""); setSelectedIds([]); setExpandedId(null); }}
           sx={{ "& .MuiTabs-indicator": { backgroundColor: COLORS.primary, height: 2 }, minHeight: 0 }}>
-          <Tab label={<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}><FaClock size={10} />Pending Requests</Box>}
+          <Tab label={<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}><FaClock size={10} />Pending Requests ({overview.pending || 0})</Box>}
             sx={{ ...tabSx, minHeight: 0, py: 1 }} />
-          <Tab label={<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}><FaExchangeAlt size={10} />All Transfers</Box>}
+          <Tab label={<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}><FaExchangeAlt size={10} />All Transfers ({overview.total || 0})</Box>}
             sx={{ ...tabSx, minHeight: 0, py: 1 }} />
         </Tabs>
       </Box>
 
-      {/* ── Filter (All Transfers tab only) ──────────────────────────────── */}
-      {tab === 1 && (
+      {/* ── Filters (Pending and All Transfers tabs) ──────────────────────── */}
+      {(tab === 0 || tab === 1) && (
         <Box sx={{ display: "flex", gap: 1.5, mb: 2, alignItems: "center", flexWrap: "wrap" }}>
+          <TextField
+            size="small"
+            placeholder="Search asset, code, employee..."
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
+            slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
+            sx={searchFieldSx(240, 300)}
+          />
+
+          {tab === 1 && (
+            <Select
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); setSelectedIds([]); setExpandedId(null); }}
+              displayEmpty
+              size="small"
+              sx={{ ...selectSx, minWidth: 130 }}
+              startAdornment={
+                <InputAdornment position="start" sx={{ mr: 0.25, pl: 0.5 }}>
+                  <FaFilter size={9} color={COLORS.textMuted} />
+                </InputAdornment>
+              }
+            >
+              <MenuItem value="" sx={{ fontSize: 11.5 }}>All</MenuItem>
+              <MenuItem value="PENDING" sx={{ fontSize: 11.5 }}>Pending</MenuItem>
+              <MenuItem value="IN_TRANSIT" sx={{ fontSize: 11.5 }}>In Transit</MenuItem>
+              <MenuItem value="APPROVED" sx={{ fontSize: 11.5 }}>Approved</MenuItem>
+              <MenuItem value="REJECTED" sx={{ fontSize: 11.5 }}>Rejected</MenuItem>
+            </Select>
+          )}
+
           <Select
-            value={statusFilter}
-            onChange={(e) => { setStatusFilter(e.target.value); setSelectedIds([]); setExpandedId(null); }}
+            value={priorityFilter}
+            onChange={(e) => { setPriorityFilter(e.target.value); setPage(0); setSelectedIds([]); setExpandedId(null); }}
             displayEmpty
             size="small"
             sx={{ ...selectSx, minWidth: 130 }}
@@ -544,11 +658,30 @@ export default function TransferPage() {
             }
           >
             <MenuItem value="" sx={{ fontSize: 11.5 }}>All</MenuItem>
-            <MenuItem value="PENDING" sx={{ fontSize: 11.5 }}>Pending</MenuItem>
-            <MenuItem value="IN_TRANSIT" sx={{ fontSize: 11.5 }}>In Transit</MenuItem>
-            <MenuItem value="APPROVED" sx={{ fontSize: 11.5 }}>Approved</MenuItem>
-            <MenuItem value="REJECTED" sx={{ fontSize: 11.5 }}>Rejected</MenuItem>
+            <MenuItem value="LOW" sx={{ fontSize: 11.5 }}>Low</MenuItem>
+            <MenuItem value="MEDIUM" sx={{ fontSize: 11.5 }}>Medium</MenuItem>
+            <MenuItem value="HIGH" sx={{ fontSize: 11.5 }}>High</MenuItem>
           </Select>
+
+          <Chip
+            label="My Requests"
+            clickable
+            color={myRequestsOnly ? "primary" : "default"}
+            variant={myRequestsOnly ? "filled" : "outlined"}
+            onClick={() => { setMyRequestsOnly(!myRequestsOnly); setPage(0); setSelectedIds([]); setExpandedId(null); }}
+            sx={{
+              height: 26,
+              fontSize: 11,
+              fontWeight: 500,
+              borderRadius: "6px",
+              borderColor: myRequestsOnly ? COLORS.primary : "#e0e0e0",
+              bgcolor: myRequestsOnly ? `${COLORS.primary} !important` : "#ffffff",
+              color: myRequestsOnly ? "#ffffff" : "#4b5563",
+              "&:hover": {
+                bgcolor: myRequestsOnly ? COLORS.primary : "#f3f4f6",
+              }
+            }}
+          />
 
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Typography sx={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>From</Typography>
@@ -557,20 +690,7 @@ export default function TransferPage() {
               size="small"
               value={startDate}
               onChange={(e) => { setStartDate(e.target.value); setPage(0); }}
-              sx={{
-                ...inputSx,
-                width: 130,
-                "& .MuiOutlinedInput-root": {
-                  height: 26,
-                  fontSize: 11,
-                },
-                "& .MuiOutlinedInput-input": {
-                  py: "0px !important",
-                  px: "8px !important",
-                  height: "24px",
-                  lineHeight: "24px",
-                }
-              }}
+              sx={dateFieldSx(130)}
             />
           </Box>
 
@@ -581,20 +701,7 @@ export default function TransferPage() {
               size="small"
               value={endDate}
               onChange={(e) => { setEndDate(e.target.value); setPage(0); }}
-              sx={{
-                ...inputSx,
-                width: 130,
-                "& .MuiOutlinedInput-root": {
-                  height: 26,
-                  fontSize: 11,
-                },
-                "& .MuiOutlinedInput-input": {
-                  py: "0px !important",
-                  px: "8px !important",
-                  height: "24px",
-                  lineHeight: "24px",
-                }
-              }}
+              sx={dateFieldSx(130)}
             />
           </Box>
 
@@ -603,19 +710,7 @@ export default function TransferPage() {
             <IconButton
               onClick={handleResetFilters}
               aria-label="Reset"
-              sx={{
-                border: "1px solid #e0e0e0",
-                borderRadius: "6px",
-                width: 26,
-                height: 26,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                p: 0,
-                background: "#fff",
-                color: "#757575",
-                "&:hover": { background: "#f5f5f5", borderColor: "#bbb", color: COLORS.primary },
-              }}
+              sx={resetBtnSx}
             >
               <MdRefresh size={14} />
             </IconButton>
@@ -625,10 +720,10 @@ export default function TransferPage() {
 
       {/* ── Table ────────────────────────────────────────────────────────── */}
       <TableCard>
-        {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
+        {isError ? (
+          <ErrorState message={error?.message || error?.response?.data?.message} onRetry={refetch} />
         ) : transfers.length === 0 ? (
-          <EmptyState icon={FaExchangeAlt} label={tab === 0 ? "No pending transfer requests." : "No transfer records found."} />
+          <EmptyState icon={FaExchangeAlt} label={tab === 0 ? "No pending requests — all transfers are up to date." : "No transfer records found."} />
         ) : (
           <Box sx={{ overflowX: "auto" }}>
             <Table size="small" sx={{ minWidth: 750, borderCollapse: "collapse" }}>
@@ -651,7 +746,7 @@ export default function TransferPage() {
                   {((isAdmin || userRole === "manager")) && (
                     <TableCell sx={{ width: 40, background: "#f8fafc", borderBottom: "2px solid #e2e8f0" }} />
                   )}
-                  {["#", "Asset", "Code", "From → To", "Priority", "Expected Date", "Reason", "Requested By", "Date", "Status", ...((isAdmin || userRole === "manager") ? ["Actions"] : [])].map((h) => (
+                  {["#", "Asset", "Code", "From → To", "Priority", "Expected Date", "Reason", "Requested By", "Date", "Status", "Actions"].map((h) => (
                     <TableCell key={h} sx={{ fontWeight: 700, color: "#64748b", whiteSpace: "nowrap", background: "#f8fafc", borderBottom: "2px solid #e2e8f0", textTransform: "uppercase", fontSize: 11 }}>{h}</TableCell>
                   ))}
                 </TableRow>
@@ -732,37 +827,76 @@ export default function TransferPage() {
                             }} />
                         </TableCell>
                         <TableCell sx={{ fontSize: 11, whiteSpace: "nowrap" }}>{row.expectedDate ? fmt(row.expectedDate) : "—"}</TableCell>
-                        <TableCell sx={{ fontSize: 11, color: COLORS.textMuted, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.reason}</TableCell>
+                        <TableCell sx={{ fontSize: 11, color: COLORS.textMuted, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <Tooltip title={row.reason || ""} arrow placement="top">
+                            <span>{row.reason}</span>
+                          </Tooltip>
+                        </TableCell>
                         <TableCell sx={{ fontSize: 11, color: COLORS.textMuted }}>{row.requestedBy}</TableCell>
                         <TableCell sx={{ fontSize: 11, whiteSpace: "nowrap" }}>{fmt(row.requestedAt)}</TableCell>
                         <TableCell><StatusBadge status={row.status} /></TableCell>
-                        {((isAdmin || userRole === "manager")) && (
-                          <TableCell>
-                            <Box sx={{ display: "flex", gap: 0.5 }}>
-                              {row.status === "PENDING" && isAdmin && tab === 0 && (
-                                <>
-                                  <Button size="small" variant="contained" startIcon={<FaCheck size={9} />}
-                                    onClick={() => openAction(row, "APPROVE")}
-                                    sx={{ textTransform: "none", fontSize: 10, fontWeight: 700, py: "2px", px: "6px", borderRadius: "4px", background: "#16a34a", boxShadow: "none", minWidth: 0, "&:hover": { background: "#15803d", boxShadow: "none" } }}>
-                                    Approve
-                                  </Button>
-                                  <Button size="small" variant="contained" startIcon={<FaTimes size={9} />}
-                                    onClick={() => openAction(row, "REJECT")}
-                                    sx={{ textTransform: "none", fontSize: 10, fontWeight: 700, py: "2px", px: "6px", borderRadius: "4px", background: "#dc2626", boxShadow: "none", minWidth: 0, "&:hover": { background: "#b91c1c", boxShadow: "none" } }}>
-                                    Reject
-                                  </Button>
-                                </>
-                              )}
-                              {row.status === "IN_TRANSIT" && (
-                                <Button size="small" variant="contained" startIcon={<FaTruck size={9} />}
-                                  onClick={() => openReceive(row)}
-                                  sx={{ textTransform: "none", fontSize: 10, fontWeight: 700, py: "2px", px: "6px", borderRadius: "4px", background: "#2563eb", boxShadow: "none", minWidth: 0, "&:hover": { background: "#1d4ed8", boxShadow: "none" } }}>
-                                  Confirm Receipt
-                                </Button>
-                              )}
-                            </Box>
-                          </TableCell>
-                        )}
+                        <TableCell>
+                          <Box sx={{ display: "flex", gap: 0.5 }}>
+                            <ActionBtn
+                              title="View Details"
+                              color="#3b82f6"
+                              hoverBg="rgba(59, 130, 246, 0.08)"
+                              onClick={() => handleViewDetails(row)}
+                              sx={{ border: "none", background: "transparent" }}
+                            >
+                              <FaEye size={12} />
+                            </ActionBtn>
+                            {((isAdmin || userRole === "manager")) && (
+                              <>
+                                {row.status === "PENDING" && isAdmin && tab === 0 && (
+                                  <>
+                                    <ActionBtn
+                                      title="Approve"
+                                      color="#16a34a"
+                                      hoverBg="rgba(22, 163, 74, 0.08)"
+                                      onClick={() => openAction(row, "APPROVE")}
+                                      sx={{ border: "none", background: "transparent" }}
+                                    >
+                                      <FaCheck size={11} />
+                                    </ActionBtn>
+                                    <ActionBtn
+                                      title="Reject"
+                                      color="#dc2626"
+                                      hoverBg="rgba(220, 38, 38, 0.08)"
+                                      onClick={() => openAction(row, "REJECT")}
+                                      sx={{ border: "none", background: "transparent" }}
+                                    >
+                                      <FaTimes size={11} />
+                                    </ActionBtn>
+                                  </>
+                                )}
+                                {((row.status === "PENDING" && (row.requestedBy === userName || row.requestedBy === userEmail)) ||
+                                  (row.status === "IN_TRANSIT" && isAdmin)) && (
+                                    <ActionBtn
+                                      title="Cancel"
+                                      color="#e11d48"
+                                      hoverBg="rgba(225, 29, 72, 0.08)"
+                                      onClick={() => openCancel(row)}
+                                      sx={{ border: "none", background: "transparent" }}
+                                    >
+                                      <FaTimes size={11} />
+                                    </ActionBtn>
+                                  )}
+                                {row.status === "IN_TRANSIT" && (
+                                    <ActionBtn
+                                      title="Confirm Receipt"
+                                      color="#2563eb"
+                                      hoverBg="rgba(37, 99, 235, 0.08)"
+                                      onClick={() => openReceive(row)}
+                                      sx={{ border: "none", background: "transparent" }}
+                                    >
+                                      <FaClipboardCheck size={11} />
+                                    </ActionBtn>
+                                )}
+                              </>
+                            )}
+                          </Box>
+                        </TableCell>
                       </TableRow>
 
                       {isExpanded && (
@@ -818,7 +952,7 @@ export default function TransferPage() {
                                         dateStr = row.expectedDate ? `Expected: ${fmt(row.expectedDate)}` : "";
                                         actorStr = row.status === "APPROVED" ? "Delivered" : (row.status === "IN_TRANSIT" ? "On the way" : "");
                                       } else if (idx === 3) {
-                                        dateStr = (row.status === "APPROVED" && row.resolvedAt) ? fmt(row.resolvedAt) : "";
+                                        dateStr = (row.status === "APPROVED") ? (row.receivedDate ? fmt(row.receivedDate) : (row.resolvedAt ? fmt(row.resolvedAt) : "")) : "";
                                         actorStr = row.status === "APPROVED" ? `By ${row.resolvedBy || "Recipient"}` : "";
                                         descStr = row.status === "APPROVED" && row.remarks ? `"${row.remarks}"` : "";
                                       }
@@ -955,8 +1089,8 @@ export default function TransferPage() {
                         <ListItemButton key={a.assetId} selected={field.value === a.assetId}
                           onClick={() => handleAssetSelect(a, field.onChange)} sx={{ py: 0.5 }}>
                           <ListItemText
-                            primary={<Typography sx={{ fontSize: 11.5 }}>{a.assetName}</Typography>}
-                            secondary={<Typography sx={{ fontSize: 10, color: "#64748b" }}>{`${a.assetCode || ""} • ${a.locationName || ""} • status: ${a.status || ""}`}</Typography>}
+                            primary={<Typography component="span" sx={{ fontSize: 11.5 }}>{a.assetName}</Typography>}
+                            secondary={<Typography component="span" sx={{ fontSize: 10, color: "#64748b" }}>{`${a.assetCode || ""} • ${a.locationName || ""} • status: ${a.status || ""}`}</Typography>}
                           />
                         </ListItemButton>
                       ))}
@@ -1113,7 +1247,7 @@ export default function TransferPage() {
         slotProps={{ paper: { sx: premiumDialogPaperSx } }}>
         <DialogTitle sx={premiumDialogTitleSx}>
           <span style={{ display: "flex", alignItems: "center", gap: "8px", color: "#2563eb", fontWeight: 700 }}>
-            <FaTruck size={14} /> Confirm Asset Receipt
+            <FaClipboardCheck size={14} /> Confirm Asset Receipt
           </span>
           <IconButton size="small" onClick={() => { if (!receiveSaving) { setReceiveOpen(false); receiveReset(); } }} sx={{ color: COLORS.textFaint }}><FaTimes size={13} /></IconButton>
         </DialogTitle>
@@ -1129,6 +1263,17 @@ export default function TransferPage() {
               <Typography fontSize={10.5} color={COLORS.textFaint}>Please confirm that the asset has physically arrived and is in good condition.</Typography>
             </Box>
           )}
+          <FormTextField
+            name="receivedDate"
+            control={receiveControl}
+            rules={{
+              required: "Received date is required",
+              validate: (val) => isNotFutureDate(val) || "Received date cannot be in the future"
+            }}
+            label="Received Date *"
+            type="date"
+            disabled={receiveSaving}
+          />
           <FormTextField
             name="remarks"
             control={receiveControl}
@@ -1156,6 +1301,15 @@ export default function TransferPage() {
         onConfirm={confirmAction}
         onCancel={() => setConfirmOpen(false)}
         confirmLabel={actionType === "APPROVE" ? "Yes, Approve" : "Yes, Reject"}
+      />
+
+      <ConfirmDialog
+        open={cancelConfirmOpen}
+        title="Confirm Cancellation"
+        message={`Are you sure you want to cancel the transfer request for ${cancelTransferItem?.assetName}?`}
+        onConfirm={confirmCancel}
+        onCancel={() => setCancelConfirmOpen(false)}
+        confirmLabel="Yes, Cancel"
       />
 
       {/* ── Floating Bulk Action Ribbon ─────────────────────────────────── */}
@@ -1210,7 +1364,7 @@ export default function TransferPage() {
               <Button
                 variant="contained"
                 size="small"
-                startIcon={<FaTruck size={10} />}
+                startIcon={<FaClipboardCheck size={10} />}
                 onClick={() => openBulkAction("RECEIVE")}
                 sx={{ bgcolor: "#2563eb", "&:hover": { bgcolor: "#1d4ed8" }, textTransform: "none", py: 0.5, px: 2, borderRadius: "6px", fontWeight: 700, fontSize: 11.5, boxShadow: "none" }}
               >
@@ -1236,7 +1390,7 @@ export default function TransferPage() {
           <span style={{ display: "flex", alignItems: "center", gap: "8px", color: bulkActionType === "APPROVE" ? "#16a34a" : bulkActionType === "REJECT" ? "#dc2626" : "#2563eb", fontWeight: 700 }}>
             {bulkActionType === "APPROVE" && <FaCheckCircle size={14} />}
             {bulkActionType === "REJECT" && <FaTimesCircle size={14} />}
-            {bulkActionType === "RECEIVE" && <FaTruck size={14} />}
+            {bulkActionType === "RECEIVE" && <FaClipboardCheck size={14} />}
             {bulkActionType === "APPROVE" && "Bulk Approve Transfers"}
             {bulkActionType === "REJECT" && "Bulk Reject Transfers"}
             {bulkActionType === "RECEIVE" && "Bulk Confirm Receipt"}
@@ -1281,6 +1435,110 @@ export default function TransferPage() {
           >
             {bulkSaving ? "Processing..." : (bulkActionType === "RECEIVE" ? "Confirm Receipt" : "Submit Action")}
           </Button>
+        </DialogActions>
+      </Dialog>
+      {/* ── View Details Modal ───────────────────────────────────────────── */}
+      <Dialog open={viewOpen} onClose={() => setViewOpen(false)} maxWidth="sm" fullWidth slotProps={{ paper: { sx: premiumDialogPaperSx } }}>
+        <DialogTitle sx={premiumDialogTitleSx}>
+          <span>Transfer Details</span>
+          <IconButton size="small" onClick={() => setViewOpen(false)} sx={{ color: COLORS.textFaint }}><FaTimes size={13} /></IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: "18px !important", pb: 2 }}>
+          {viewLoading ? (
+            <SkeletonLoader variant="detail" />
+          ) : viewData ? (
+            <Box sx={{ display: "flex", gap: 2, flexDirection: { xs: "column", sm: "row" } }}>
+              {/* Left Mini Panel */}
+              <Box sx={{
+                width: { xs: "100%", sm: 140 },
+                flexShrink: 0,
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: "6px",
+                p: 1.5,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+                justifyContent: "center",
+                height: "fit-content"
+              }}>
+                <Box sx={{
+                  width: 48, height: 48, borderRadius: "4px",
+                  border: "1px solid " + COLORS.borderLight,
+                  bgcolor: "#fcfcfd",
+                  display: "flex", alignItems: "center", justifyContent: "center", mb: 1,
+                  overflow: "hidden"
+                }}>
+                  <FaExchangeAlt size={18} color={COLORS.primary} />
+                </Box>
+                <Typography sx={{ fontSize: "11px", fontWeight: 800, color: "#1e293b", mb: 0.5 }}>
+                  {viewData.assetName}
+                </Typography>
+                <Chip
+                  label={viewData.status}
+                  size="small"
+                  sx={{
+                    height: 16, fontSize: 8, fontWeight: 700, borderRadius: "3px",
+                    background: viewData.status === "PENDING" ? "#fffbeb"
+                      : viewData.status === "IN_TRANSIT" ? "#e0f2fe"
+                        : viewData.status === "APPROVED" ? "#ecfdf5"
+                          : "#ffe4e6",
+                    color: viewData.status === "PENDING" ? "#d97706"
+                      : viewData.status === "IN_TRANSIT" ? "#0284c7"
+                        : viewData.status === "APPROVED" ? "#10b981"
+                          : "#f43f5e",
+                    "& .MuiChip-label": { px: 1 }
+                  }}
+                />
+              </Box>
+
+              {/* Right Mini Specifications Panel */}
+              <Box sx={{ flex: 1 }}>
+                <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: COLORS.primary, mb: 0.75, textTransform: "uppercase", letterSpacing: "0.05em" }}>Transfer Route</Typography>
+                <Table size="small" sx={{ mb: 1.5, border: "1px solid " + COLORS.borderLight }}>
+                  <TableBody>
+                    <InfoRow label="Asset Code" value={viewData.assetCode || "—"} bg />
+                    <InfoRow label="From Location" value={viewData.fromLocation || "—"} />
+                    <InfoRow label="To Location" value={viewData.toLocation || "—"} bg />
+                    <InfoRow label="Priority" value={viewData.priority || "MEDIUM"} />
+                  </TableBody>
+                </Table>
+
+                <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: COLORS.primary, mb: 0.75, textTransform: "uppercase", letterSpacing: "0.05em" }}>Timeline & Participants</Typography>
+                <Table size="small" sx={{ mb: 1.5, border: "1px solid " + COLORS.borderLight }}>
+                  <TableBody>
+                    <InfoRow label="Requested By" value={viewData.requestedBy} bg />
+                    <InfoRow label="Requested At" value={viewData.requestedAt ? new Date(viewData.requestedAt).toLocaleString("en-IN") : "—"} />
+                    <InfoRow label="Resolved By" value={viewData.resolvedBy || "—"} bg />
+                    <InfoRow label="Resolved At" value={viewData.resolvedAt ? new Date(viewData.resolvedAt).toLocaleString("en-IN") : "—"} />
+                    <InfoRow label="Received Date" value={viewData.receivedDate ? fmt(viewData.receivedDate) : "—"} bg />
+                  </TableBody>
+                </Table>
+
+                {viewData.reason && (
+                  <>
+                    <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: COLORS.primary, mb: 0.5, textTransform: "uppercase", letterSpacing: "0.05em" }}>Reason</Typography>
+                    <Box sx={{ p: 1, border: "1px solid " + COLORS.borderLight, borderRadius: "3px", background: "#fcfcfd", mb: 1.5 }}>
+                      <Typography sx={{ fontSize: 10, color: COLORS.text, whiteSpace: "pre-line" }}>{viewData.reason}</Typography>
+                    </Box>
+                  </>
+                )}
+
+                {viewData.remarks && (
+                  <>
+                    <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: COLORS.primary, mb: 0.5, textTransform: "uppercase", letterSpacing: "0.05em" }}>Remarks</Typography>
+                    <Box sx={{ p: 1, border: "1px solid " + COLORS.borderLight, borderRadius: "3px", background: "#fcfcfd" }}>
+                      <Typography sx={{ fontSize: 10, color: COLORS.text, whiteSpace: "pre-line" }}>{viewData.remarks}</Typography>
+                    </Box>
+                  </>
+                )}
+              </Box>
+            </Box>
+          ) : null}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, borderTop: "1px solid " + COLORS.borderLight, pt: 1.5 }}>
+          <Button onClick={() => setViewOpen(false)} sx={outlinedBtnSx}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -28,9 +28,13 @@ import PageHeader from "../components/common/PageHeader";
 import TableCard from "../components/common/TableCard";
 import TablePagination from "../components/common/TablePagination";
 import ConfirmDialog from "../components/common/ConfirmDialog";
+import ActionBtn from "../components/common/ActionBtn";
 import StatCard from "../components/common/StatCard";
 import PremiumCard from "../components/common/PremiumCard";
-import { COLORS, outlinedBtnSx, primaryBtnSx, inputSx, selectSx, premiumDialogPaperSx, premiumDialogTitleSx, denseCellSx } from "../theme/tokens";
+import PremiumPieChart from "../components/common/PremiumPieChart";
+import ErrorState from "../components/common/ErrorState";
+import SkeletonLoader from "../components/common/SkeletonLoader";
+import { COLORS, outlinedBtnSx, primaryBtnSx, inputSx, selectSx, premiumDialogPaperSx, premiumDialogTitleSx, denseCellSx, searchFieldSx, resetBtnSx } from "../theme/tokens";
 import { required, isValidDate, isNotFutureDate, extractFieldErrors } from "../utils/validate";
 
 const DISPOSAL_METHODS = ["SOLD", "SCRAPPED", "DONATED", "DAMAGED"];
@@ -38,6 +42,7 @@ const DISPOSAL_METHODS = ["SOLD", "SCRAPPED", "DONATED", "DAMAGED"];
 import StatusBadge from "../components/common/StatusBadge";
 import EmptyState from "../components/common/EmptyState";
 import CustomTooltip from "../components/common/CustomTooltip";
+import InfoRow from "../components/common/InfoRow";
 
 const CHART_COLORS = ["#2563eb", "#10b981", "#d97706", "#f43f5e", "#8b5cf6", "#0891b2", "#f97316"];
 
@@ -75,7 +80,7 @@ export default function AssetDisposalPage() {
   const [showCount, setShowCount] = useState(10);
 
   // ── Query Fetcher ──────────────────────────────────────────────────────────
-  const { data: disposals = [], isLoading: loading } = useQuery({
+  const { data: disposals = [], isLoading: loading, isError, error, refetch } = useQuery({
     queryKey: ["disposals", debouncedSearch, methodFilter],
     queryFn: async () => {
       const params = {};
@@ -106,6 +111,7 @@ export default function AssetDisposalPage() {
   });
 
   const [userSearch, setUserSearch] = useState("");
+  const [activeMethodIdx, setActiveMethodIdx] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const [assetSearch, setAssetSearch] = useState("");
   const [assetAnchor, setAssetAnchor] = useState(null);
@@ -134,6 +140,7 @@ export default function AssetDisposalPage() {
   });
 
   const formAssetId = watch("assetId");
+  const formDisposalDate = watch("disposalDate");
 
   const formDataRef = useRef(null);
 
@@ -308,6 +315,10 @@ export default function AssetDisposalPage() {
   }
 
 
+  if (loading) {
+    return <SkeletonLoader variant="list" statCount={4} columnCount={9} />;
+  }
+
   return (
     <Box sx={{ p: 0 }}>
 
@@ -361,7 +372,6 @@ export default function AssetDisposalPage() {
         <StatCard label="Total Damaged (Loss)" value={damagedCount} icon={<FaExclamationTriangle size={15} />} iconBg="#ffe4e6" iconColor="#f43f5e" onClick={() => { setMethodFilter("DAMAGED"); setPage(0); }} />
       </Box>
 
-      {/* ── Search & Filter Controls ── */}
       <Box sx={{ display: "flex", gap: 1.5, mb: 2, flexWrap: "wrap", alignItems: "center" }}>
         <TextField
           size="small"
@@ -369,7 +379,7 @@ export default function AssetDisposalPage() {
           value={searchInput}
           onChange={handleSearchChange}
           slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
-          sx={{ minWidth: 280, "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 11.5, height: 30 } }}
+          sx={searchFieldSx(280, 340)}
         />
         <Select
           size="small"
@@ -389,19 +399,7 @@ export default function AssetDisposalPage() {
           <IconButton
             onClick={clearFilters}
             aria-label="Reset"
-            sx={{
-              border: "1px solid #e0e0e0",
-              borderRadius: "6px",
-              width: 30,
-              height: 30,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              p: 0,
-              background: "#fff",
-              color: "#757575",
-              "&:hover": { background: "#f5f5f5", borderColor: "#bbb", color: COLORS.primary },
-            }}
+            sx={resetBtnSx}
           >
             <MdRefresh size={14} />
           </IconButton>
@@ -410,8 +408,8 @@ export default function AssetDisposalPage() {
 
       <Box sx={{ mb: 2.5 }}>
         <TableCard>
-          {loading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
+          {isError ? (
+            <ErrorState message={error?.message || error?.response?.data?.message} onRetry={refetch} />
           ) : filteredDisposals.length === 0 ? (
             <EmptyState icon={FaRecycle} label="No disposal records found." />
           ) : (
@@ -449,27 +447,15 @@ export default function AssetDisposalPage() {
                         {row.disposalValue != null ? `₹${row.disposalValue.toLocaleString("en-IN")}` : "—"}
                       </TableCell>
                       <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>
-                        <Tooltip title="View Details" arrow>
-                          <IconButton
-                            size="small"
-                            onClick={() => openViewDetails(row.disposalId)}
-                            sx={{
-                              width: 22,
-                              height: 22,
-                              color: "#3b82f6",
-                              background: "transparent",
-                              borderRadius: "4px",
-                              transition: "all 0.15s ease",
-                              p: 0,
-                              "&:hover": {
-                                background: "rgba(59, 130, 246, 0.08)",
-                                color: "#2563eb",
-                              }
-                            }}
-                          >
-                            <FaEye size={11} />
-                          </IconButton>
-                        </Tooltip>
+                        <ActionBtn
+                          title="View Details"
+                          color="#3b82f6"
+                          hoverBg="rgba(59, 130, 246, 0.08)"
+                          onClick={() => openViewDetails(row.disposalId)}
+                          sx={{ border: "none", background: "transparent" }}
+                        >
+                          <FaEye size={11} />
+                        </ActionBtn>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -497,47 +483,68 @@ export default function AssetDisposalPage() {
         }}>
           {/* Chart 1: Methods Distribution */}
           <PremiumCard title="Disposal Methods breakdown" icon={<FaChartPie />} subtitle="Distribution of retired assets">
-            <Box sx={{ width: "100%", height: 150, mt: 0.5, display: "flex", justifyContent: "center", alignItems: "center" }}>
-              <Box sx={{ width: "100%", height: "100%", position: "relative" }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={methodChartData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={36}
-                      outerRadius={50}
-                      paddingAngle={3}
-                      dataKey="value"
-                      animationDuration={1500}
-                    >
-                      {methodChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} stroke="#ffffff" strokeWidth={1} />
-                      ))}
-                    </Pie>
-                    <ReTooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center", pointerEvents: "none" }}>
-                  <Typography sx={{ fontSize: "15px", fontWeight: 950, color: "#0f172a", lineHeight: 1 }}>
-                    {totalRecords}
-                  </Typography>
-                  <Typography sx={{ fontSize: "7px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", mt: 0.1 }}>
-                    Retired
-                  </Typography>
-                </Box>
+            <Box sx={{ width: "100%", height: 150, mt: 0.5, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+              {/* Left: Solid Pie Chart */}
+              <Box sx={{ width: "52%", height: "100%", position: "relative" }}>
+                <PremiumPieChart
+                  data={methodChartData}
+                  colors={CHART_COLORS}
+                  isDonut={false}
+                  paddingAngle={2}
+                  cornerRadius={4}
+                  activeIndex={activeMethodIdx}
+                  setActiveIndex={setActiveMethodIdx}
+                />
               </Box>
 
-              {/* Custom Legend */}
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, pl: 1, minWidth: 100 }}>
-                {methodChartData.map((item, index) => (
-                  <Box key={item.name} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: CHART_COLORS[index % CHART_COLORS.length] }} />
-                    <Typography sx={{ fontSize: "9.5px", fontWeight: 750, color: "#475569" }}>
-                      {item.name}: {item.value}
-                    </Typography>
-                  </Box>
-                ))}
+              {/* Right: Custom Premium Legend */}
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, width: "48%", pr: 0.5, maxHeight: 140, overflowY: "auto" }}>
+                {methodChartData.length > 0 ? (
+                  methodChartData.map((item, index) => {
+                    const total = methodChartData.reduce((sum, current) => sum + current.value, 0);
+                    const percent = total > 0 ? Math.round((item.value / total) * 100) : 0;
+                    const isActive = activeMethodIdx === index;
+                    return (
+                      <Box
+                        key={item.name}
+                        onMouseEnter={() => setActiveMethodIdx(index)}
+                        onMouseLeave={() => setActiveMethodIdx(null)}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.75,
+                          p: "4px 8px",
+                          borderRadius: "4px",
+                          cursor: "pointer",
+                          transition: "all 150ms ease",
+                          bgcolor: isActive ? "rgba(79, 70, 229, 0.06)" : "transparent",
+                          border: isActive ? "1px solid rgba(79, 70, 229, 0.15)" : "1px solid transparent"
+                        }}
+                      >
+                        <Box sx={{
+                          width: 7,
+                          height: 7,
+                          borderRadius: "50%",
+                          bgcolor: CHART_COLORS[index % CHART_COLORS.length],
+                          boxShadow: isActive ? `0 0 6px ${CHART_COLORS[index % CHART_COLORS.length]}` : "none",
+                          flexShrink: 0
+                        }} />
+                        <Box sx={{ minWidth: 0, flex: 1, lineHeight: 1.15 }}>
+                          <Typography noWrap sx={{ fontSize: "11px", fontWeight: isActive ? 800 : 700, color: isActive ? "#0f172a" : "#475569" }}>
+                            {item.name}
+                          </Typography>
+                          <Typography sx={{ fontSize: "9px", fontWeight: 600, color: "#94a3b8" }}>
+                            {item.value} ({percent}%)
+                          </Typography>
+                        </Box>
+                      </Box>
+                    );
+                  })
+                ) : (
+                  <Typography sx={{ fontSize: "9.5px", color: "#64748b", py: 2, textAlign: "center" }}>
+                    No retired records
+                  </Typography>
+                )}
               </Box>
             </Box>
           </PremiumCard>
@@ -577,7 +584,7 @@ export default function AssetDisposalPage() {
         </DialogTitle>
         <DialogContent sx={{ pt: "18px !important", pb: 2 }}>
           {viewLoading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}><CircularProgress size={24} /></Box>
+            <SkeletonLoader variant="detail" />
           ) : viewData ? (
             <Box sx={{ display: "flex", gap: 2, flexDirection: { xs: "column", sm: "row" } }}>
               {/* Left Mini Panel */}
@@ -619,32 +626,49 @@ export default function AssetDisposalPage() {
                 <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: COLORS.primary, mb: 0.75, textTransform: "uppercase", letterSpacing: "0.05em" }}>Disposal Information</Typography>
                 <Table size="small" sx={{ mb: 1.5, border: "1px solid " + COLORS.borderLight }}>
                   <TableBody>
-                    <TableRow sx={{ background: "#fcfcfd" }}>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted, width: "30%" }}>Asset Code</TableCell>
-                      <TableCell sx={denseCellSx}>{viewData.assetCode || "—"}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Method</TableCell>
-                      <TableCell sx={denseCellSx}>{viewData.disposalMethod}</TableCell>
-                    </TableRow>
-                    <TableRow sx={{ background: "#fcfcfd" }}>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Disposed By</TableCell>
-                      <TableCell sx={denseCellSx}>{viewData.disposedBy}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Recovered</TableCell>
-                      <TableCell sx={denseCellSx}>{viewData.disposalValue != null ? `₹${viewData.disposalValue.toLocaleString("en-IN")}` : "—"}</TableCell>
-                    </TableRow>
+                    <InfoRow label="Asset Code" value={viewData.assetCode || "—"} bg />
+                    <InfoRow label="Method" value={viewData.disposalMethod} />
+                    <InfoRow label="Disposed By" value={viewData.disposedBy} bg />
+                    <InfoRow label="Recovered" value={viewData.disposalValue != null ? `₹${viewData.disposalValue.toLocaleString("en-IN")}` : "—"} />
                   </TableBody>
                 </Table>
+
+                {viewData.purchaseCost != null && (
+                  <>
+                    <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: COLORS.primary, mb: 0.75, textTransform: "uppercase", letterSpacing: "0.05em" }}>Financial History</Typography>
+                    <Table size="small" sx={{ mb: 1.5, border: "1px solid " + COLORS.borderLight }}>
+                      <TableBody>
+                        <InfoRow label="Purchase Cost" value={`₹${viewData.purchaseCost.toLocaleString("en-IN")}`} bg />
+                        <InfoRow label="Purchase Date" value={fmt(viewData.purchaseDate)} />
+                        {(() => {
+                          const depValue = calculateDepreciatedValue(viewData.purchaseCost, viewData.purchaseDate, viewData.disposalDate);
+                          if (depValue == null) return null;
+                          const netGainLoss = (viewData.disposalValue || 0) - depValue;
+                          return (
+                            <>
+                              <InfoRow label="Book Value" value={`₹${depValue.toLocaleString("en-IN")}`} bg />
+                              <InfoRow
+                                label="Net Gain/Loss"
+                                value={
+                                  <span style={{ color: netGainLoss >= 0 ? "#15803d" : "#b91c1c", fontWeight: 700 }}>
+                                    {netGainLoss >= 0
+                                      ? `₹${netGainLoss.toLocaleString("en-IN")} (Gain)`
+                                      : `₹${Math.abs(netGainLoss).toLocaleString("en-IN")} (Loss)`}
+                                  </span>
+                                }
+                              />
+                            </>
+                          );
+                        })()}
+                      </TableBody>
+                    </Table>
+                  </>
+                )}
 
                 <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: COLORS.primary, mb: 0.75, textTransform: "uppercase", letterSpacing: "0.05em" }}>Timeline Details</Typography>
                 <Table size="small" sx={{ mb: 1.5, border: "1px solid " + COLORS.borderLight }}>
                   <TableBody>
-                    <TableRow sx={{ background: "#fcfcfd" }}>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted, width: "30%" }}>Disposal Date</TableCell>
-                      <TableCell sx={denseCellSx}>{fmt(viewData.disposalDate)}</TableCell>
-                    </TableRow>
+                    <InfoRow label="Disposal Date" value={fmt(viewData.disposalDate)} bg />
                   </TableBody>
                 </Table>
 
@@ -759,13 +783,13 @@ export default function AssetDisposalPage() {
                           sx={{ py: 0.5 }}
                         >
                           <ListItemText
-                            primary={<Typography sx={{ fontSize: 12 }}>{a.assetName}</Typography>}
-                            secondary={<Typography sx={{ fontSize: 10.5, color: "#64748b" }}>{a.assetCode || ""}</Typography>}
+                            primary={<Typography component="span" sx={{ fontSize: 12 }}>{a.assetName}</Typography>}
+                            secondary={<Typography component="span" sx={{ fontSize: 10.5, color: "#64748b" }}>{a.assetCode || ""}</Typography>}
                           />
                         </ListItemButton>
                       )) : (
                         <ListItemButton disabled>
-                          <ListItemText primary={<Typography sx={{ fontSize: 12 }}>No assets found</Typography>} />
+                          <ListItemText primary={<Typography component="span" sx={{ fontSize: 12 }}>No assets found</Typography>} />
                         </ListItemButton>
                       );
                     })()}
@@ -848,6 +872,66 @@ export default function AssetDisposalPage() {
             />
           </Box>
 
+          {(() => {
+            const selectedAsset = disposableAssets.find((a) => a.assetId === formAssetId);
+            const depreciatedVal = selectedAsset && selectedAsset.cost != null && formDisposalDate
+              ? calculateDepreciatedValue(selectedAsset.cost, selectedAsset.purchaseDate, formDisposalDate)
+              : null;
+
+            if (!selectedAsset || selectedAsset.cost == null) return null;
+
+            return (
+              <Box sx={{
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: "8px",
+                p: 1.5,
+                mt: -0.5,
+                mb: 0.5,
+                display: "flex",
+                flexDirection: "column",
+                gap: 1
+              }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <Typography fontSize={11} fontWeight={600} color="#475569">
+                    Purchase Cost: <strong style={{ color: "#0f172a" }}>₹{selectedAsset.cost.toLocaleString("en-IN")}</strong>
+                  </Typography>
+                  <Typography fontSize={10} color="#64748b">
+                    Purchased: {selectedAsset.purchaseDate ? fmt(selectedAsset.purchaseDate) : "—"}
+                  </Typography>
+                </Box>
+                {depreciatedVal != null && (
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 0.5, borderTop: "1px dashed #e2e8f0", pt: 1 }}>
+                    <Box>
+                      <Typography fontSize={11} fontWeight={600} color="#475569">
+                        Estimated Book Value: <strong style={{ color: "#0f172a" }}>₹{depreciatedVal.toLocaleString("en-IN")}</strong>
+                      </Typography>
+                      <Typography fontSize={9} color="#94a3b8">
+                        Based on standard 15% Written-Down Value (WDV) depreciation
+                      </Typography>
+                    </Box>
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={() => setValue("disposalValue", depreciatedVal.toString())}
+                      sx={{
+                        fontSize: "10.5px",
+                        textTransform: "none",
+                        color: COLORS.primary,
+                        p: 0.5,
+                        minWidth: 0,
+                        fontWeight: 700,
+                        "&:hover": { background: "rgba(59, 130, 246, 0.08)" }
+                      }}
+                    >
+                      Use Value
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            );
+          })()}
+
           <FormTextField
             name="disposalValue"
             control={control}
@@ -916,4 +1000,29 @@ function defaultForm() {
     disposalDate: today(),
     disposalValue: "",
   };
+}
+
+function calculateDepreciatedValue(cost, purchaseDateStr, disposalDateStr) {
+  if (!cost || !purchaseDateStr || !disposalDateStr) return null;
+
+  const costVal = Number(cost);
+  if (isNaN(costVal) || costVal <= 0) return null;
+
+  const purchaseDate = new Date(purchaseDateStr);
+  const disposalDate = new Date(disposalDateStr);
+
+  if (isNaN(purchaseDate.getTime()) || isNaN(disposalDate.getTime())) return null;
+  if (disposalDate < purchaseDate) return costVal;
+
+  const yearsDiff = disposalDate.getFullYear() - purchaseDate.getFullYear();
+  const monthsDiff = disposalDate.getMonth() - purchaseDate.getMonth();
+  const totalMonths = (yearsDiff * 12) + monthsDiff;
+
+  if (totalMonths <= 0) return costVal;
+
+  // 15% annual WDV depreciation (0.15)
+  const annualDepreciationRate = 0.15;
+  const depreciatedValue = costVal * Math.pow(1 - annualDepreciationRate, totalMonths / 12);
+
+  return Math.round(depreciatedValue);
 }

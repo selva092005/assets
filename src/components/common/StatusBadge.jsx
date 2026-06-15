@@ -7,6 +7,7 @@ const EXTRA_STYLES = {
   PENDING: { bg: "#fef3c7", color: "#b45309" },
   APPROVED: { bg: "#d1fae5", color: "#065f46" },
   REJECTED: { bg: "#fee2e2", color: "#991b1b" },
+  CANCELLED: { bg: "#f1f5f9", color: "#475569" },
   IN_TRANSIT: { bg: "#e0f2fe", color: "#0369a1" },
 
   // Disposal Methods

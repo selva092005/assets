@@ -5,8 +5,9 @@ import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Box, Button, Grid, MenuItem,
-  CircularProgress, Typography, InputAdornment,
+  Typography, InputAdornment, CircularProgress,
 } from "@mui/material";
+import SkeletonLoader from "../components/common/SkeletonLoader";
 import {
   FaArrowLeft, FaUser, FaEnvelope, FaLock, FaUserTag,
   FaCheckCircle, FaEdit, FaHome, FaChevronRight, FaUserPlus,
@@ -144,8 +145,8 @@ export default function UserFormPage() {
   };
 
   if (loading) return (
-    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh" }}>
-      <CircularProgress />
+    <Box sx={{ p: 2 }}>
+      <SkeletonLoader variant="detail" />
     </Box>
   );
 

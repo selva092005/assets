@@ -33,10 +33,13 @@ import ActionBtn from "../components/common/ActionBtn";
 import TablePagination from "../components/common/TablePagination";
 import PremiumCard from "../components/common/PremiumCard";
 import StatCard from "../components/common/StatCard";
-import { COLORS, outlinedBtnSx, primaryBtnSx, selectSx, inputSx, premiumDialogPaperSx, premiumDialogTitleSx, premiumFormGroupSx, denseCellSx } from "../theme/tokens";
+import ErrorState from "../components/common/ErrorState";
+import SkeletonLoader from "../components/common/SkeletonLoader";
+import { COLORS, outlinedBtnSx, primaryBtnSx, selectSx, inputSx, premiumDialogPaperSx, premiumDialogTitleSx, premiumFormGroupSx, denseCellSx, searchFieldSx, resetBtnSx, dateFieldSx } from "../theme/tokens";
 import { required, isValidDate, isDateAfter, extractFieldErrors } from "../utils/validate";
 import StatusBadge from "../components/common/StatusBadge";
 import EmptyState from "../components/common/EmptyState";
+import InfoRow from "../components/common/InfoRow";
 
 // ── Donut Chart ───────────────────────────────────────────────────────────────
 function DonutChart({ segments, total }) {
@@ -297,7 +300,7 @@ export default function AssetAllocationPage() {
   const [allocateOpen, setAllocateOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const { data: allocationsData, isLoading: loading } = useQuery({
+  const { data: allocationsData, isLoading: loading, isError, error, refetch } = useQuery({
     queryKey: ["allocations", page, showCount, debouncedSearch, statusFilter, fromDate, toDate],
     queryFn: async () => {
       const params = { page, size: showCount };
@@ -525,6 +528,10 @@ export default function AssetAllocationPage() {
 
 
   // ─────────────────────────────────────────────────────────────────────────
+  if (loading) {
+    return <SkeletonLoader variant="list" statCount={5} columnCount={11} />;
+  }
+
   return (
     <Box sx={{ p: 0 }}>
 
@@ -604,7 +611,7 @@ export default function AssetAllocationPage() {
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(0); }}
           slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
-          sx={{ minWidth: 240, "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 11.5, height: 30 } }}
+          sx={searchFieldSx(240, 300)}
         />
         <Select
           size="small" value={statusFilter} onChange={handleStatusChange} displayEmpty
@@ -614,37 +621,33 @@ export default function AssetAllocationPage() {
           <MenuItem value="ACTIVE">Active</MenuItem>
           <MenuItem value="RETURNED">Returned</MenuItem>
         </Select>
-        <TextField
-          size="small" type="date" label="From Date"
-          value={fromDate} onChange={handleFromDate}
-          slotProps={{ inputLabel: { shrink: true } }}
-          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 11.5, height: 30 } }}
-        />
-        <TextField
-          size="small" type="date" label="To Date"
-          value={toDate} onChange={handleToDate}
-          slotProps={{ inputLabel: { shrink: true } }}
-          sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 11.5, height: 30 } }}
-        />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography sx={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>From</Typography>
+          <TextField
+            type="date"
+            size="small"
+            value={fromDate}
+            onChange={handleFromDate}
+            sx={dateFieldSx(130)}
+          />
+        </Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Typography sx={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>To</Typography>
+          <TextField
+            type="date"
+            size="small"
+            value={toDate}
+            onChange={handleToDate}
+            sx={dateFieldSx(130)}
+          />
+        </Box>
 
         {/* Reset icon button — same style as existing app buttons */}
         <Tooltip title="Reset filters">
           <IconButton
             onClick={clearFilters}
             aria-label="Reset"
-            sx={{
-              border: "1px solid #e0e0e0",
-              borderRadius: "6px",
-              width: 30,
-              height: 30,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              p: 0,
-              background: "#fff",
-              color: "#757575",
-              "&:hover": { background: "#f5f5f5", borderColor: "#bbb", color: COLORS.primary },
-            }}
+            sx={resetBtnSx}
           >
             <MdRefresh size={14} />
           </IconButton>
@@ -653,8 +656,8 @@ export default function AssetAllocationPage() {
 
       {/* ── Table ───────────────────────────────────────────────────────── */}
       <TableCard>
-        {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
+        {isError ? (
+          <ErrorState message={error?.message || error?.response?.data?.message} onRetry={refetch} />
         ) : allocations.length === 0 ? (
           <EmptyState icon={FaBoxOpen} label="No allocation records found." />
         ) : (
@@ -702,50 +705,26 @@ export default function AssetAllocationPage() {
                       </TableCell>
                       <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>
                         <Box sx={{ display: "flex", gap: 0.5 }}>
-                          <Tooltip title="View Details" arrow>
-                            <IconButton
-                              size="small"
-                              onClick={() => openView(row.allocationId)}
-                              sx={{
-                                width: 22,
-                                height: 22,
-                                color: "#3b82f6",
-                                background: "transparent",
-                                borderRadius: "4px",
-                                transition: "all 0.15s ease",
-                                p: 0,
-                                "&:hover": {
-                                  background: "rgba(59, 130, 246, 0.08)",
-                                  color: "#2563eb",
-                                }
-                              }}
-                            >
-                              <FaEye size={11} />
-                            </IconButton>
-                          </Tooltip>
-                          {canWrite && row.status === "ACTIVE" && (
-                            <Tooltip title="Mark as Returned" arrow>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleReturnClick(row)}
-                                sx={{
-                                  width: 22,
-                                  height: 22,
-                                  color: "#10b981",
-                                  background: "transparent",
-                                  borderRadius: "4px",
-                                  transition: "all 0.15s ease",
-                                  p: 0,
-                                  "&:hover": {
-                                    background: "rgba(16, 185, 129, 0.08)",
-                                    color: "#059669",
-                                  }
-                                }}
-                              >
-                                <FaUndo size={11} />
-                              </IconButton>
-                            </Tooltip>
-                          )}
+                           <ActionBtn
+                             title="View Details"
+                             color="#3b82f6"
+                             hoverBg="rgba(59, 130, 246, 0.08)"
+                             onClick={() => openView(row.allocationId)}
+                             sx={{ border: "none", background: "transparent" }}
+                           >
+                             <FaEye size={11} />
+                           </ActionBtn>
+                           {canWrite && row.status === "ACTIVE" && (
+                             <ActionBtn
+                               title="Mark as Returned"
+                               color="#10b981"
+                               hoverBg="rgba(16, 185, 129, 0.08)"
+                               onClick={() => handleReturnClick(row)}
+                               sx={{ border: "none", background: "transparent" }}
+                             >
+                               <FaUndo size={11} />
+                             </ActionBtn>
+                           )}
                         </Box>
                       </TableCell>
                     </TableRow>
@@ -833,11 +812,11 @@ export default function AssetAllocationPage() {
                         <ListItemButton key={a.assetId} selected={field.value === a.assetId}
                           onClick={() => { field.onChange(a.assetId); setAssetAnchor(null); setAssetSearch(""); }} sx={{ py: 0.5 }}>
                           <ListItemText
-                            primary={<Typography sx={{ fontSize: 12 }}>{a.assetName}</Typography>}
-                            secondary={<Typography sx={{ fontSize: 10.5, color: "#64748b" }}>{a.assetCode || ""}</Typography>}
+                            primary={<Typography component="span" sx={{ fontSize: 12 }}>{a.assetName}</Typography>}
+                            secondary={<Typography component="span" sx={{ fontSize: 10.5, color: "#64748b" }}>{a.assetCode || ""}</Typography>}
                           />
                         </ListItemButton>
-                      )) : <ListItemButton disabled><ListItemText primary={<Typography sx={{ fontSize: 12 }}>No assets found</Typography>} /></ListItemButton>;
+                      )) : <ListItemButton disabled><ListItemText primary={<Typography component="span" sx={{ fontSize: 12 }}>No assets found</Typography>} /></ListItemButton>;
                     })()}
                   </List>
                 </Popover>
@@ -909,7 +888,7 @@ export default function AssetAllocationPage() {
                           <ListItemText
                             primary={
                               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                                <Typography sx={{ fontSize: 12, fontWeight: 500 }}>{u.userName}</Typography>
+                                <Typography component="span" sx={{ fontSize: 12, fontWeight: 500 }}>{u.userName}</Typography>
                                 {u.userRole && (
                                   <Chip
                                     label={u.userRole}
@@ -927,10 +906,10 @@ export default function AssetAllocationPage() {
                                 )}
                               </Box>
                             }
-                            secondary={<Typography sx={{ fontSize: 10.5, color: "#64748b" }}>{u.userEmail}</Typography>}
+                            secondary={<Typography component="span" sx={{ fontSize: 10.5, color: "#64748b" }}>{u.userEmail}</Typography>}
                           />
                         </ListItemButton>
-                      )) : <ListItemButton disabled><ListItemText primary={<Typography sx={{ fontSize: 12 }}>No users found</Typography>} /></ListItemButton>;
+                      )) : <ListItemButton disabled><ListItemText primary={<Typography component="span" sx={{ fontSize: 12 }}>No users found</Typography>} /></ListItemButton>;
                     })()}
                   </List>
                 </Popover>
@@ -1024,7 +1003,7 @@ export default function AssetAllocationPage() {
         </DialogTitle>
         <DialogContent sx={{ pt: "18px !important", pb: 2 }}>
           {viewLoading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}><CircularProgress size={24} /></Box>
+            <SkeletonLoader variant="detail" />
           ) : viewData ? (
             <Box sx={{ display: "flex", gap: 2, flexDirection: { xs: "column", sm: "row" } }}>
               {/* Left Mini Panel */}
@@ -1075,40 +1054,19 @@ export default function AssetAllocationPage() {
                 <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: COLORS.primary, mb: 0.75, textTransform: "uppercase", letterSpacing: "0.05em" }}>Allocation Information</Typography>
                 <Table size="small" sx={{ mb: 1.5, border: "1px solid " + COLORS.borderLight }}>
                   <TableBody>
-                    <TableRow sx={{ background: "#fcfcfd" }}>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted, width: "30%" }}>Asset Code</TableCell>
-                      <TableCell sx={denseCellSx}>{viewData.assetCode || "—"}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Location</TableCell>
-                      <TableCell sx={denseCellSx}>{viewData.locationName || "—"}</TableCell>
-                    </TableRow>
-                    <TableRow sx={{ background: "#fcfcfd" }}>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Assigned To</TableCell>
-                      <TableCell sx={denseCellSx}>{viewData.assignedTo}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Assigned By</TableCell>
-                      <TableCell sx={denseCellSx}>{viewData.assignedBy}</TableCell>
-                    </TableRow>
+                    <InfoRow label="Asset Code" value={viewData.assetCode || "—"} bg />
+                    <InfoRow label="Location" value={viewData.locationName || "—"} />
+                    <InfoRow label="Assigned To" value={viewData.assignedTo} bg />
+                    <InfoRow label="Assigned By" value={viewData.assignedBy} />
                   </TableBody>
                 </Table>
 
                 <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: COLORS.primary, mb: 0.75, textTransform: "uppercase", letterSpacing: "0.05em" }}>Timeline Details</Typography>
                 <Table size="small" sx={{ mb: 1.5, border: "1px solid " + COLORS.borderLight }}>
                   <TableBody>
-                    <TableRow sx={{ background: "#fcfcfd" }}>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted, width: "30%" }}>Assigned Date</TableCell>
-                      <TableCell sx={denseCellSx}>{fmt(viewData.assignedDate)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Expected Return</TableCell>
-                      <TableCell sx={denseCellSx}>{viewData.expectedReturnDate ? fmt(viewData.expectedReturnDate) : "—"}</TableCell>
-                    </TableRow>
-                    <TableRow sx={{ background: "#fcfcfd" }}>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Return Date</TableCell>
-                      <TableCell sx={denseCellSx}>{viewData.returnDate ? fmt(viewData.returnDate) : "—"}</TableCell>
-                    </TableRow>
+                    <InfoRow label="Assigned Date" value={fmt(viewData.assignedDate)} bg />
+                    <InfoRow label="Expected Return" value={viewData.expectedReturnDate ? fmt(viewData.expectedReturnDate) : "—"} />
+                    <InfoRow label="Return Date" value={viewData.returnDate ? fmt(viewData.returnDate) : "—"} bg />
                   </TableBody>
                 </Table>
 

@@ -5,7 +5,7 @@ const unwrap = (res) => res.data?.data ?? res.data;
 
 // Trigger file download from blob
 const download = (blob, fileName) => {
-  const url  = window.URL.createObjectURL(new Blob([blob]));
+  const url = window.URL.createObjectURL(new Blob([blob]));
   const link = Object.assign(document.createElement("a"), { href: url, download: fileName });
   document.body.appendChild(link);
   link.click();
@@ -17,10 +17,10 @@ export const getAssets = async (params = {}) => {
   const { keyword, type, location, status, page, size } = params;
   const res = await API.get("/api/assets/search", {
     params: {
-      keyword:  keyword || undefined,
-      type:     type || undefined,
+      keyword: keyword || undefined,
+      type: type || undefined,
       location: location || undefined,
-      status:   status || undefined,
+      status: status || undefined,
       page,
       size,
       expiringWarrantyInDays: params.expiringWarrantyInDays || undefined,
@@ -57,11 +57,11 @@ export const deleteAsset = async (id) => {
 export const getAssetTypes = async () => {
   const res = await API.get("/api/types");
   const raw = res.data;
-  return Array.isArray(raw)       ? raw
-       : Array.isArray(raw?.data) ? raw.data
-       : raw?.data?.content       ? raw.data.content
-       : raw?.content             ? raw.content
-       : [];
+  return Array.isArray(raw) ? raw
+    : Array.isArray(raw?.data) ? raw.data
+      : raw?.data?.content ? raw.data.content
+        : raw?.content ? raw.content
+          : [];
 };
 
 export const uploadAssetImage = async (file) => {
@@ -107,5 +107,25 @@ export const createAssetType = async (typeName) => {
 // GET /api/assets/upload-history → returns list of upload histories
 export const getBulkUploadHistory = async () => {
   const res = await API.get("/api/assets/upload-history");
+  return res.data?.data ?? res.data;
+};
+
+// POST /api/assets/bulk-excel/failed-rows → blob download
+export const downloadFailedRowsExcel = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await API.post("/api/assets/bulk-excel/failed-rows", formData, {
+    responseType: "blob",
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  download(res.data, "failed_assets_rows.xlsx");
+};
+
+export const parseExcelFile = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await API.post("/api/assets/parse-excel", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return res.data?.data ?? res.data;
 };

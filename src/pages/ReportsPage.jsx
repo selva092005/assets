@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import {
-  Box, CircularProgress, Grid, Typography, Button, Paper,
+  Box, Grid, Typography, Button, Paper,
   TextField, MenuItem, Select, FormControl, InputLabel,
-  Table, TableBody, TableCell, TableHead, TableRow
+  Table, TableBody, TableCell, TableHead, TableRow,
+  CircularProgress
 } from "@mui/material";
+import SkeletonLoader from "../components/common/SkeletonLoader";
 import {
   PieChart, Pie, Cell, Tooltip as ReTooltip, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, ResponsiveContainer, Legend, LabelList
@@ -16,6 +18,7 @@ import {
 import toast from "../utils/toast.jsx";
 import PageHeader from "../components/common/PageHeader";
 import PremiumCard from "../components/common/PremiumCard";
+import PremiumPieChart from "../components/common/PremiumPieChart";
 import StatCard from "../components/common/StatCard";
 import { getFullReport, exportAllocations, exportTransfers, exportDisposals } from "../services/report_service";
 import { exportAssets } from "../services/assets_service";
@@ -47,12 +50,12 @@ const CustomPieLegend = ({ data, colors }) => {
       {data.map((item, index) => (
         <Box key={item.name} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
           <Box sx={{
-            width: 7,
-            height: 7,
+            width: 6,
+            height: 6,
             borderRadius: "50%",
             background: colors[index % colors.length]
           }} />
-          <Typography sx={{ fontSize: "10px", fontWeight: 600, color: "#64748b" }}>
+          <Typography sx={{ fontSize: "11px", fontWeight: 700, color: "#64748b" }}>
             {item.name} ({item.value})
           </Typography>
         </Box>
@@ -113,6 +116,12 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState({});
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [activeTypeIdx, setActiveTypeIdx] = useState(null);
+  const [activeCompanyIdx, setActiveCompanyIdx] = useState(null);
+  const [activeLocationIdx, setActiveLocationIdx] = useState(null);
+  const [activeAllocIdx, setActiveAllocIdx] = useState(null);
+  const [activeTransferIdx, setActiveTransferIdx] = useState(null);
+  const [activeDisposalIdx, setActiveDisposalIdx] = useState(null);
 
   // ── Depreciation Calculator States ──
   const [calcCost, setCalcCost] = useState(100000);
@@ -212,11 +221,7 @@ export default function ReportsPage() {
   };
 
   if (loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "50vh" }}>
-        <CircularProgress size={24} sx={{ color: "#3b82f6" }} />
-      </Box>
-    );
+    return <SkeletonLoader variant="dashboard" />;
   }
 
   const d = report ?? {};
@@ -224,6 +229,18 @@ export default function ReportsPage() {
   const byLocation = mapToChartData(d.byLocation);
   const byCompany = mapToChartData(d.byCompany);
   const byMethod = mapToChartData(d.disposalsByMethod);
+
+  const allocDataList = [
+    { name: "Active", value: Number(d.activeAllocations ?? 0) },
+    { name: "Returned", value: Number(d.returnedAllocations ?? 0) },
+    { name: "Overdue", value: Number(d.overdueAllocations ?? 0) }
+  ].filter(x => x.value > 0);
+
+  const transferDataList = [
+    { name: "Approved", value: Number(d.approvedTransfers ?? 0) },
+    { name: "Pending", value: Number(d.pendingTransfers ?? 0) },
+    { name: "Rejected", value: Number(d.rejectedTransfers ?? 0) }
+  ].filter(x => x.value > 0);
 
   const downloadReports = [
     { type: "assets", label: "Asset Registry", desc: "Inventory list.", fn: exportAssets, filename: "Asset Registry" },
@@ -252,23 +269,12 @@ export default function ReportsPage() {
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5, pb: 1, borderBottom: "1px solid #f1f5f9" }}>
           <Box>
             <Typography sx={{ fontSize: "11.5px", fontWeight: 800, color: "#0f172a", textTransform: "uppercase", letterSpacing: "0.05em", display: "flex", alignItems: "center", gap: 0.75 }}>
-              <FaFileExcel style={{ color: "#10b981", fontSize: 12 }} /> Report Export Hub
+              <FaFileExcel style={{ color: COLORS.primary, fontSize: 12 }} /> Report Export Hub
             </Typography>
             <Typography sx={{ fontSize: "9.5px", color: "#64748b", mt: 0.25 }}>
               Select a module ledger to export full real-time database registers to Excel sheets.
             </Typography>
           </Box>
-          {isDemoMode ? (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, bgcolor: "#fff7ed", color: "#ea580c", px: 1, py: 0.25, borderRadius: "10px", border: "1px solid #ffedd5" }}>
-              <FaChartPie size={8} />
-              <Typography sx={{ fontSize: "8px", fontWeight: 800, textTransform: "uppercase" }}>Demo Mode</Typography>
-            </Box>
-          ) : (
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, bgcolor: "#ecfdf5", color: "#10b981", px: 1, py: 0.25, borderRadius: "10px" }}>
-              <FaCheckCircle size={8} />
-              <Typography sx={{ fontSize: "8px", fontWeight: 700, textTransform: "uppercase" }}>Synced</Typography>
-            </Box>
-          )}
         </Box>
 
         {/* Dense CSS Grid for Report Cards */}
@@ -320,9 +326,9 @@ export default function ReportsPage() {
                   fontWeight: 700,
                   py: "4px",
                   borderRadius: "4px",
-                  background: "#10b981",
+                  background: COLORS.primary,
                   color: "#ffffff",
-                  "&:hover": { background: "#059669" },
+                  "&:hover": { background: COLORS.primaryDark },
                   "&.Mui-disabled": { background: "#f1f5f9", color: "#94a3b8" }
                 }}
               >
@@ -371,40 +377,68 @@ export default function ReportsPage() {
           subtitle="Category breakdowns"
           icon={<FaLaptop />}
         >
-          <Box sx={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center" }}>
-            <Box sx={{ position: "relative", width: "100%", height: 150 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={byType.length > 0 ? byType : [{ name: "No Categories", value: 1 }]}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius="50%"
-                    outerRadius="70%"
-                    paddingAngle={byType.length > 0 ? 2.5 : 0}
-                    dataKey="value"
-                  >
-                    {byType.length > 0
-                      ? byType.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="#ffffff" strokeWidth={1.5} />)
-                      : <Cell fill="#f1f5f9" stroke="#ffffff" strokeWidth={1.5} />
-                    }
-                  </Pie>
-                  {byType.length > 0 && <ReTooltip content={<CustomTooltip />} />}
-                </PieChart>
-              </ResponsiveContainer>
-              {/* Center Text Summary */}
-              <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center", pointerEvents: "none" }}>
-                <Typography sx={{ fontSize: "20px", fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{d.totalAssets ?? 0}</Typography>
-                <Typography sx={{ fontSize: "9.5px", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", mt: 0.25 }}>Assets</Typography>
-              </Box>
+          <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: "100%", mt: 1 }}>
+            {/* Left: The Solid Pie Chart */}
+            <Box sx={{ position: "relative", width: "52%", height: 140 }}>
+              <PremiumPieChart
+                data={byType}
+                colors={CHART_COLORS}
+                isDonut={false}
+                paddingAngle={2}
+                cornerRadius={4}
+                activeIndex={activeTypeIdx}
+                setActiveIndex={setActiveTypeIdx}
+              />
             </Box>
-            {byType.length > 0 ? (
-              <CustomPieLegend data={byType} colors={CHART_COLORS} />
-            ) : (
-              <Typography sx={{ fontSize: "9px", fontWeight: 700, color: "#cbd5e1", textAlign: "center", mt: 1.5, textTransform: "uppercase", letterSpacing: "0.02em" }}>
-                No Categories Registered
-              </Typography>
-            )}
+            {/* Right: Premium Side Legend */}
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, width: "48%", pr: 0.5, maxHeight: 140, overflowY: "auto" }}>
+              {byType.length > 0 ? (
+                byType.map((item, index) => {
+                  const total = byType.reduce((sum, current) => sum + current.value, 0);
+                  const percent = total > 0 ? Math.round((item.value / total) * 100) : 0;
+                  const isActive = activeTypeIdx === index;
+                  return (
+                    <Box
+                      key={item.name}
+                      onMouseEnter={() => setActiveTypeIdx(index)}
+                      onMouseLeave={() => setActiveTypeIdx(null)}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.75,
+                        p: "4px 8px",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        transition: "all 150ms ease",
+                        bgcolor: isActive ? "rgba(79, 70, 229, 0.06)" : "transparent",
+                        border: isActive ? "1px solid rgba(79, 70, 229, 0.15)" : "1px solid transparent"
+                      }}
+                    >
+                      <Box sx={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: "50%",
+                        bgcolor: CHART_COLORS[index % CHART_COLORS.length],
+                        boxShadow: isActive ? `0 0 6px ${CHART_COLORS[index % CHART_COLORS.length]}` : "none",
+                        flexShrink: 0
+                      }} />
+                      <Box sx={{ minWidth: 0, flex: 1, lineHeight: 1.15 }}>
+                        <Typography noWrap sx={{ fontSize: "11px", fontWeight: isActive ? 800 : 700, color: isActive ? "#0f172a" : "#475569" }}>
+                          {item.name}
+                        </Typography>
+                        <Typography sx={{ fontSize: "9px", fontWeight: 600, color: "#94a3b8" }}>
+                          {item.value} ({percent}%)
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })
+              ) : (
+                <Typography sx={{ fontSize: "9px", fontWeight: 700, color: "#cbd5e1", textAlign: "center", textTransform: "uppercase" }}>
+                  No Categories
+                </Typography>
+              )}
+            </Box>
           </Box>
         </PremiumCard>
 
@@ -416,29 +450,18 @@ export default function ReportsPage() {
         >
           <Box sx={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center" }}>
             <Box sx={{ position: "relative", width: "100%", height: 150 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={byCompany.length > 0 ? byCompany : [{ name: "No Entities", value: 1 }]}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius="50%"
-                    outerRadius="70%"
-                    paddingAngle={byCompany.length > 0 ? 2.5 : 0}
-                    dataKey="value"
-                  >
-                    {byCompany.length > 0
-                      ? byCompany.map((_, i) => <Cell key={i} fill={CHART_COLORS[(i + 2) % CHART_COLORS.length]} stroke="#ffffff" strokeWidth={1.5} />)
-                      : <Cell fill="#f1f5f9" stroke="#ffffff" strokeWidth={1.5} />
-                    }
-                  </Pie>
-                  {byCompany.length > 0 && <ReTooltip content={<CustomTooltip />} />}
-                </PieChart>
-              </ResponsiveContainer>
-              {/* Center Corporate Icon */}
-              <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", color: "#94a3b8" }}>
-                <FaBuilding size={20} />
-              </Box>
+              <PremiumPieChart
+                data={byCompany}
+                colors={CHART_COLORS.slice(2).concat(CHART_COLORS.slice(0, 2))}
+                isDonut={true}
+                innerRadius="60%"
+                outerRadius="80%"
+                paddingAngle={4}
+                cornerRadius={4}
+                centerIcon={<FaBuilding size={20} />}
+                activeIndex={activeCompanyIdx}
+                setActiveIndex={setActiveCompanyIdx}
+              />
             </Box>
             {byCompany.length > 0 ? (
               <CustomPieLegend data={byCompany} colors={CHART_COLORS.slice(2).concat(CHART_COLORS.slice(0, 2))} />
@@ -458,29 +481,18 @@ export default function ReportsPage() {
         >
           <Box sx={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center" }}>
             <Box sx={{ position: "relative", width: "100%", height: 150 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={byLocation.length > 0 ? byLocation : [{ name: "No Locations", value: 1 }]}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius="50%"
-                    outerRadius="70%"
-                    paddingAngle={byLocation.length > 0 ? 2.5 : 0}
-                    dataKey="value"
-                  >
-                    {byLocation.length > 0
-                      ? byLocation.map((_, i) => <Cell key={i} fill={CHART_COLORS[(i + 4) % CHART_COLORS.length]} stroke="#ffffff" strokeWidth={1.5} />)
-                      : <Cell fill="#f1f5f9" stroke="#ffffff" strokeWidth={1.5} />
-                    }
-                  </Pie>
-                  {byLocation.length > 0 && <ReTooltip content={<CustomTooltip />} />}
-                </PieChart>
-              </ResponsiveContainer>
-              {/* Center Location Icon */}
-              <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", color: "#f59e0b" }}>
-                <FaMapMarkerAlt size={20} />
-              </Box>
+              <PremiumPieChart
+                data={byLocation}
+                colors={CHART_COLORS.slice(4).concat(CHART_COLORS.slice(0, 4))}
+                isDonut={true}
+                innerRadius="60%"
+                outerRadius="80%"
+                paddingAngle={4}
+                cornerRadius={4}
+                centerIcon={<FaMapMarkerAlt size={20} />}
+                activeIndex={activeLocationIdx}
+                setActiveIndex={setActiveLocationIdx}
+              />
             </Box>
             {byLocation.length > 0 ? (
               <CustomPieLegend data={byLocation} colors={CHART_COLORS.slice(4).concat(CHART_COLORS.slice(0, 4))} />
@@ -504,231 +516,165 @@ export default function ReportsPage() {
         gap: 2
       }}>
         {/* Allocation Summary */}
-          <PremiumCard
-            title="Allocation Summary"
-            subtitle="Assignment counts"
-            icon={<FaBoxes />}
-          >
-            <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 0.5 }}>
-              {/* Left Stats Column */}
-              <Box sx={{ flex: 1.2, display: "flex", flexDirection: "column", gap: 0.35 }}>
-                {[
-                  { label: "Active", value: d.activeAllocations ?? 0, color: "#10b981", bg: "#ecfdf5" },
-                  { label: "Returned", value: d.returnedAllocations ?? 0, color: "#64748b", bg: "#f8fafc" },
-                  { label: "Overdue", value: d.overdueAllocations ?? 0, color: "#f43f5e", bg: "#fff1f2" },
-                ].map((item) => (
-                  <Box key={item.label} sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    bgcolor: item.bg,
-                    p: "4px 8px",
-                    borderRadius: "6px",
-                    border: "1px solid #f8fafc"
-                  }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                      <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: item.color }} />
-                      <Typography sx={{ fontSize: "10px", fontWeight: 700, color: item.color }}>{item.label}</Typography>
-                    </Box>
-                    <Typography sx={{ fontSize: "11.5px", fontWeight: 900, color: "#0f172a" }}>{item.value}</Typography>
+        <PremiumCard
+          title="Allocation Summary"
+          subtitle="Assignment counts"
+          icon={<FaBoxes />}
+        >
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 0.5 }}>
+            {/* Left Stats Column */}
+            <Box sx={{ flex: 1.2, display: "flex", flexDirection: "column", gap: 0.35 }}>
+              {[
+                { label: "Active", value: d.activeAllocations ?? 0, color: "#10b981", bg: "#ecfdf5" },
+                { label: "Returned", value: d.returnedAllocations ?? 0, color: "#64748b", bg: "#f8fafc" },
+                { label: "Overdue", value: d.overdueAllocations ?? 0, color: "#f43f5e", bg: "#fff1f2" },
+              ].map((item) => (
+                <Box key={item.label} sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  bgcolor: item.bg,
+                  p: "5px 10px",
+                  borderRadius: "6px",
+                  border: "1px solid #f8fafc"
+                }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                    <Box sx={{ width: 5, height: 5, borderRadius: "50%", bgcolor: item.color }} />
+                    <Typography sx={{ fontSize: "11px", fontWeight: 700, color: item.color }}>{item.label}</Typography>
                   </Box>
-                ))}
-              </Box>
-
-              {/* Right Mini Graph Column */}
-              <Box sx={{ flex: 0.8, display: "flex", justifyContent: "center", alignItems: "center", minWidth: 80 }}>
-                <Box sx={{ width: "100%", height: 95, position: "relative" }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={
-                          (Number(d.activeAllocations ?? 0) + Number(d.returnedAllocations ?? 0) + Number(d.overdueAllocations ?? 0)) > 0
-                            ? [
-                              { name: "Active", value: Number(d.activeAllocations ?? 0) },
-                              { name: "Returned", value: Number(d.returnedAllocations ?? 0) },
-                              { name: "Overdue", value: Number(d.overdueAllocations ?? 0) }
-                            ].filter(x => x.value > 0)
-                            : [{ name: "No Data", value: 1 }]
-                        }
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={22}
-                        outerRadius={34}
-                        paddingAngle={
-                          (Number(d.activeAllocations ?? 0) + Number(d.returnedAllocations ?? 0) + Number(d.overdueAllocations ?? 0)) > 0
-                            ? 2
-                            : 0
-                        }
-                        dataKey="value"
-                      >
-                        {(Number(d.activeAllocations ?? 0) + Number(d.returnedAllocations ?? 0) + Number(d.overdueAllocations ?? 0)) > 0
-                          ? [
-                            <Cell key={0} fill="#10b981" stroke="#ffffff" strokeWidth={1} />,
-                            <Cell key={1} fill="#64748b" stroke="#ffffff" strokeWidth={1} />,
-                            <Cell key={2} fill="#f43f5e" stroke="#ffffff" strokeWidth={1} />
-                          ].slice(0, [Number(d.activeAllocations ?? 0) > 0, Number(d.returnedAllocations ?? 0) > 0, Number(d.overdueAllocations ?? 0) > 0].filter(Boolean).length)
-                          : <Cell fill="#f1f5f9" stroke="#ffffff" strokeWidth={1} />
-                        }
-                      </Pie>
-                      {(Number(d.activeAllocations ?? 0) + Number(d.returnedAllocations ?? 0) + Number(d.overdueAllocations ?? 0)) > 0 && (
-                        <ReTooltip content={<CustomTooltip />} />
-                      )}
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center", pointerEvents: "none" }}>
-                    <Typography sx={{ fontSize: "12px", fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{d.totalAllocations ?? 0}</Typography>
-                    <Typography sx={{ fontSize: "7.5px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", mt: 0.1 }}>Total</Typography>
-                  </Box>
+                  <Typography sx={{ fontSize: "12px", fontWeight: 900, color: "#0f172a" }}>{item.value}</Typography>
                 </Box>
+              ))}
+            </Box>
+
+            {/* Right Mini Graph Column */}
+            <Box sx={{ flex: 0.8, display: "flex", justifyContent: "center", alignItems: "center", minWidth: 80 }}>
+              <Box sx={{ width: "100%", height: 95, position: "relative" }}>
+                <PremiumPieChart
+                  data={allocDataList}
+                  colors={["#10b981", "#64748b", "#f43f5e"]}
+                  isDonut={true}
+                  innerRadius="60%"
+                  outerRadius="80%"
+                  paddingAngle={4}
+                  cornerRadius={4}
+                  centerValue={d.totalAllocations ?? 0}
+                  centerLabel="Total"
+                  activeIndex={activeAllocIdx}
+                  setActiveIndex={setActiveAllocIdx}
+                />
               </Box>
             </Box>
-          </PremiumCard>
+          </Box>
+        </PremiumCard>
         {/* Transfer Summary */}
-          <PremiumCard
-            title="Transfer Summary"
-            subtitle="Logistics logs"
-            icon={<FaExchangeAlt />}
-          >
-            <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 0.5 }}>
-              {/* Left Stats Column */}
-              <Box sx={{ flex: 1.2, display: "flex", flexDirection: "column", gap: 0.35 }}>
-                {[
-                  { label: "Approved", value: d.approvedTransfers ?? 0, color: "#10b981", bg: "#ecfdf5" },
-                  { label: "Pending", value: d.pendingTransfers ?? 0, color: "#d97706", bg: "#fffbeb" },
-                  { label: "Rejected", value: d.rejectedTransfers ?? 0, color: "#f43f5e", bg: "#fff1f2" },
-                ].map((item) => (
-                  <Box key={item.label} sx={{
+        <PremiumCard
+          title="Transfer Summary"
+          subtitle="Logistics logs"
+          icon={<FaExchangeAlt />}
+        >
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 0.5 }}>
+            {/* Left Stats Column */}
+            <Box sx={{ flex: 1.2, display: "flex", flexDirection: "column", gap: 0.35 }}>
+              {[
+                { label: "Approved", value: d.approvedTransfers ?? 0, color: "#10b981", bg: "#ecfdf5" },
+                { label: "Pending", value: d.pendingTransfers ?? 0, color: "#d97706", bg: "#fffbeb" },
+                { label: "Rejected", value: d.rejectedTransfers ?? 0, color: "#f43f5e", bg: "#fff1f2" },
+              ].map((item) => (
+                <Box key={item.label} sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  bgcolor: item.bg,
+                  p: "5px 10px",
+                  borderRadius: "6px",
+                  border: "1px solid #f8fafc"
+                }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                    <Box sx={{ width: 5, height: 5, borderRadius: "50%", bgcolor: item.color }} />
+                    <Typography sx={{ fontSize: "11px", fontWeight: 700, color: item.color }}>{item.label}</Typography>
+                  </Box>
+                  <Typography sx={{ fontSize: "12px", fontWeight: 900, color: "#0f172a" }}>{item.value}</Typography>
+                </Box>
+              ))}
+            </Box>
+
+            {/* Right Mini Graph Column */}
+            <Box sx={{ flex: 0.8, display: "flex", justifyContent: "center", alignItems: "center", minWidth: 80 }}>
+              <Box sx={{ width: "100%", height: 95, position: "relative" }}>
+                <PremiumPieChart
+                  data={transferDataList}
+                  colors={["#10b981", "#d97706", "#f43f5e"]}
+                  isDonut={true}
+                  innerRadius="60%"
+                  outerRadius="80%"
+                  paddingAngle={4}
+                  cornerRadius={4}
+                  centerValue={d.totalTransfers ?? 0}
+                  centerLabel="Total"
+                  activeIndex={activeTransferIdx}
+                  setActiveIndex={setActiveTransferIdx}
+                />
+              </Box>
+            </Box>
+          </Box>
+        </PremiumCard>
+        {/* Disposal Summary */}
+        <PremiumCard
+          title="Disposal Summary"
+          subtitle="Decommissioned records"
+          icon={<FaRecycle />}
+        >
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 0.5 }}>
+            {/* Left Stats Column */}
+            <Box sx={{ flex: 1.2, display: "flex", flexDirection: "column", gap: 0.35 }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", p: "5px 10px", bg: "#f8fafc", borderRadius: "6px", mb: 0.35, border: "1px solid #f1f5f9" }}>
+                <Typography sx={{ fontSize: "11px", fontWeight: 800, color: "#64748b", textTransform: "uppercase" }}>Retired Items</Typography>
+                <Typography sx={{ fontSize: "13px", fontWeight: 950, color: "#0f172a" }}>{d.totalDisposals ?? 0}</Typography>
+              </Box>
+              {byMethod.length > 0 ? (
+                byMethod.slice(0, 2).map((item, idx) => (
+                  <Box key={item.name} sx={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    bgcolor: item.bg,
-                    p: "4px 8px",
+                    bgcolor: "#f8fafc",
+                    p: "5px 10px",
                     borderRadius: "6px",
-                    border: "1px solid #f8fafc"
+                    border: "1px solid #f1f5f9"
                   }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                      <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: item.color }} />
-                      <Typography sx={{ fontSize: "10px", fontWeight: 700, color: item.color }}>{item.label}</Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, overflow: "hidden" }}>
+                      <Box sx={{ width: 5, height: 5, borderRadius: "50%", bgcolor: CHART_COLORS[(idx + 4) % CHART_COLORS.length] }} />
+                      <Typography sx={{ fontSize: "11px", fontWeight: 700, color: "#475569", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{item.name}</Typography>
                     </Box>
-                    <Typography sx={{ fontSize: "11.5px", fontWeight: 900, color: "#0f172a" }}>{item.value}</Typography>
+                    <Typography sx={{ fontSize: "12px", fontWeight: 900, color: "#0f172a" }}>{item.value}</Typography>
                   </Box>
-                ))}
-              </Box>
+                ))
+              ) : (
+                <Typography fontSize={10} color={COLORS.textFaint} py={2} textAlign="center">No method breakdown</Typography>
+              )}
+            </Box>
 
-              {/* Right Mini Graph Column */}
-              <Box sx={{ flex: 0.8, display: "flex", justifyContent: "center", alignItems: "center", minWidth: 80 }}>
-                <Box sx={{ width: "100%", height: 95, position: "relative" }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={
-                          (Number(d.approvedTransfers ?? 0) + Number(d.pendingTransfers ?? 0) + Number(d.rejectedTransfers ?? 0)) > 0
-                            ? [
-                              { name: "Approved", value: Number(d.approvedTransfers ?? 0) },
-                              { name: "Pending", value: Number(d.pendingTransfers ?? 0) },
-                              { name: "Rejected", value: Number(d.rejectedTransfers ?? 0) }
-                            ].filter(x => x.value > 0)
-                            : [{ name: "No Data", value: 1 }]
-                        }
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={22}
-                        outerRadius={34}
-                        paddingAngle={
-                          (Number(d.approvedTransfers ?? 0) + Number(d.pendingTransfers ?? 0) + Number(d.rejectedTransfers ?? 0)) > 0
-                            ? 2
-                            : 0
-                        }
-                        dataKey="value"
-                      >
-                        {(Number(d.approvedTransfers ?? 0) + Number(d.pendingTransfers ?? 0) + Number(d.rejectedTransfers ?? 0)) > 0
-                          ? [
-                            <Cell key={0} fill="#10b981" stroke="#ffffff" strokeWidth={1} />,
-                            <Cell key={1} fill="#d97706" stroke="#ffffff" strokeWidth={1} />,
-                            <Cell key={2} fill="#f43f5e" stroke="#ffffff" strokeWidth={1} />
-                          ].slice(0, [Number(d.approvedTransfers ?? 0) > 0, Number(d.pendingTransfers ?? 0) > 0, Number(d.rejectedTransfers ?? 0) > 0].filter(Boolean).length)
-                          : <Cell fill="#f1f5f9" stroke="#ffffff" strokeWidth={1} />
-                        }
-                      </Pie>
-                      {(Number(d.approvedTransfers ?? 0) + Number(d.pendingTransfers ?? 0) + Number(d.rejectedTransfers ?? 0)) > 0 && (
-                        <ReTooltip content={<CustomTooltip />} />
-                      )}
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center", pointerEvents: "none" }}>
-                    <Typography sx={{ fontSize: "12px", fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{d.totalTransfers ?? 0}</Typography>
-                    <Typography sx={{ fontSize: "7.5px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", mt: 0.1 }}>Total</Typography>
-                  </Box>
-                </Box>
+            {/* Right Mini Graph Column */}
+            <Box sx={{ flex: 0.8, display: "flex", justifyContent: "center", alignItems: "center", minWidth: 80 }}>
+              <Box sx={{ width: "100%", height: 95, position: "relative" }}>
+                <PremiumPieChart
+                  data={byMethod}
+                  colors={CHART_COLORS.slice(4).concat(CHART_COLORS.slice(0, 4))}
+                  isDonut={true}
+                  innerRadius="60%"
+                  outerRadius="80%"
+                  paddingAngle={4}
+                  cornerRadius={4}
+                  centerValue={d.totalDisposals ?? 0}
+                  centerLabel="Total"
+                  activeIndex={activeDisposalIdx}
+                  setActiveIndex={setActiveDisposalIdx}
+                />
               </Box>
             </Box>
-          </PremiumCard>
-        {/* Disposal Summary */}
-          <PremiumCard
-            title="Disposal Summary"
-            subtitle="Decommissioned records"
-            icon={<FaRecycle />}
-          >
-            <Box sx={{ display: "flex", gap: 1, alignItems: "center", mt: 0.5 }}>
-              {/* Left Stats Column */}
-              <Box sx={{ flex: 1.2, display: "flex", flexDirection: "column", gap: 0.35 }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", p: "4px 8px", bg: "#f8fafc", borderRadius: "6px", mb: 0.35, border: "1px solid #f1f5f9" }}>
-                  <Typography sx={{ fontSize: "10px", fontWeight: 800, color: "#64748b", textTransform: "uppercase" }}>Retired Items</Typography>
-                  <Typography sx={{ fontSize: "12px", fontWeight: 950, color: "#0f172a" }}>{d.totalDisposals ?? 0}</Typography>
-                </Box>
-                {byMethod.length > 0 ? (
-                  byMethod.slice(0, 2).map((item, idx) => (
-                    <Box key={item.name} sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      bgcolor: "#f8fafc",
-                      p: "4px 8px",
-                      borderRadius: "6px",
-                      border: "1px solid #f1f5f9"
-                    }}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, overflow: "hidden" }}>
-                        <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: CHART_COLORS[(idx + 4) % CHART_COLORS.length] }} />
-                        <Typography sx={{ fontSize: "9.5px", fontWeight: 700, color: "#475569", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{item.name}</Typography>
-                      </Box>
-                      <Typography sx={{ fontSize: "11px", fontWeight: 900, color: "#0f172a" }}>{item.value}</Typography>
-                    </Box>
-                  ))
-                ) : (
-                  <Typography fontSize={10} color={COLORS.textFaint} py={2} textAlign="center">No method breakdown</Typography>
-                )}
-              </Box>
-
-              {/* Right Mini Graph Column */}
-              <Box sx={{ flex: 0.8, display: "flex", justifyContent: "center", alignItems: "center", minWidth: 80 }}>
-                <Box sx={{ width: "100%", height: 95, position: "relative" }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={byMethod.length > 0 ? byMethod : [{ name: "No Data", value: 1 }]}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={22}
-                        outerRadius={34}
-                        paddingAngle={byMethod.length > 0 ? 2 : 0}
-                        dataKey="value"
-                      >
-                        {byMethod.length > 0
-                          ? byMethod.map((_, i) => <Cell key={i} fill={CHART_COLORS[(i + 4) % CHART_COLORS.length]} stroke="#ffffff" strokeWidth={1} />)
-                          : <Cell fill="#f1f5f9" stroke="#ffffff" strokeWidth={1} />
-                        }
-                      </Pie>
-                      {byMethod.length > 0 && <ReTooltip content={<CustomTooltip />} />}
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center", pointerEvents: "none" }}>
-                    <Typography sx={{ fontSize: "12px", fontWeight: 900, color: "#0f172a", lineHeight: 1 }}>{d.totalDisposals ?? 0}</Typography>
-                    <Typography sx={{ fontSize: "7.5px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", mt: 0.1 }}>Total</Typography>
-                  </Box>
-                </Box>
-              </Box>
-            </Box>
-          </PremiumCard>
+          </Box>
+        </PremiumCard>
       </Box>
 
       {/* ── Depreciation Calculator Section ── */}

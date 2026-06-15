@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Box, Button, Chip, CircularProgress, Typography, IconButton, Divider, Avatar, Table, TableBody, TableCell, TableRow } from "@mui/material";
+import { Box, Button, Chip, Typography, IconButton, Divider, Avatar, Table, TableBody, TableCell, TableRow } from "@mui/material";
+import SkeletonLoader from "../components/common/SkeletonLoader";
 import { FaArrowLeft, FaEdit, FaEnvelope } from "react-icons/fa";
 import { useSelector } from "react-redux";
 import toast from "../utils/toast.jsx";
@@ -44,8 +45,8 @@ export default function UserDetailPage() {
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "80vh" }}>
-        <CircularProgress size={20} />
+      <Box sx={{ p: 2 }}>
+        <SkeletonLoader variant="detail" />
       </Box>
     );
   }

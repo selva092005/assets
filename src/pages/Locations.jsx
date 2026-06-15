@@ -27,7 +27,9 @@ import TableCard from "../components/common/TableCard";
 import TablePagination from "../components/common/TablePagination";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import StatCard from "../components/common/StatCard";
-import { COLORS, primaryBtnSx, outlinedBtnSx, inputSx, selectSx, chipSx, premiumDialogPaperSx, premiumDialogTitleSx } from "../theme/tokens";
+import ErrorState from "../components/common/ErrorState";
+import SkeletonLoader from "../components/common/SkeletonLoader";
+import { COLORS, primaryBtnSx, outlinedBtnSx, inputSx, selectSx, chipSx, premiumDialogPaperSx, premiumDialogTitleSx, searchFieldSx, resetBtnSx } from "../theme/tokens";
 import { required } from "../utils/validate";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -115,7 +117,7 @@ export default function Locations() {
   const [typeFilter, setTypeFilter] = useState("");
 
   // ── Query Fetchers ──────────────────────────────────────────────────────────
-  const { data: locations = [], isLoading: loading, refetch: load } = useQuery({
+  const { data: locations = [], isLoading: loading, isError, error, refetch: load } = useQuery({
     queryKey: ["locations", typeFilter, debouncedSearch],
     queryFn: async () => {
       const res = await getAllLocations(typeFilter, debouncedSearch);
@@ -306,6 +308,10 @@ export default function Locations() {
   const totalLocations = locations.length;
   const uniqueCompanies = new Set(locations.map((l) => l?.companyId).filter((id) => id != null)).size;
 
+  if (loading) {
+    return <SkeletonLoader variant="list" statCount={4} columnCount={6} />;
+  }
+
   return (
     <Box sx={{ p: 0 }}>
 
@@ -364,7 +370,6 @@ export default function Locations() {
         <StatCard label="IP Geolocation Status" value="Online" icon={<FaCrosshairs size={15} />} iconBg="#fffbeb" iconColor="#d97706" />
       </Box>
 
-      {/* ── Filters Bar ── */}
       <Box sx={{ display: "flex", gap: 1.5, mb: 2, alignItems: "center" }}>
         <TextField
           size="small"
@@ -376,7 +381,7 @@ export default function Locations() {
               startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment>
             }
           }}
-          sx={{ minWidth: 280, ...inputSx }}
+          sx={searchFieldSx(280, 340)}
         />
 
         <Select
@@ -387,7 +392,6 @@ export default function Locations() {
           sx={{
             ...selectSx,
             minWidth: 140,
-            height: 30,
           }}
         >
           <MenuItem value="" sx={{ fontSize: 11.5 }}>All</MenuItem>
@@ -399,14 +403,7 @@ export default function Locations() {
         <Tooltip title="Clear filters">
           <IconButton
             onClick={clearFilters}
-            sx={{
-              border: "1px solid #e0e0e0",
-              borderRadius: "6px",
-              width: 30, height: 30,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              p: 0, background: "#fff", color: "#757575",
-              "&:hover": { background: "#f5f5f5", borderColor: "#bbb", color: COLORS.primary }
-            }}
+            sx={resetBtnSx}
           >
             <MdRefresh size={14} />
           </IconButton>
@@ -415,8 +412,8 @@ export default function Locations() {
 
       {/* ── Data Table ── */}
       <TableCard>
-        {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
+        {isError ? (
+          <ErrorState message={error?.message || error?.response?.data?.message} onRetry={load} />
         ) : filteredLocations.length === 0 ? (
           <Box sx={{ textAlign: "center", py: 8, color: COLORS.textFaint }}>
             <FaMapMarkerAlt size={40} style={{ marginBottom: 12, opacity: 0.3 }} />

@@ -23,6 +23,8 @@ import TablePagination from "../components/common/TablePagination";
 import UserTable from "../components/users/UserTable";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import StatCard from "../components/common/StatCard";
+import ErrorState from "../components/common/ErrorState";
+import SkeletonLoader from "../components/common/SkeletonLoader";
 
 // ── Declarative Debounce Hook ──────────────────────────────────────────────────
 function useDebounce(value, delay) {
@@ -71,7 +73,7 @@ export default function UsersPage() {
   const queryClient = useQueryClient();
 
   // ── Query Fetchers ──────────────────────────────────────────────────────────
-  const { data: usersData, isLoading: loading } = useQuery({
+  const { data: usersData, isLoading: loading, isError, error, refetch } = useQuery({
     queryKey: ["users", search, page, showCount, filterRole],
     queryFn: async () => {
       const params = { username: search || undefined, page, size: showCount };
@@ -160,6 +162,10 @@ export default function UsersPage() {
   const handleView = (item) => {
     navigate(`/home/users/view/${item.userId || item.id}`);
   };
+
+  if (loading) {
+    return <SkeletonLoader variant="list" statCount={4} columnCount={6} />;
+  }
 
   return (
     <Box sx={{ p: 0 }}>
@@ -275,10 +281,11 @@ export default function UsersPage() {
       />
 
       <TableCard>
-        {loading
-          ? <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}><CircularProgress /></Box>
-          : <UserTable users={users} loading={false} currentUserName={userName} userRole={userRole} onView={handleView} onEdit={handleEdit} onDelete={handleDelete} />
-        }
+        {isError ? (
+          <ErrorState message={error?.message || error?.response?.data?.message} onRetry={refetch} />
+        ) : (
+          <UserTable users={users} loading={false} currentUserName={userName} userRole={userRole} onView={handleView} onEdit={handleEdit} onDelete={handleDelete} />
+        )}
         <TablePagination page={page} totalPages={totalPages} onPageChange={(pg) => dispatch(setUserPage(pg))} />
       </TableCard>
 

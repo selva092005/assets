@@ -1,6 +1,6 @@
 import { Box, TextField, IconButton, InputAdornment, Tooltip } from "@mui/material";
 import { FaSearch, FaSyncAlt } from "react-icons/fa";
-import { inputSx } from "../../theme/tokens";
+import { searchFieldSx, resetBtnSx, COLORS } from "../../theme/tokens";
 
 export default function SearchBar({ value, placeholder = "Search...", onChange, onSearch, onReset }) {
   return (
@@ -19,7 +19,10 @@ export default function SearchBar({ value, placeholder = "Search...", onChange, 
         onChange={onChange}
         onKeyDown={(e) => e.key === "Enter" && onSearch?.()}
         size="small"
-        sx={{ flex: 1, maxWidth: 320, ...inputSx }}
+        sx={{
+          flex: 1,
+          ...searchFieldSx(320, 380, true),
+        }}
         slotProps={{
           input: {
             startAdornment: (
@@ -34,22 +37,18 @@ export default function SearchBar({ value, placeholder = "Search...", onChange, 
         <IconButton
           onClick={onSearch}
           sx={{
-            width: 30, height: 30, border: "1px solid #e0e0e0", borderRadius: "6px", background: "#fff",
-            display: "flex", alignItems: "center", justifyContent: "center", p: 0,
-            "&:hover": { background: "#f5f5f5", borderColor: "#bbb" }
+            ...resetBtnSx,
+            "& svg": { transition: "none" },
+            "&:hover svg": { transform: "none" }
           }}
         >
-          <FaSearch size={11} color="#1976d2" />
+          <FaSearch size={11} color={COLORS.primary} />
         </IconButton>
       </Tooltip>
       <Tooltip title="Reset">
         <IconButton
           onClick={onReset}
-          sx={{
-            width: 30, height: 30, border: "1px solid #e0e0e0", borderRadius: "6px", background: "#fff",
-            display: "flex", alignItems: "center", justifyContent: "center", p: 0,
-            "&:hover": { background: "#f5f5f5", borderColor: "#bbb" }
-          }}
+          sx={resetBtnSx}
         >
           <FaSyncAlt size={11} color="#757575" />
         </IconButton>

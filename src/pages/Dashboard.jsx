@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Box, Typography, CircularProgress, Button, Divider, Avatar, Select, MenuItem
+  Box, Typography, Button, Divider, Avatar, Select, MenuItem
 } from "@mui/material";
+import SkeletonLoader from "../components/common/SkeletonLoader";
+import ErrorState from "../components/common/ErrorState";
+import PremiumPieChart from "../components/common/PremiumPieChart";
 import {
   ResponsiveContainer,
   PieChart,
@@ -35,6 +38,7 @@ import {
 import toast from "../utils/toast.jsx";
 import { getDashboard, getImageUrl, getAssets } from "../services/assets_service";
 import { getAllAllocations } from "../services/allocation_service";
+import { getAllTransfers, approveTransfer, rejectTransfer } from "../services/transfer_service";
 import { useNavigate } from "react-router-dom";
 import { COLORS, outlinedBtnSx } from "../theme/tokens";
 import StatCard from "../components/common/StatCard";
@@ -47,8 +51,9 @@ const CHART_COLORS = ["#2563eb", "#10b981", "#d97706", "#f43f5e", "#8b5cf6", "#0
 export default function Dashboard() {
   const navigate = useNavigate();
   const [warrantyDays, setWarrantyDays] = useState(90);
+  const [statusActiveIdx, setStatusActiveIdx] = useState(null);
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading, isError: statsError, error: statsErr, refetch: refetchStats } = useQuery({
     queryKey: ["dashboardStats"],
     queryFn: async () => {
       const res = await getDashboard();
@@ -56,7 +61,7 @@ export default function Dashboard() {
     },
   });
 
-  const { data: recentActivities = [], isLoading: activitiesLoading } = useQuery({
+  const { data: recentActivities = [], isLoading: activitiesLoading, isError: actError, error: actErr, refetch: refetchActivities } = useQuery({
     queryKey: ["recentAllocationsLimit"],
     queryFn: async () => {
       const res = await getAllAllocations({ page: 0, size: 5 });
@@ -64,7 +69,7 @@ export default function Dashboard() {
     },
   });
 
-  const { data: allAssetsRes, isLoading: assetsLoading } = useQuery({
+  const { data: allAssetsRes, isLoading: assetsLoading, isError: assetsError, error: assetsErr, refetch: refetchAssets } = useQuery({
     queryKey: ["dashboardAllAssets"],
     queryFn: async () => {
       const res = await getAssets({ page: 0, size: 200 });
@@ -72,12 +77,61 @@ export default function Dashboard() {
     }
   });
 
+  const { data: pendingTransfers = [], refetch: refetchTransfers } = useQuery({
+    queryKey: ["dashboardPendingTransfers"],
+    queryFn: async () => {
+      try {
+        const res = await getAllTransfers({ status: "PENDING" });
+        return res?.data?.content || res?.content || res || [];
+      } catch (err) {
+        console.error("Failed to fetch pending transfers", err);
+        return [];
+      }
+    }
+  });
+
+  const handleApproveTransfer = async (id) => {
+    const toastId = toast.loading("Approving transfer...");
+    try {
+      await approveTransfer(id, { remarks: "Approved from Dashboard" });
+      toast.success("Transfer approved successfully!", { id: toastId });
+      refetchTransfers();
+      refetchStats();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to approve transfer.", { id: toastId });
+    }
+  };
+
+  const handleRejectTransfer = async (id) => {
+    const toastId = toast.loading("Rejecting transfer...");
+    try {
+      await rejectTransfer(id, { remarks: "Rejected from Dashboard" });
+      toast.success("Transfer rejected.", { id: toastId });
+      refetchTransfers();
+      refetchStats();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to reject transfer.", { id: toastId });
+    }
+  };
+
   const loading = statsLoading || activitiesLoading || assetsLoading;
+  const isError = statsError || actError || assetsError;
+  const error = statsErr || actErr || assetsErr;
+  const refetchAll = () => {
+    refetchStats();
+    refetchActivities();
+    refetchAssets();
+    refetchTransfers();
+  };
 
   if (loading) {
+    return <SkeletonLoader variant="dashboard" />;
+  }
+
+  if (isError) {
     return (
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "80vh" }}>
-        <CircularProgress sx={{ color: COLORS.primary }} />
+      <Box sx={{ p: 2 }}>
+        <ErrorState message={error?.message || error?.response?.data?.message} onRetry={refetchAll} />
       </Box>
     );
   }
@@ -92,11 +146,12 @@ export default function Dashboard() {
   const byLocation = stats?.countByLocation || {};
   const byCompany = stats?.countByCompany || {};
 
-  // Formatted data for Type/Category Bar Chart
   const typeData = Object.entries(byType).map(([name, value]) => ({
     name,
     value: Number(value)
   })).sort((a, b) => b.value - a.value);
+
+  const lowStockCategories = typeData.filter(item => item.value < 10);
 
   // Formatted data for Company Bar Chart
   const companyData = Object.entries(byCompany).map(([name, value]) => ({
@@ -244,20 +299,42 @@ export default function Dashboard() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={typeData.slice(0, 5)} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <defs>
+                    <linearGradient id="typeGrad-0" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#2563eb" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.35} />
+                    </linearGradient>
+                    <linearGradient id="typeGrad-1" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="#34d399" stopOpacity={0.35} />
+                    </linearGradient>
+                    <linearGradient id="typeGrad-2" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#d97706" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="#fbbf24" stopOpacity={0.35} />
+                    </linearGradient>
+                    <linearGradient id="typeGrad-3" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="#fda4af" stopOpacity={0.35} />
+                    </linearGradient>
+                    <linearGradient id="typeGrad-4" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="#c084fc" stopOpacity={0.35} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#64748b", fontWeight: 750 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 9, fill: "#64748b", fontWeight: 750 }} tickLine={false} axisLine={false} />
                   <ReTooltip content={<CustomTooltip unit="Assets" />} />
                   <Bar
                     dataKey="value"
                     fill="#2563eb"
-                    radius={[3, 3, 0, 0]}
+                    radius={[4, 4, 0, 0]}
                     barSize={18}
                     animationDuration={1500}
                     animationEasing="ease-out"
                   >
                     {typeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={`url(#typeGrad-${index % 5})`} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -276,20 +353,42 @@ export default function Dashboard() {
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={companyData.slice(0, 5)} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <defs>
+                    <linearGradient id="compGrad-0" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="#c084fc" stopOpacity={0.35} />
+                    </linearGradient>
+                    <linearGradient id="compGrad-1" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#0891b2" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="#22d3ee" stopOpacity={0.35} />
+                    </linearGradient>
+                    <linearGradient id="compGrad-2" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f97316" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="#fdbb2d" stopOpacity={0.35} />
+                    </linearGradient>
+                    <linearGradient id="compGrad-3" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#2563eb" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.35} />
+                    </linearGradient>
+                    <linearGradient id="compGrad-4" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.95} />
+                      <stop offset="100%" stopColor="#34d399" stopOpacity={0.35} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#64748b", fontWeight: 750 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 9, fill: "#64748b", fontWeight: 750 }} tickLine={false} axisLine={false} />
                   <ReTooltip content={<CustomTooltip unit="Assets" />} />
                   <Bar
                     dataKey="value"
                     fill="#8b5cf6"
-                    radius={[3, 3, 0, 0]}
+                    radius={[4, 4, 0, 0]}
                     barSize={18}
                     animationDuration={1500}
                     animationEasing="ease-out"
                   >
                     {companyData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[(index + 3) % CHART_COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={`url(#compGrad-${index % 5})`} />
                     ))}
                   </Bar>
                 </BarChart>
@@ -300,70 +399,52 @@ export default function Dashboard() {
 
         {/* Chart 3: Status Donut Graph */}
         <PremiumCard title="Asset Health Status" icon={<FaChartPie />} subtitle="Active operation state breakdown">
-          <Box sx={{ position: "relative", width: "100%", height: 130, mt: 0.5, display: "flex", justifyContent: "center", alignItems: "center" }}>
-            <Box sx={{ width: "100%", height: "100%", position: "relative" }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={statusData.length > 0 ? statusData : [{ name: "No Data", value: 1 }]}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={36}
-                    outerRadius={50}
-                    paddingAngle={statusData.length > 0 ? 3 : 0}
-                    dataKey="value"
-                    animationDuration={1500}
-                    animationEasing="ease-out"
-                  >
-                    {statusData.length > 0
-                      ? statusData.map((entry, idx) => (
-                        <Cell key={`cell-${idx}`} fill={entry.color} stroke="#ffffff" strokeWidth={1.5} />
-                      ))
-                      : <Cell fill="#e2e8f0" stroke="#ffffff" strokeWidth={1.5} />
-                    }
-                  </Pie>
-                  {statusData.length > 0 && <ReTooltip content={<CustomTooltip unit="Assets" />} />}
-                </PieChart>
-              </ResponsiveContainer>
-              <Box sx={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center", pointerEvents: "none" }}>
-                <Typography sx={{ fontSize: "16px", fontWeight: 950, color: "#0f172a", lineHeight: 1 }}>
-                  {totalAssets}
-                </Typography>
-                <Typography sx={{ fontSize: "8px", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", mt: 0.1 }}>
-                  Total
-                </Typography>
-              </Box>
+          <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: 160, mt: 0.5 }}>
+            {/* Left: Donut Graph */}
+            <Box sx={{ position: "relative", width: "48%", height: "100%" }}>
+              <PremiumPieChart
+                data={statusData}
+                isDonut={true}
+                innerRadius="60%"
+                outerRadius="80%"
+                paddingAngle={4}
+                cornerRadius={4}
+                centerValue={totalAssets}
+                centerLabel="Total"
+                activeIndex={statusActiveIdx}
+                setActiveIndex={setStatusActiveIdx}
+              />
             </Box>
-          </Box>
 
-          {/* Custom Status Legend Row */}
-          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 0.5, mt: 0.5 }}>
-            {[
-              { label: "Available", val: available, color: "#10b981", bg: "#ecfdf5" },
-              { label: "Assigned", val: assigned, color: "#2563eb", bg: "#eff6ff" },
-              { label: "Maintenance", val: underMaintenance, color: "#d97706", bg: "#fffbeb" },
-              { label: "Damaged", val: damaged, color: "#f43f5e", bg: "#fff1f2" }
-            ].map((item) => (
-              <Box key={item.label} sx={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                bgcolor: item.bg,
-                p: "4px 8px",
-                borderRadius: "6px",
-                border: "1px solid #f8fafc",
-                transition: "transform 0.2s ease",
-                "&:hover": {
-                  transform: "scale(1.02)"
-                }
-              }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                  <Box sx={{ width: 4, height: 4, borderRadius: "50%", bgcolor: item.color }} />
-                  <Typography sx={{ fontSize: "9px", fontWeight: 700, color: item.color }}>{item.label}</Typography>
+            {/* Right: Custom Status Legend Column */}
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, width: "48%", pr: 0.5 }}>
+              {[
+                { label: "Available", val: available, color: "#10b981", bg: "#ecfdf5" },
+                { label: "Assigned", val: assigned, color: "#2563eb", bg: "#eff6ff" },
+                { label: "Maintenance", val: underMaintenance, color: "#d97706", bg: "#fffbeb" },
+                { label: "Damaged", val: damaged, color: "#f43f5e", bg: "#fff1f2" }
+              ].map((item) => (
+                <Box key={item.label} sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  bgcolor: item.bg,
+                  p: "5px 10px",
+                  borderRadius: "6px",
+                  border: "1px solid #f8fafc",
+                  transition: "transform 0.2s ease",
+                  "&:hover": {
+                    transform: "scale(1.02)"
+                  }
+                }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                    <Box sx={{ width: 5, height: 5, borderRadius: "50%", bgcolor: item.color }} />
+                    <Typography sx={{ fontSize: "10.5px", fontWeight: 700, color: item.color }}>{item.label}</Typography>
+                  </Box>
+                  <Typography sx={{ fontSize: "12px", fontWeight: 900, color: "#0f172a" }}>{item.val}</Typography>
                 </Box>
-                <Typography sx={{ fontSize: "10px", fontWeight: 900, color: "#0f172a" }}>{item.val}</Typography>
-              </Box>
-            ))}
+              ))}
+            </Box>
           </Box>
         </PremiumCard>
 
@@ -756,6 +837,137 @@ export default function Dashboard() {
                       </Typography>
                       <Typography sx={{ fontSize: "8px", color: "#94a3b8" }}>
                         Exp: {asset.warrantyExpiry}
+                      </Typography>
+                    </Box>
+                  </Box>
+                );
+              })
+            )}
+          </Box>
+        </PremiumCard>
+
+        {/* Card 8: Pending Transfer Approvals */}
+        <PremiumCard
+          title="Pending Transfer Approvals"
+          icon={<FaExchangeAlt />}
+          subtitle="Requests requiring admin response"
+        >
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 0.5, maxHeight: 180, overflowY: "auto" }}>
+            {pendingTransfers.length === 0 ? (
+              <Box sx={{ textAlign: "center", py: 4 }}>
+                <Typography sx={{ fontSize: "10px", color: "#94a3b8" }}>No pending transfer requests</Typography>
+              </Box>
+            ) : (
+              pendingTransfers.slice(0, 4).map((tx) => (
+                <Box
+                  key={tx.transferId}
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 0.75,
+                    p: "8px 10px",
+                    bgcolor: "#f8fafc",
+                    borderRadius: "6px",
+                    border: "1px solid #e2e8f0"
+                  }}
+                >
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={{ fontSize: "10.5px", fontWeight: 800, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {tx.assetName || `Asset #${tx.assetId}`}
+                      </Typography>
+                      <Typography sx={{ fontSize: "8.5px", color: "#64748b" }}>
+                        From {tx.sourceLocationName} ➔ To {tx.destinationLocationName}
+                      </Typography>
+                    </Box>
+                    <Typography sx={{ fontSize: "8px", fontWeight: 900, color: "#2563eb", bgcolor: "#eff6ff", px: 0.75, py: 0.15, borderRadius: "4px" }}>
+                      Pending
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: "flex", gap: 1, mt: 0.25 }}>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={() => handleApproveTransfer(tx.transferId)}
+                      sx={{
+                        fontSize: "8.5px",
+                        py: "2px",
+                        px: "8px",
+                        textTransform: "none",
+                        fontWeight: 700,
+                        background: "#10b981",
+                        color: "#ffffff",
+                        "&:hover": { background: "#059669" }
+                      }}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={() => handleRejectTransfer(tx.transferId)}
+                      sx={{
+                        fontSize: "8.5px",
+                        py: "2px",
+                        px: "8px",
+                        textTransform: "none",
+                        fontWeight: 700,
+                        borderColor: "#ef4444",
+                        color: "#ef4444",
+                        "&:hover": { borderColor: "#dc2626", background: "#fef2f2" }
+                      }}
+                    >
+                      Reject
+                    </Button>
+                  </Box>
+                </Box>
+              ))
+            )}
+          </Box>
+        </PremiumCard>
+
+        {/* Card 9: Procurement & Stock Alerts */}
+        <PremiumCard
+          title="Procurement & Stock Alerts"
+          icon={<FaExclamationTriangle />}
+          subtitle="Categories with low stock levels"
+        >
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 0.5, maxHeight: 180, overflowY: "auto" }}>
+            {lowStockCategories.length === 0 ? (
+              <Box sx={{ textAlign: "center", py: 4 }}>
+                <Typography sx={{ fontSize: "10px", color: "#94a3b8" }}>All asset categories adequately stocked</Typography>
+              </Box>
+            ) : (
+              lowStockCategories.map((cat) => {
+                const isCritical = cat.value <= 3;
+                return (
+                  <Box
+                    key={cat.name}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      p: "6px 10px",
+                      bgcolor: isCritical ? "#fff5f5" : "#fffbeb",
+                      borderRadius: "6px",
+                      border: `1px solid ${isCritical ? "#fee2e2" : "#fef3c7"}`
+                    }}
+                  >
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={{ fontSize: "10.5px", fontWeight: 800, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {cat.name}
+                      </Typography>
+                      <Typography sx={{ fontSize: "8.5px", color: isCritical ? "#ef4444" : "#f59e0b" }}>
+                        {isCritical ? "Critical: Stock levels extremely low" : "Reorder soon: Stock below threshold"}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ textAlign: "right", flexShrink: 0 }}>
+                      <Typography sx={{ fontSize: "12px", fontWeight: 950, color: isCritical ? "#b91c1c" : "#b45309" }}>
+                        {cat.value} Units
+                      </Typography>
+                      <Typography sx={{ fontSize: "8px", color: "#94a3b8" }}>
+                        Min Threshold: 10
                       </Typography>
                     </Box>
                   </Box>

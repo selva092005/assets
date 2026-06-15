@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { Table, TableHead, TableBody, TableRow, TableCell, Box, Typography, Avatar, Tooltip, Chip, Dialog, DialogTitle, DialogContent, Checkbox } from "@mui/material";
-import { FaEye, FaEdit, FaTrash, FaQrcode, FaHistory, FaTimes, FaLock, FaBoxes } from "react-icons/fa";
-import { COLORS, STATUS_COLORS, CONDITION_COLORS, FONT_FAMILIES } from "../../theme/tokens";
+import { Table, TableHead, TableBody, TableRow, TableCell, Box, Typography, Avatar, Tooltip, Chip, Checkbox } from "@mui/material";
+import { FaEye, FaEdit, FaTrash, FaQrcode, FaHistory, FaLock, FaBoxes } from "react-icons/fa";
+import { COLORS, STATUS_COLORS, CONDITION_COLORS } from "../../theme/tokens";
 import { getImageUrl } from "../../services/assets_service";
 import StatusPill from "../common/StatusPill";
 import ActionBtn from "../common/ActionBtn";
+import ImagePreviewDialog from "../common/ImagePreviewDialog";
 
 const HEADERS = ["#", "Asset Name", "Asset Code", "Value", "Type", "Location", "Company", "Status", "Condition", "Actions"];
 
@@ -213,31 +214,38 @@ export default function AssetTable({ assets, loading, userRole = "user", page = 
                 </TableCell>
 
                 <TableCell sx={{ verticalAlign: "middle" }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    {item.imagePath && (
-                      <Avatar
-                        src={imageUrl}
-                        onClick={() => {
-                          setPreviewSrc(imageUrl);
-                          setPreviewTitle(item.assetName);
-                          setPreviewOpen(true);
-                        }}
-                        sx={{
-                          width: 24, height: 24, flexShrink: 0,
-                          cursor: "pointer",
-                          bgcolor: isDisposed ? "#fee2e2" : "#eff6ff",
-                          color: isDisposed ? "#ef4444" : "#2563eb",
-                          border: isDisposed ? "1.5px solid #fecaca" : "1.5px solid #bfdbfe",
-                          "& img": { objectFit: "cover" },
-                          transition: "all 0.2s ease-in-out",
-                          "&:hover": {
-                            transform: "scale(1.2)",
-                            boxShadow: "0 4px 10px rgba(37,99,235,0.25)",
-                            borderColor: "#2563eb",
-                          }
-                        }}
-                      />
-                    )}
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+                    <Box
+                      onClick={() => imageUrl && (setPreviewSrc(imageUrl), setPreviewTitle(item.assetName), setPreviewOpen(true))}
+                      sx={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: "6px",
+                        flexShrink: 0,
+                        cursor: imageUrl ? "pointer" : "default",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        bgcolor: isDisposed ? "#fee2e2" : imageUrl ? "#f1f5f9" : "linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)",
+                        color: isDisposed ? "#ef4444" : "#3b82f6",
+                        border: "1px solid",
+                        borderColor: isDisposed ? "#fecaca" : imageUrl ? "#cbd5e1" : "#bbdefb",
+                        overflow: "hidden",
+                        boxShadow: imageUrl ? "0 1px 3px rgba(15, 23, 42, 0.05)" : "none",
+                        transition: "all 0.2s ease-in-out",
+                        "&:hover": imageUrl ? {
+                          transform: "scale(1.18)",
+                          boxShadow: "0 4px 12px rgba(37, 99, 235, 0.18)",
+                          borderColor: COLORS.primary,
+                        } : {}
+                      }}
+                    >
+                      {imageUrl ? (
+                        <img src={imageUrl} alt="asset" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <FaBoxes size={11} color="#3b82f6" style={{ opacity: 0.8 }} />
+                      )}
+                    </Box>
                     <Box>
                       <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#0f172a", whiteSpace: "nowrap", lineHeight: 1.25 }}>
                         {item.assetName}
@@ -354,43 +362,12 @@ export default function AssetTable({ assets, loading, userRole = "user", page = 
         </TableBody>
       </Table>
 
-      {/* Asset Image Preview Dialog */}
-      <Dialog
+      <ImagePreviewDialog
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        disableRestoreFocus
-      >
-        <DialogTitle sx={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          borderBottom: "1px solid #e2e8f0", pb: 1.5, pt: 2, px: 3,
-          background: "#f8fafc",
-        }}>
-          <Typography sx={{ fontWeight: 800, fontSize: 13.5, color: "#0f172a", fontFamily: FONT_FAMILIES.header }}>
-            Asset Image: {previewTitle}
-          </Typography>
-          <Box onClick={() => setPreviewOpen(false)} sx={{ width: 22, height: 22, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#64748b", "&:hover": { color: "#0f172a", background: "#e2e8f0" }, transition: "all 0.2s" }}>
-            <FaTimes size={11} />
-          </Box>
-        </DialogTitle>
-        <DialogContent sx={{ p: 2, display: "flex", justifyContent: "center", alignItems: "center", background: "#f8fafc" }}>
-          <Box
-            component="img"
-            src={previewSrc}
-            alt={previewTitle}
-            sx={{
-              width: "100%",
-              maxHeight: "70vh",
-              objectFit: "contain",
-              borderRadius: "8px",
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)",
-              background: "#ffffff"
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+        imageUrl={previewSrc}
+        title={previewTitle}
+      />
     </Box>
   );
 }

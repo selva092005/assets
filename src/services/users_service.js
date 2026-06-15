@@ -1,7 +1,7 @@
 import API from "../config/api";
 
 const download = (blob, fileName) => {
-  const url  = window.URL.createObjectURL(new Blob([blob]));
+  const url = window.URL.createObjectURL(new Blob([blob]));
   const link = Object.assign(document.createElement("a"), { href: url, download: fileName });
   document.body.appendChild(link);
   link.click();
@@ -48,6 +48,17 @@ export const bulkUploadUsers = async (file) => {
   return res.data?.data ?? res.data;
 };
 
+// POST /api/users/bulk-excel/failed-rows → blob download
+export const downloadUserFailedRowsExcel = async (file) => {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await API.post("/api/users/bulk-excel/failed-rows", form, {
+    responseType: "blob",
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  download(res.data, "failed_users_rows.xlsx");
+};
+
 // GET /api/users/export → blob download
 export const exportUsers = async () => {
   const res = await API.get("/api/users/export", { responseType: "blob" });
@@ -63,5 +74,14 @@ export const downloadUserTemplate = async () => {
 // GET /api/users/summary-stats → retrieves user role metric counts
 export const getUserSummaryStats = async () => {
   const res = await API.get("/api/users/summary-stats");
+  return res.data?.data ?? res.data;
+};
+
+export const parseUserExcelFile = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await API.post("/api/users/parse-excel", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
   return res.data?.data ?? res.data;
 };

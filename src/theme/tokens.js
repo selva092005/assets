@@ -44,20 +44,20 @@ export const ROLE_COLORS = {
 export const inputSx = {
   background: "#ffffff",
   borderRadius: "6px",
-  transition: "all 100ms ease",
+  transition: "all 250ms cubic-bezier(0.4, 0, 0.2, 1)",
   "& .MuiOutlinedInput-root": {
     borderRadius: "6px",
     fontSize: 11.5,
     height: 30,
-    transition: "all 100ms ease",
+    transition: "all 250ms cubic-bezier(0.4, 0, 0.2, 1)",
     "& .MuiOutlinedInput-input": { py: "4px !important", px: "8px !important" },
-    "& fieldset": { borderColor: "#cbd5e1", transition: "all 100ms ease" },
-    "& svg": { transition: "all 100ms ease", color: "#888888" },
-    "&:hover fieldset": { borderColor: "#000000" },
-    "&.Mui-focused fieldset": { borderColor: "#000000", borderWidth: "1px !important" },
+    "& fieldset": { borderColor: "#cbd5e1", transition: "all 250ms cubic-bezier(0.4, 0, 0.2, 1)" },
+    "& svg": { transition: "all 250ms cubic-bezier(0.4, 0, 0.2, 1)", color: "#888888" },
+    "&:hover fieldset": { borderColor: COLORS.primary },
+    "&.Mui-focused fieldset": { borderColor: COLORS.primary, borderWidth: "1px !important" },
     "&.Mui-focused": {
       background: "#ffffff",
-      boxShadow: "0 0 0 3px rgba(0, 0, 0, 0.05)",
+      boxShadow: "0 0 0 3px rgba(37, 99, 235, 0.12)",
     }
   }
 };
@@ -101,6 +101,90 @@ export const selectSx = {
     "& svg": { color: "#2563eb" },
   }
 };
+
+export const searchFieldSx = (baseWidth = 240, focusWidth = 300, useMaxWidth = false) => {
+  const widthProp = useMaxWidth ? "maxWidth" : "minWidth";
+  return {
+    [widthProp]: baseWidth,
+    ...inputSx,
+    transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+    "& .MuiOutlinedInput-root": {
+      ...inputSx["& .MuiOutlinedInput-root"],
+      borderRadius: "6px",
+      fontSize: 11.5,
+      height: 26,
+      transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+      "& svg": {
+        transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+      }
+    },
+    "& .MuiOutlinedInput-input": {
+      py: "0px !important",
+      px: "8px !important",
+      height: "24px",
+      lineHeight: "24px",
+    },
+    "&:hover": {
+      transform: "translateY(-0.5px)",
+      boxShadow: "0 4px 12px rgba(15, 23, 42, 0.03)",
+    },
+    "&:focus-within": {
+      [widthProp]: focusWidth,
+      transform: "translateY(-1px) scale(1.01)",
+      boxShadow: "0 6px 16px rgba(37, 99, 235, 0.08)",
+      "& .MuiOutlinedInput-root": {
+        "& fieldset": {
+          borderColor: COLORS.primary,
+        },
+        "& svg": {
+          color: `${COLORS.primary} !important`,
+          transform: "translateX(2px)",
+        }
+      }
+    }
+  };
+};
+
+export const resetBtnSx = {
+  border: "1px solid #e0e0e0",
+  borderRadius: "6px",
+  width: 26,
+  height: 26,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  p: 0,
+  background: "#fff",
+  color: "#757575",
+  transition: "all 0.2s ease",
+  "&:hover": {
+    background: "#f5f5f5",
+    borderColor: "#bbb",
+    color: COLORS.primary,
+  },
+  "& svg": {
+    transition: "transform 0.4s ease-in-out",
+  },
+  "&:hover svg": {
+    transform: "rotate(360deg)",
+  }
+};
+
+export const dateFieldSx = (width = 130) => ({
+  ...inputSx,
+  width: width,
+  "& .MuiOutlinedInput-root": {
+    ...inputSx["& .MuiOutlinedInput-root"],
+    height: 26,
+    fontSize: 11,
+  },
+  "& .MuiOutlinedInput-input": {
+    py: "0px !important",
+    px: "8px !important",
+    height: "24px",
+    lineHeight: "24px",
+  }
+});
 
 export const pageBtnSx = (active) => ({
   minWidth: 28,
@@ -552,6 +636,19 @@ export const premiumDialogPaperSx = {
   position: "relative",
 };
 
+export const lightboxSx = {
+  backdrop: {
+    background: "rgba(15, 23, 42, 0.4) !important",
+  },
+  paper: {
+    background: "transparent !important",
+    boxShadow: "none",
+    border: "none !important",
+    overflow: "visible",
+    outline: "none"
+  }
+};
+
 export const premiumDialogTitleSx = {
   p: "16px 24px",
   fontWeight: 700,
@@ -593,6 +690,31 @@ export const denseCellSx = {
   borderColor: COLORS.borderLight,
   lineHeight: 1.25,
 };
+
+export const imageCardSx = (imageUrl) => ({
+  width: "100%",
+  height: 120,
+  borderRadius: "8px",
+  border: "1px solid",
+  borderColor: imageUrl ? "rgba(37, 99, 235, 0.15)" : "#e2e8f0",
+  background: imageUrl ? "#f8fafc" : "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  overflow: "hidden",
+  mb: 1.5,
+  cursor: imageUrl ? "zoom-in" : "default",
+  boxShadow: imageUrl ? "0 4px 12px rgba(15, 23, 42, 0.04)" : "none",
+  transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
+  position: "relative",
+  "&:hover": imageUrl ? {
+    transform: "translateY(-2px)",
+    boxShadow: "0 8px 20px rgba(15, 23, 42, 0.08)",
+    borderColor: COLORS.primary,
+    "& .zoom-overlay": { opacity: 1 }
+  } : {}
+});
 
 
 

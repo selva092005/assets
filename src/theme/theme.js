@@ -138,6 +138,25 @@ export const theme = createTheme({
           fontSize: "11px !important",
           background: "#f4f6fb",
         },
+        "*": {
+          scrollbarWidth: "thin",
+          scrollbarColor: "rgba(148, 163, 184, 0.3) transparent",
+          "&::-webkit-scrollbar": {
+            width: "6px",
+            height: "6px",
+          },
+          "&::-webkit-scrollbar-track": {
+            background: "transparent",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            background: "rgba(148, 163, 184, 0.3)",
+            borderRadius: "99px",
+            transition: "all 0.2s ease-in-out",
+            "&:hover": {
+              background: "rgba(100, 116, 139, 0.5)",
+            },
+          },
+        },
       },
     },
   },

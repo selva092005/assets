@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Box, Button, Chip, CircularProgress, Typography, IconButton, Divider, Modal, Table, TableBody, TableCell, TableRow, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import { Box, Button, Chip, Typography, IconButton, Divider, Modal, Table, TableBody, TableCell, TableRow, Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress } from "@mui/material";
+import SkeletonLoader from "../components/common/SkeletonLoader";
 import { useForm } from "react-hook-form";
 import { FormTextField } from "../components/FormFields";
 import { FaArrowLeft, FaEdit, FaBox, FaTrash, FaLayerGroup, FaPrint, FaMapMarkerAlt, FaExchangeAlt, FaTimes, FaUser, FaCalendarAlt, FaHistory } from "react-icons/fa";
@@ -9,13 +10,16 @@ import toast from "../utils/toast.jsx";
 
 import { getAssetById, getImageUrl } from "../services/assets_service";
 import { getAssetHistory, moveAsset } from "../services/location_history_service";
+import ImagePreviewDialog from "../components/common/ImagePreviewDialog";
 import {
   COLORS,
   STATUS_COLORS,
   CONDITION_COLORS,
   outlinedBtnSx,
   primaryBtnSx,
-  denseCellSx
+  denseCellSx,
+  lightboxSx,
+  imageCardSx
 } from "../theme/tokens";
 
 export default function AssetDetailPage() {
@@ -60,8 +64,8 @@ export default function AssetDetailPage() {
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "80vh" }}>
-        <CircularProgress size={20} />
+      <Box sx={{ p: 2 }}>
+        <SkeletonLoader variant="detail" />
       </Box>
     );
   }
@@ -132,9 +136,12 @@ export default function AssetDetailPage() {
 
   return (
     <>
-      <Modal open={imgOpen} onClose={() => setImgOpen(false)} sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Box component="img" src={imageUrl} alt="asset" onClick={() => setImgOpen(false)} sx={{ width: 360, height: 280, objectFit: "contain", borderRadius: 1, background: "#fff", boxShadow: 12, cursor: "zoom-out", outline: "none" }} />
-      </Modal>
+      <ImagePreviewDialog
+        open={imgOpen}
+        onClose={() => setImgOpen(false)}
+        imageUrl={imageUrl}
+        title={data?.assetName}
+      />
 
       <Box sx={{
         p: 0,
@@ -161,16 +168,39 @@ export default function AssetDetailPage() {
             height: "fit-content",
           }}>
             <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-              {/* Compact Image */}
-              <Box onClick={() => imageUrl && setImgOpen(true)} sx={{
-                width: 60, height: 60, borderRadius: "4px", border: "1px solid " + COLORS.borderLight,
-                background: COLORS.bg, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", mb: 1,
-                cursor: imageUrl ? "zoom-in" : "default"
-              }}>
+              {/* Premium Image Card */}
+              <Box
+                onClick={() => imageUrl && setImgOpen(true)}
+                sx={imageCardSx(imageUrl)}
+              >
                 {imageUrl ? (
-                  <img src={imageUrl} alt="asset" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <>
+                    <img src={imageUrl} alt="asset" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <Box
+                      className="zoom-overlay"
+                      sx={{
+                        position: "absolute",
+                        top: 0, left: 0, right: 0, bottom: 0,
+                        background: "rgba(15, 23, 42, 0.3)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#fff",
+                        fontSize: 9.5,
+                        fontWeight: 600,
+                        opacity: 0,
+                        transition: "opacity 0.2s ease",
+                        pointerEvents: "none"
+                      }}
+                    >
+                      Click to expand
+                    </Box>
+                  </>
                 ) : (
-                  <FaBox size={18} color={COLORS.textFaint} />
+                  <>
+                    <FaBox size={20} color="#94a3b8" style={{ marginBottom: 4 }} />
+                    <Typography sx={{ fontSize: 9.5, color: "#94a3b8", fontWeight: 600 }}>No Image Available</Typography>
+                  </>
                 )}
               </Box>
 

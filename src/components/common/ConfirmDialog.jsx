@@ -1,5 +1,5 @@
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button } from "@mui/material";
-import { outlinedBtnSx, primaryBtnSx } from "../../theme/tokens";
+import { outlinedBtnSx, primaryBtnSx, premiumDialogPaperSx } from "../../theme/tokens";
 
 export default function ConfirmDialog({
   open,
@@ -18,7 +18,7 @@ export default function ConfirmDialog({
       open={open}
       onClose={handleCancel}
       disableRestoreFocus
-      slotProps={{ paper: { sx: { borderRadius: "14px", p: 1, maxWidth: 380 } } }}
+      slotProps={{ paper: { sx: { ...premiumDialogPaperSx, maxWidth: 380, p: 1 } } }}
     >
       <DialogTitle sx={{ fontWeight: 700, fontSize: 16, pb: 1 }}>{title}</DialogTitle>
       <DialogContent sx={{ fontSize: 14, color: "#555", pt: "8px !important" }}>
