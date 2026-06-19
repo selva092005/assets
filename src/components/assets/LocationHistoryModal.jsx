@@ -33,7 +33,7 @@ export default function LocationHistoryModal({ open, asset, onClose }) {
   useEffect(() => {
     if (!open || !asset?.assetId) return;
     setLoading(true);
-    
+
     Promise.all([
       getAssetHistory(asset.assetId),
       getAllocationsByAsset(asset.assetId)
@@ -156,7 +156,7 @@ export default function LocationHistoryModal({ open, asset, onClose }) {
                     animation: `rowIn .35s cubic-bezier(.22,1,.36,1) ${idx * 60}ms both`,
                     "@keyframes rowIn": {
                       from: { opacity: 0, transform: "translateY(10px)" },
-                      to:   { opacity: 1, transform: "translateY(0)" },
+                      to: { opacity: 1, transform: "translateY(0)" },
                     },
                   }}
                 >
@@ -234,7 +234,7 @@ export default function LocationHistoryModal({ open, asset, onClose }) {
                   animation: `rowIn .35s cubic-bezier(.22,1,.36,1) ${idx * 60}ms both`,
                   "@keyframes rowIn": {
                     from: { opacity: 0, transform: "translateY(10px)" },
-                    to:   { opacity: 1, transform: "translateY(0)" },
+                    to: { opacity: 1, transform: "translateY(0)" },
                   },
                 }}
               >

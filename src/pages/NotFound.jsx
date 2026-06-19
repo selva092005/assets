@@ -11,77 +11,9 @@ export default function NotFound() {
   // Interactive controls
   const [headlightMode, setHeadlightMode] = useState("normal"); // "normal", "high", "off"
 
-  // Synthesize brief engine start/revving sound when the simulation initializes
-  const playEngineStartSound = () => {
-    try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-
-      const osc1 = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc1.type = "triangle";
-      osc1.frequency.setValueAtTime(80, ctx.currentTime);
-      osc1.frequency.linearRampToValueAtTime(140, ctx.currentTime + 0.3);
-      osc1.frequency.linearRampToValueAtTime(100, ctx.currentTime + 0.8);
-
-      osc2.type = "sawtooth";
-      osc2.frequency.setValueAtTime(40, ctx.currentTime);
-      osc2.frequency.linearRampToValueAtTime(70, ctx.currentTime + 0.3);
-      osc2.frequency.linearRampToValueAtTime(50, ctx.currentTime + 0.8);
-
-      gain.gain.setValueAtTime(0.08, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.3);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
-
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc1.start();
-      osc2.start();
-      osc1.stop(ctx.currentTime + 0.8);
-      osc2.stop(ctx.currentTime + 0.8);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const playHornSound = () => {
-    try {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      const ctx = new AudioContext();
-
-      const osc1 = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc1.type = "sawtooth";
-      osc1.frequency.setValueAtTime(220, ctx.currentTime);
-      osc2.type = "sawtooth";
-      osc2.frequency.setValueAtTime(277, ctx.currentTime);
-
-      gain.gain.setValueAtTime(0.12, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc1.start();
-      osc2.start();
-      osc1.stop(ctx.currentTime + 0.5);
-      osc2.stop(ctx.currentTime + 0.5);
-    } catch (e) { }
-  };
-
-  // Play startup engine hum and reset headlight settings on page initialization or reset
+  // Reset headlight settings on page initialization or reset
   useEffect(() => {
     setHeadlightMode("normal");
-    playEngineStartSound();
   }, [animationKey]);
 
   const handleReRun = () => {
@@ -556,8 +488,6 @@ export default function NotFound() {
                 fill="#35b0bb"
                 stroke="#1d7680"
                 strokeWidth="1.2"
-                style={{ cursor: "pointer" }}
-                onClick={playHornSound}
               />
 
               {/* Rounded Vintage Fender Bulges (3D depth layers, re-arched to sit cleanly above wheel cutouts) */}

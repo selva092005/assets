@@ -67,10 +67,12 @@ const playNotificationSound = () => {
 };
 
 const renderNotificationItemContent = (messageText) => {
-  if (!messageText) return { title: "Notification", details: "", color: "#475569", icon: "💬" };
+  if (!messageText) return { title: "Notification", details: "", color: "#475569", icon: "💬", path: "/home" };
   const requestMatch = messageText.match(/New transfer request for asset '(.*?)' from '(.*?)' to '(.*?)' \(Priority: (.*?)\) requested by (.*?)\.?$/);
   const approveMatch = messageText.match(/Your transfer request for asset '(.*?)' was APPROVED by (.*?)\. Remarks: (.*?)\.?$/);
   const rejectMatch = messageText.match(/Your transfer request for asset '(.*?)' was REJECTED by (.*?)\. Remarks: (.*?)\.?$/);
+  const newTicketMatch = messageText.match(/New Ticket: '(.*?)' request filed by (.*?) \(Priority: (.*?)\)/);
+  const ticketUpdateMatch = messageText.match(/Your ticket request #(\d+) \((.*?)\) status has been updated to (.*?)\.?$/);
 
   if (requestMatch) {
     const [_, assetName, fromLoc, toLoc, priority, requestedBy] = requestMatch;
@@ -86,7 +88,8 @@ const renderNotificationItemContent = (messageText) => {
         </span>
       ),
       color: "#2563eb",
-      icon: "🔹"
+      icon: "🔹",
+      path: "/home/transfer"
     };
   } else if (approveMatch) {
     const [_, assetName, resolvedBy, remarks] = approveMatch;
@@ -104,7 +107,8 @@ const renderNotificationItemContent = (messageText) => {
         </span>
       ),
       color: "#16a34a",
-      icon: "🟢"
+      icon: "🟢",
+      path: "/home/transfer"
     };
   } else if (rejectMatch) {
     const [_, assetName, resolvedBy, remarks] = rejectMatch;
@@ -122,7 +126,45 @@ const renderNotificationItemContent = (messageText) => {
         </span>
       ),
       color: "#dc2626",
-      icon: "🔴"
+      icon: "🔴",
+      path: "/home/transfer"
+    };
+  } else if (newTicketMatch) {
+    const [_, requestType, requestedBy, priority] = newTicketMatch;
+    return {
+      title: "New Service Request",
+      details: (
+        <span>
+          <strong>{requestType.replace("_", " ")}</strong> filed by {requestedBy}
+          <br />
+          <span style={{ fontSize: "9px", color: "#64748b" }}>Priority: {priority}</span>
+        </span>
+      ),
+      color: "#ec4899",
+      icon: "🛠️",
+      path: "/home/requests"
+    };
+  } else if (ticketUpdateMatch) {
+    const [_, ticketId, requestType, status] = ticketUpdateMatch;
+    let color = "#3b82f6";
+    let icon = "🔔";
+    if (["APPROVED", "RESOLVED"].includes(status)) {
+      color = "#16a34a";
+      icon = "✅";
+    } else if (["REJECTED", "LOST"].includes(status)) {
+      color = "#dc2626";
+      icon = "❌";
+    }
+    return {
+      title: "Ticket Status Updated",
+      details: (
+        <span>
+          Ticket <strong>#{ticketId}</strong> ({requestType}) is now <strong>{status}</strong>
+        </span>
+      ),
+      color,
+      icon,
+      path: "/home/requests"
     };
   }
 
@@ -130,7 +172,8 @@ const renderNotificationItemContent = (messageText) => {
     title: "System Notification",
     details: messageText,
     color: "#475569",
-    icon: "💬"
+    icon: "💬",
+    path: "/home"
   };
 };
 
@@ -191,6 +234,8 @@ export const NotificationBell = () => {
         const requestMatch = rawMessage.match(/New transfer request for asset '(.*?)' from '(.*?)' to '(.*?)' \(Priority: (.*?)\) requested by (.*?)\.?$/);
         const approveMatch = rawMessage.match(/Your transfer request for asset '(.*?)' was APPROVED by (.*?)\. Remarks: (.*?)\.?$/);
         const rejectMatch = rawMessage.match(/Your transfer request for asset '(.*?)' was REJECTED by (.*?)\. Remarks: (.*?)\.?$/);
+        const newTicketMatch = rawMessage.match(/New Ticket: '(.*?)' request filed by (.*?) \(Priority: (.*?)\)/);
+        const ticketUpdateMatch = rawMessage.match(/Your ticket request #(\d+) \((.*?)\) status has been updated to (.*?)\.?$/);
 
         if (requestMatch) {
           const [_, assetName, fromLoc, toLoc, priority, requestedBy] = requestMatch;
@@ -240,6 +285,38 @@ export const NotificationBell = () => {
               onActionClick: () => navigate("/home/transfer")
             }
           );
+        } else if (newTicketMatch) {
+          const [_, requestType, requestedBy, priority] = newTicketMatch;
+          toast.info(
+            "New Service Request",
+            <div>
+              <strong>{requestType.replace("_", " ")}</strong> filed by {requestedBy}
+              <div style={{ fontSize: "9.5px", opacity: 0.8, marginTop: "3px" }}>
+                Priority: {priority}
+              </div>
+            </div>,
+            {
+              duration: 8000,
+              actionText: "View",
+              onActionClick: () => navigate("/home/requests")
+            }
+          );
+        } else if (ticketUpdateMatch) {
+          const [_, ticketId, requestType, status] = ticketUpdateMatch;
+          const isPositive = ["APPROVED", "RESOLVED"].includes(status);
+          const isNegative = ["REJECTED", "LOST"].includes(status);
+          const toastFn = isPositive ? toast.success : (isNegative ? toast.error : toast.info);
+          toastFn(
+            "Ticket Status Updated",
+            <div>
+              Ticket <strong>#{ticketId}</strong> ({requestType}) is now <strong>{status}</strong>
+            </div>,
+            {
+              duration: 8000,
+              actionText: "View",
+              onActionClick: () => navigate("/home/requests")
+            }
+          );
         } else {
           toast.info(
             "New Notification",
@@ -247,7 +324,7 @@ export const NotificationBell = () => {
             {
               duration: 8000,
               actionText: "View",
-              onActionClick: () => navigate("/home/transfer")
+              onActionClick: () => navigate("/home")
             }
           );
         }
@@ -544,7 +621,7 @@ export const NotificationBell = () => {
                       <ListItemButton
                         onClick={() => {
                           handleMarkAsRead(notif.id);
-                          navigate("/home/transfer");
+                          navigate(parsed.path || "/home/transfer");
                           handleNotifClose();
                         }}
                         sx={{

@@ -63,6 +63,9 @@ export const theme = createTheme({
           "& .MuiInputBase-root": {
             fontSize: "11px",
             height: "30px",
+            "&.MuiInputBase-multiline": {
+              height: "auto",
+            },
           },
         },
       },
@@ -73,6 +76,9 @@ export const theme = createTheme({
           fontSize: "11px",
           height: "30px",
           borderRadius: "6px",
+          "&.MuiInputBase-multiline": {
+            height: "auto",
+          },
         },
         input: {
           padding: "4.5px 8px",

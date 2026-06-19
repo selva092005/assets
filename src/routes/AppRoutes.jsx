@@ -16,6 +16,10 @@ import TransferPage from "../pages/TransferPage";
 import ReportsPage from "../pages/ReportsPage";
 import Locations from "../pages/Locations";
 import NotFound from "../pages/NotFound";
+import AssetAudit from "../pages/AssetAudit";
+import AssetRequestPage from "../pages/AssetRequestPage";
+import AssetMaintenancePage from "../pages/AssetMaintenancePage";
+import ScanAsset from "../pages/ScanAsset";
 
 function ProtectedRoute({ children }) {
   const { isLoggedIn } = useSelector((s) => s.auth);
@@ -65,6 +69,12 @@ export default function AppRoutes() {
 
         {/* Reports — all roles */}
         <Route path="reports" element={<ReportsPage />} />
+
+        {/* Audit, requests, maintenance, QR scan routes */}
+        <Route path="audit" element={<RoleRoute allowedRoles={["admin", "manager"]}><AssetAudit /></RoleRoute>} />
+        <Route path="requests" element={<RoleRoute allowedRoles={["admin", "manager", "user"]}><AssetRequestPage /></RoleRoute>} />
+        <Route path="maintenance" element={<RoleRoute allowedRoles={["admin", "manager"]}><AssetMaintenancePage /></RoleRoute>} />
+        <Route path="scan" element={<RoleRoute allowedRoles={["admin", "manager"]}><ScanAsset /></RoleRoute>} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

@@ -172,7 +172,7 @@ export default function Locations() {
       const query = encodeURIComponent(val.trim());
       const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`);
       const data = await res.json();
-      
+
       if (data && data.length > 0) {
         const { lat, lon } = data[0];
         setValue("latitude", Number(lat).toFixed(6), { shouldValidate: true, shouldDirty: true });
@@ -218,7 +218,7 @@ export default function Locations() {
   const openEdit = (loc) => {
     setIsEdit(true);
     setEditId(loc.locationId);
-    
+
     // Normalize type value to match uppercase dropdown keys
     const rawType = loc.locationType || "OFFICE";
     const normalizedType = rawType.toUpperCase().replace(" ", "_");
@@ -238,8 +238,8 @@ export default function Locations() {
   const onSubmit = async (data) => {
     setSaving(true);
     try {
-      const payload = { 
-        locationName: data.locationName.trim(), 
+      const payload = {
+        locationName: data.locationName.trim(),
         companyId: Number(data.companyId),
         latitude: data.latitude === "" ? null : Number(data.latitude),
         longitude: data.longitude === "" ? null : Number(data.longitude),
@@ -629,7 +629,7 @@ export default function Locations() {
         </DialogTitle>
         <DialogContent sx={{ pt: "18px !important", pb: 2 }}>
           <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.1fr 0.9fr" }, gap: 3 }}>
-            
+
             {/* Left Column: Form Fields */}
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1.75 }}>
               <FormTextField

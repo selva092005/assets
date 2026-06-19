@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Paper, Box, Typography } from "@mui/material";
 import { premiumCardSx } from "../../theme/tokens";
 
-export default function PremiumCard({ title, icon, children, action, subtitle }) {
+export default function PremiumCard({ title, icon, children, action, subtitle, id }) {
   const [styleMode, setStyleMode] = useState(() => localStorage.getItem("ams_card_style") || "AURORA");
 
   useEffect(() => {
@@ -19,6 +19,7 @@ export default function PremiumCard({ title, icon, children, action, subtitle })
 
   return (
     <Paper
+      id={id}
       elevation={0}
       sx={premiumCardSx(styleMode)}
     >

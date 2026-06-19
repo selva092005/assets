@@ -883,15 +883,15 @@ export default function TransferPage() {
                                     </ActionBtn>
                                   )}
                                 {row.status === "IN_TRANSIT" && (
-                                    <ActionBtn
-                                      title="Confirm Receipt"
-                                      color="#2563eb"
-                                      hoverBg="rgba(37, 99, 235, 0.08)"
-                                      onClick={() => openReceive(row)}
-                                      sx={{ border: "none", background: "transparent" }}
-                                    >
-                                      <FaClipboardCheck size={11} />
-                                    </ActionBtn>
+                                  <ActionBtn
+                                    title="Confirm Receipt"
+                                    color="#2563eb"
+                                    hoverBg="rgba(37, 99, 235, 0.08)"
+                                    onClick={() => openReceive(row)}
+                                    sx={{ border: "none", background: "transparent" }}
+                                  >
+                                    <FaClipboardCheck size={11} />
+                                  </ActionBtn>
                                 )}
                               </>
                             )}

@@ -101,6 +101,7 @@ export default function AssetFormPage() {
       companyName: "",
       notes: "",
       imagePath: "",
+      depreciationRate: 20,
     }
   });
 
@@ -113,7 +114,7 @@ export default function AssetFormPage() {
   const selectedCompany = watch("companyName");
   const selectedLocationId = watch("locationId");
 
-  const filteredLocations = locations.filter(loc => 
+  const filteredLocations = locations.filter(loc =>
     !selectedCompany || (loc.companyName === selectedCompany)
   );
 
@@ -188,6 +189,7 @@ export default function AssetFormPage() {
           companyName: d.companyName || "",
           typeId: String(d.typeId ?? d.assetType?.typeId ?? ""),
           imagePath: d.imagePath || "",
+          depreciationRate: d.depreciationRate ?? 20,
         });
         setOriginalLocation(d.locationName || "");
 
@@ -209,11 +211,11 @@ export default function AssetFormPage() {
     const R = 6371; // Earth's radius in km
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
 
@@ -268,7 +270,7 @@ export default function AssetFormPage() {
       async (pos) => {
         try {
           const { latitude, longitude } = pos.coords;
-          
+
           // 1. Proximity matching (Haversine formula)
           let closestLoc = null;
           let minDistance = Infinity;
@@ -295,7 +297,7 @@ export default function AssetFormPage() {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
           const data = await res.json();
           const city = data.address?.city || data.address?.town || data.address?.village || data.address?.state || "";
-          
+
           performCityMatch(city, "Detected location via GPS");
 
         } catch (e) {
@@ -339,6 +341,7 @@ export default function AssetFormPage() {
         typeId: data.typeId === "" ? null : Number(data.typeId),
         locationId: data.locationId === "" ? null : Number(data.locationId),
         imagePath: resolvedImagePath,
+        depreciationRate: data.depreciationRate === "" ? 20.0 : Number(data.depreciationRate),
       };
 
       if (isEdit) {
@@ -544,6 +547,9 @@ export default function AssetFormPage() {
                     {currentStatus === "ASSIGNED" && (
                       <MenuItem value="ASSIGNED" sx={{ fontSize: 13, color: "#f97316" }}>ASSIGNED (via Allocation)</MenuItem>
                     )}
+                    {currentStatus === "LOST" && (
+                      <MenuItem value="LOST" sx={{ fontSize: 13, color: "#ef4444" }}>LOST</MenuItem>
+                    )}
                   </FormSelect>
                   {currentStatus === "ASSIGNED" && (
                     <Typography sx={{ fontSize: 11, color: "#f97316", mt: 0.5 }}>
@@ -572,7 +578,7 @@ export default function AssetFormPage() {
               {/* Purchase Details */}
               <Section icon={<FaDollarSign size={13} />} title="Purchase Details" index={1} />
               <Grid container spacing={2} sx={{ mb: 1 }}>
-                <Grid size={4} sx={anim(5)}>
+                <Grid size={3} sx={anim(5)}>
                   <FormTextField
                     name="purchaseDate"
                     control={control}
@@ -585,7 +591,7 @@ export default function AssetFormPage() {
                     slotProps={{ inputLabel: { shrink: true } }}
                   />
                 </Grid>
-                <Grid size={4} sx={anim(6)}>
+                <Grid size={3} sx={anim(6)}>
                   <FormTextField
                     name="warrantyExpiry"
                     control={control}
@@ -600,7 +606,7 @@ export default function AssetFormPage() {
                     slotProps={{ inputLabel: { shrink: true } }}
                   />
                 </Grid>
-                <Grid size={4} sx={anim(7)}>
+                <Grid size={3} sx={anim(7)}>
                   <FormTextField
                     name="cost"
                     control={control}
@@ -612,6 +618,21 @@ export default function AssetFormPage() {
                     type="number"
                     placeholder="0.00"
                     slotProps={{ input: { startAdornment: adorn(<FaDollarSign size={12} />) } }}
+                  />
+                </Grid>
+                <Grid size={3} sx={anim(7.5)}>
+                  <FormTextField
+                    name="depreciationRate"
+                    control={control}
+                    rules={{
+                      validate: (val) => {
+                        if (val === "" || val === undefined) return true;
+                        return (Number(val) >= 0 && Number(val) <= 100) || "Rate must be between 0 and 100";
+                      }
+                    }}
+                    label="Depreciation Rate (%)"
+                    type="number"
+                    placeholder="20.0"
                   />
                 </Grid>
               </Grid>

@@ -156,14 +156,14 @@ export default function AssetsPage() {
     queryFn: async () => {
       const params = {
         keyword: search || undefined,
-        type:    typeName || undefined,
-        status:  filterStatus || undefined,
+        type: typeName || undefined,
+        status: filterStatus || undefined,
         page,
-        size:    showCount,
+        size: showCount,
       };
       const res = await getAssets(params);
       return {
-        content:    res.data?.content    || res.content    || [],
+        content: res.data?.content || res.content || [],
         totalPages: res.data?.totalPages || res.totalPages || 0,
       };
     },
@@ -407,7 +407,7 @@ export default function AssetsPage() {
               }
             >
               <MenuItem value="" sx={{ fontSize: 11 }}>All</MenuItem>
-              {['AVAILABLE', 'ASSIGNED', 'DAMAGED', 'DISPOSED', 'UNDER_MAINTENANCE'].map((status) => (
+              {['AVAILABLE', 'ASSIGNED', 'DAMAGED', 'DISPOSED', 'LOST', 'UNDER_MAINTENANCE'].map((status) => (
                 <MenuItem key={status} value={status} sx={{ fontSize: 11 }}>{status}</MenuItem>
               ))}
             </Select>
@@ -546,20 +546,20 @@ export default function AssetsPage() {
           <ErrorState message={error?.message || error?.response?.data?.message} onRetry={refetch} />
         ) : (
           <AssetTable
-              assets={assets}
-              loading={false}
-              userRole={userRole}
-              page={page}
-              pageSize={showCount}
-              onView={handleView}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onQR={handleQR}
-              onHistory={handleHistory}
-              selectedIds={selectedAssetIds}
-              onSelect={handleSelectAsset}
-              onSelectAll={handleSelectAllAssets}
-            />
+            assets={assets}
+            loading={false}
+            userRole={userRole}
+            page={page}
+            pageSize={showCount}
+            onView={handleView}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onQR={handleQR}
+            onHistory={handleHistory}
+            selectedIds={selectedAssetIds}
+            onSelect={handleSelectAsset}
+            onSelectAll={handleSelectAllAssets}
+          />
         )}
         <TablePagination page={page} totalPages={totalPages} onPageChange={(pg) => dispatch(setAssetPage(pg))} />
       </TableCard>

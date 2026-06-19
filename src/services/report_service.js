@@ -34,3 +34,9 @@ export const exportDisposals = async () => {
   download(res.data, "disposals_report.xlsx");
 };
 
+// GET /api/reports/audits/export → blob download
+export const exportAudits = async () => {
+  const res = await API.get("/api/reports/audits/export", { responseType: "blob" });
+  download(res.data, "audits_report.xlsx");
+};
+

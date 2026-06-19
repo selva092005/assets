@@ -33,13 +33,16 @@ import {
   FaClock,
   FaTrashAlt,
   FaUpload,
-  FaFileAlt
+  FaFileAlt,
+  FaTimes
 } from "react-icons/fa";
 import toast from "../utils/toast.jsx";
 import { getDashboard, getImageUrl, getAssets } from "../services/assets_service";
 import { getAllAllocations } from "../services/allocation_service";
 import { getAllTransfers, approveTransfer, rejectTransfer } from "../services/transfer_service";
 import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { setAssetSearch, setAssetPage } from "../store/slices/assetSlice";
 import { COLORS, outlinedBtnSx } from "../theme/tokens";
 import StatCard from "../components/common/StatCard";
 import PremiumCard from "../components/common/PremiumCard";
@@ -50,6 +53,7 @@ const CHART_COLORS = ["#2563eb", "#10b981", "#d97706", "#f43f5e", "#8b5cf6", "#0
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [warrantyDays, setWarrantyDays] = useState(90);
   const [statusActiveIdx, setStatusActiveIdx] = useState(null);
 
@@ -141,6 +145,7 @@ export default function Dashboard() {
   const assigned = stats?.assigned ?? 0;
   const damaged = stats?.damaged ?? 0;
   const underMaintenance = stats?.underMaintenance ?? 0;
+  const lost = stats?.lost ?? 0;
   const warrantyExpiring = stats?.expiringWarrantyIn30Days ?? 0;
   const byType = stats?.countByType || {};
   const byLocation = stats?.countByLocation || {};
@@ -170,7 +175,8 @@ export default function Dashboard() {
     { name: "Available", value: Number(available), color: "#10b981" },
     { name: "Assigned", value: Number(assigned), color: "#2563eb" },
     { name: "Maintenance", value: Number(underMaintenance), color: "#d97706" },
-    { name: "Damaged", value: Number(damaged), color: "#f43f5e" }
+    { name: "Damaged", value: Number(damaged), color: "#f43f5e" },
+    { name: "Lost", value: Number(lost), color: "#ef4444" }
   ].filter(x => x.value > 0);
 
   // Expiring warranties calculation
@@ -183,6 +189,16 @@ export default function Dashboard() {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays >= 0 && diffDays <= warrantyDays;
   }).sort((a, b) => new Date(a.warrantyExpiry) - new Date(b.warrantyExpiry));
+
+  const criticalWarranties = (allAssetsRes || []).filter(a => {
+    if (!a.warrantyExpiry) return false;
+    const exp = new Date(a.warrantyExpiry);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const diffTime = exp - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 && diffDays <= 30;
+  });
 
   const now = new Date();
   const dayVal = now.toLocaleDateString("en-US", { day: "2-digit" });
@@ -260,13 +276,80 @@ export default function Dashboard() {
         }
       />
 
-      {/* ── Stat Ribbon (6 Symmetrical Columns with Clean Top Color Accents) ── */}
+      {/* Warranty Expiry Alert Banner */}
+      {criticalWarranties.length > 0 && (
+        <Box sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          bgcolor: "#fffbeb",
+          border: "1.5px solid #fef3c7",
+          borderRadius: "8px",
+          p: "10px 16px",
+          boxShadow: "0 2px 4px rgba(245, 158, 11, 0.05)",
+          gap: 2
+        }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box sx={{
+              width: 32,
+              height: 32,
+              borderRadius: "50%",
+              bgcolor: "#fef3c7",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#b45309",
+              flexShrink: 0
+            }}>
+              <FaExclamationTriangle size={15} />
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: "11.5px", fontWeight: 800, color: "#92400e" }}>
+                Warranty Renewal Action Required
+              </Typography>
+              <Typography sx={{ fontSize: "10px", color: "#b45309", mt: 0.1 }}>
+                There are {criticalWarranties.length} asset{criticalWarranties.length > 1 ? 's' : ''} whose warranty will expire in the next 30 days. Please review and plan renewals.
+              </Typography>
+            </Box>
+          </Box>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => {
+              setWarrantyDays(30);
+              const element = document.getElementById("expiring-warranties-card");
+              if (element) {
+                element.scrollIntoView({ behavior: "smooth" });
+              }
+            }}
+            sx={{
+              bgcolor: "#d97706",
+              color: "#ffffff",
+              fontSize: "9.5px",
+              fontWeight: 800,
+              px: 1.5,
+              py: 0.5,
+              textTransform: "none",
+              borderRadius: "6px",
+              boxShadow: "none",
+              "&:hover": {
+                bgcolor: "#b45309",
+                boxShadow: "none"
+              }
+            }}
+          >
+            Review Renewals
+          </Button>
+        </Box>
+      )}
+
+      {/* ── Stat Ribbon (7 Symmetrical Columns with Clean Top Color Accents) ── */}
       <Box sx={{
         display: "grid",
         gridTemplateColumns: {
           xs: "repeat(2, 1fr)",
           sm: "repeat(3, 1fr)",
-          md: "repeat(6, 1fr)"
+          md: "repeat(7, 1fr)"
         },
         gap: 2
       }}>
@@ -275,6 +358,7 @@ export default function Dashboard() {
         <StatCard label="Assigned" value={assigned} icon={<FaTools />} iconBg="#eff6ff" iconColor="#2563eb" onClick={() => navigate("/home/assets?status=ASSIGNED")} />
         <StatCard label="Maintenance" value={underMaintenance} icon={<FaWrench />} iconBg="#fffbeb" iconColor="#d97706" onClick={() => navigate("/home/assets?status=UNDER_MAINTENANCE")} />
         <StatCard label="Damaged" value={damaged} icon={<FaExclamationTriangle />} iconBg="#fff1f2" iconColor="#f43f5e" onClick={() => navigate("/home/assets?status=DAMAGED")} />
+        <StatCard label="Lost / Missing" value={lost} icon={<FaTimes />} iconBg="#fef2f2" iconColor="#ef4444" onClick={() => navigate("/home/assets?status=LOST")} />
         <StatCard label="Asset Utilization" value={totalAssets > 0 ? `${((assigned / totalAssets) * 100).toFixed(1)}%` : "0%"} icon={<FaChartPie />} iconBg="#f5f3ff" iconColor="#7c3aed" onClick={() => navigate("/home/allocation")} />
       </Box>
 
@@ -422,7 +506,8 @@ export default function Dashboard() {
                 { label: "Available", val: available, color: "#10b981", bg: "#ecfdf5" },
                 { label: "Assigned", val: assigned, color: "#2563eb", bg: "#eff6ff" },
                 { label: "Maintenance", val: underMaintenance, color: "#d97706", bg: "#fffbeb" },
-                { label: "Damaged", val: damaged, color: "#f43f5e", bg: "#fff1f2" }
+                { label: "Damaged", val: damaged, color: "#f43f5e", bg: "#fff1f2" },
+                { label: "Lost", val: lost, color: "#ef4444", bg: "#fef2f2" }
               ].map((item) => (
                 <Box key={item.label} sx={{
                   display: "flex",
@@ -664,6 +749,43 @@ export default function Dashboard() {
                 </Box>
               </Box>
 
+              {/* Lost assets alert box */}
+              <Box
+                onClick={() => navigate('/home/assets?status=LOST')}
+                sx={{
+                  borderRadius: "6px",
+                  border: "1px solid #fee2e2",
+                  p: "6px 10px",
+                  cursor: "pointer",
+                  background: "linear-gradient(to bottom right, #fff5f5, #ffebee)",
+                  transition: "all 200ms ease",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  "&:hover": {
+                    transform: "translateY(-1px)",
+                    boxShadow: "0 4px 8px rgba(239, 68, 68, 0.04)"
+                  }
+                }}
+              >
+                <Box>
+                  <Typography sx={{ fontWeight: 850, fontSize: "9px", color: "#ef4444", textTransform: "uppercase", letterSpacing: "0.02em" }}>
+                    Lost / Missing Assets
+                  </Typography>
+                  <Typography sx={{ fontSize: "8.5px", fontWeight: 700, color: "#c53030", mt: 0.1 }}>
+                    Assets marked as lost
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography sx={{ fontSize: "15px", fontWeight: 950, color: "#9b2c2c" }}>
+                    {lost}
+                  </Typography>
+                  <Box sx={{ bgcolor: "#fee2e2", color: "#ef4444", borderRadius: "50%", width: 14, height: 14, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 900 }}>
+                    <FaTimes size={7} />
+                  </Box>
+                </Box>
+              </Box>
+
               {/* Under maintenance alert box */}
               <Box
                 onClick={() => navigate('/home/assets?status=UNDER_MAINTENANCE')}
@@ -777,6 +899,7 @@ export default function Dashboard() {
 
         {/* Card 7: Expiring Warranties */}
         <PremiumCard
+          id="expiring-warranties-card"
           title="Expiring Warranties"
           icon={<FaCalendarAlt />}
           subtitle="Track upcoming hardware renewals"
@@ -823,7 +946,7 @@ export default function Dashboard() {
                       border: "1px solid #e2e8f0"
                     }}
                   >
-                    <Box sx={{ minWidth: 0, mr: 1 }}>
+                    <Box sx={{ minWidth: 0, mr: 1, flexGrow: 1 }}>
                       <Typography sx={{ fontSize: "10.5px", fontWeight: 800, color: "#1e293b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {asset.assetName}
                       </Typography>
@@ -831,13 +954,30 @@ export default function Dashboard() {
                         {asset.assetCode} • {asset.brand}
                       </Typography>
                     </Box>
-                    <Box sx={{ textAlign: "right", flexShrink: 0 }}>
+                    <Box sx={{ textAlign: "right", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 0.25 }}>
                       <Typography sx={{ fontSize: "10px", fontWeight: 900, color: diffDays <= 30 ? "#ef4444" : "#f59e0b" }}>
                         {diffDays} days left
                       </Typography>
-                      <Typography sx={{ fontSize: "8px", color: "#94a3b8" }}>
-                        Exp: {asset.warrantyExpiry}
-                      </Typography>
+                      <Button
+                        size="small"
+                        variant="text"
+                        onClick={() => {
+                          dispatch(setAssetSearch(asset.assetCode));
+                          dispatch(setAssetPage(0));
+                          navigate("/home/assets");
+                        }}
+                        sx={{
+                          fontSize: "8.5px",
+                          fontWeight: 700,
+                          minWidth: 0,
+                          p: 0,
+                          color: "#2563eb",
+                          textTransform: "none",
+                          "&:hover": { textDecoration: "underline", bgcolor: "transparent" }
+                        }}
+                      >
+                        Manage
+                      </Button>
                     </Box>
                   </Box>
                 );

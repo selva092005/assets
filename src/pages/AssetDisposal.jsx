@@ -579,10 +579,12 @@ export default function AssetDisposalPage() {
       {/* ── View Details Modal ── */}
       <Dialog open={viewOpen} onClose={() => setViewOpen(false)} maxWidth="sm" fullWidth slotProps={{ paper: { sx: premiumDialogPaperSx } }}>
         <DialogTitle sx={premiumDialogTitleSx}>
-          <span>Disposal Details</span>
+          <Typography fontWeight={800} fontSize="14px" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <FaTrash size={13} style={{ color: COLORS.primary }} /> Disposal Details
+          </Typography>
           <IconButton size="small" onClick={() => setViewOpen(false)} sx={{ color: COLORS.textFaint }}><FaTimes size={13} /></IconButton>
         </DialogTitle>
-        <DialogContent sx={{ pt: "18px !important", pb: 2 }}>
+        <DialogContent sx={{ pt: "20px !important", pb: 2.5 }}>
           {viewLoading ? (
             <SkeletonLoader variant="detail" />
           ) : viewData ? (
@@ -615,10 +617,12 @@ export default function AssetDisposalPage() {
                     <FaTrash size={18} color="#dc2626" />
                   )}
                 </Box>
-                <Typography sx={{ fontSize: "11px", fontWeight: 800, color: "#1e293b", mb: 0.5 }}>
+                <Typography fontSize={11.5} fontWeight={700} color="#1e293b" sx={{ lineClamp: 2, display: "-webkit-box", WebkitBoxOrient: "vertical", overflow: "hidden" }}>
                   {viewData.assetName}
                 </Typography>
-                <StatusBadge status={viewData.disposalMethod} />
+                <Typography fontSize={10} color="#64748b" sx={{ mt: 0.5 }}>
+                  {viewData.assetCode || "No Code"}
+                </Typography>
               </Box>
 
               {/* Right Mini Specifications Panel */}
@@ -692,13 +696,21 @@ export default function AssetDisposalPage() {
       </Dialog>
 
       {/* ── Dispose Modal ──────────────────────────────────────────────── */}
-      <Dialog open={disposeOpen} onClose={() => { if (!saving) { setDisposeOpen(false); reset(); } }} maxWidth="sm" fullWidth slotProps={{ paper: { sx: { borderRadius: "12px" } } }}>
-        <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", pb: 1, borderBottom: "1px solid " + COLORS.borderLight }}>
-          <Typography fontWeight={700} fontSize={13} sx={{ textTransform: "uppercase", letterSpacing: "0.05em" }}>Dispose Asset</Typography>
-          <IconButton size="small" onClick={() => { if (!saving) { setDisposeOpen(false); reset(); } }}><FaTimes size={14} /></IconButton>
+      <Dialog
+        open={disposeOpen}
+        onClose={() => { if (!saving) { setDisposeOpen(false); reset(); } }}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{ paper: { sx: premiumDialogPaperSx } }}
+      >
+        <DialogTitle sx={premiumDialogTitleSx}>
+          <Typography fontWeight={800} fontSize="14px" sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <FaTrash size={13} style={{ color: COLORS.primary }} /> Dispose Asset
+          </Typography>
+          <IconButton size="small" onClick={() => { if (!saving) { setDisposeOpen(false); reset(); } }} sx={{ color: COLORS.textFaint }}><FaTimes size={13} /></IconButton>
         </DialogTitle>
 
-        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "16px !important" }}>
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 2, pt: "20px !important", pb: 2.5 }}>
 
           {/* Warning banner */}
           <Box sx={{ background: "#fff8e1", border: "1px solid #ffe082", borderRadius: "8px", p: 1.5 }}>
@@ -827,37 +839,13 @@ export default function AssetDisposalPage() {
             slotProps={{ htmlInput: { maxLength: 250 } }}
           />
 
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, mb: 1.5 }}>
-            <Controller
+          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+            <FormTextField
               name="disposedBy"
               control={control}
-              render={({ field }) => (
-                <FormControl fullWidth>
-                  <Typography sx={{ fontSize: 11.5, color: COLORS.textMuted, mb: 0.5, fontWeight: 600 }}>
-                    Disposed By
-                  </Typography>
-                  <OutlinedInput
-                    disabled
-                    size="small"
-                    value={field.value || userName || ""}
-                    sx={{
-                      background: "#f8fafc",
-                      borderRadius: "6px",
-                      height: 30,
-                      fontSize: 11.5,
-                      transition: "all 100ms ease",
-                      "& .MuiOutlinedInput-input": {
-                        py: "4px !important",
-                        px: "8px !important",
-                      },
-                      "& fieldset": { borderColor: "#cbd5e1" },
-                      "& .MuiOutlinedInput-input.Mui-disabled": {
-                        WebkitTextFillColor: "#475569",
-                      }
-                    }}
-                  />
-                </FormControl>
-              )}
+              label="Disposed By"
+              disabled
+              defaultValue={userName || ""}
             />
             <FormTextField
               name="disposalDate"
@@ -945,7 +933,7 @@ export default function AssetDisposalPage() {
           />
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 2, pt: 1.5, borderTop: "1px solid " + COLORS.borderLight, gap: 1 }}>
+        <DialogActions sx={{ px: 3, pb: 2.5, pt: 1.5, gap: 1 }}>
           <Button onClick={() => { setDisposeOpen(false); reset(); }} sx={outlinedBtnSx}>Cancel</Button>
           <Button
             variant="contained"

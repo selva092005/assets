@@ -13,14 +13,14 @@ import {
 import {
   FaBoxes, FaCheckCircle, FaExchangeAlt, FaRecycle, FaClock, FaChartPie,
   FaFileExcel, FaDownload, FaUsers, FaArrowDown, FaCalendarAlt, FaBuilding,
-  FaMapMarkerAlt, FaLaptop, FaLock
+  FaMapMarkerAlt, FaLaptop, FaLock, FaTimes
 } from "react-icons/fa";
 import toast from "../utils/toast.jsx";
 import PageHeader from "../components/common/PageHeader";
 import PremiumCard from "../components/common/PremiumCard";
 import PremiumPieChart from "../components/common/PremiumPieChart";
 import StatCard from "../components/common/StatCard";
-import { getFullReport, exportAllocations, exportTransfers, exportDisposals } from "../services/report_service";
+import { getFullReport, exportAllocations, exportTransfers, exportDisposals, exportAudits } from "../services/report_service";
 import { exportAssets } from "../services/assets_service";
 import { exportUsers } from "../services/users_service";
 import { COLORS } from "../theme/tokens";
@@ -66,12 +66,13 @@ const CustomPieLegend = ({ data, colors }) => {
 
 // Realistic high-end mock report data for fully-populated demo view
 const MOCK_REPORT_DATA = {
-  totalAssets: 184,
+  totalAssets: 186,
   available: 42,
   assigned: 128,
   disposed: 6,
   damaged: 4,
   underMaintenance: 4,
+  lost: 2,
 
   byType: {
     "Laptops": 78,
@@ -248,6 +249,7 @@ export default function ReportsPage() {
     { type: "allocations", label: "Allocations List", desc: "Active/overdue traces.", fn: exportAllocations, filename: "Allocation Registry" },
     { type: "transfers", label: "Transfers Ledger", desc: "Logistics and movements.", fn: exportTransfers, filename: "Transfer Ledger" },
     { type: "disposals", label: "Disposals Archive", desc: "Retired and sold hardware.", fn: exportDisposals, filename: "Disposal Archive" },
+    { type: "audits", label: "Audit Registry", desc: "Physical inspection log.", fn: exportAudits, filename: "Audit Registry" },
   ];
 
   return (
@@ -283,7 +285,7 @@ export default function ReportsPage() {
           gridTemplateColumns: {
             xs: "1fr",
             sm: "repeat(3, 1fr)",
-            md: "repeat(5, 1fr)"
+            md: "repeat(6, 1fr)"
           },
           gap: 2
         }}>
@@ -345,7 +347,7 @@ export default function ReportsPage() {
         gridTemplateColumns: {
           xs: "repeat(2, minmax(0, 1fr))",
           sm: "repeat(3, minmax(0, 1fr))",
-          md: "repeat(5, minmax(0, 1fr))"
+          md: "repeat(6, minmax(0, 1fr))"
         },
         gap: 2,
         mb: 2.5
@@ -354,8 +356,9 @@ export default function ReportsPage() {
           { label: "Total Assets", value: d.totalAssets, icon: <FaBoxes />, iconBg: "#e8eaf6", iconColor: "#3949ab" },
           { label: "Available", value: d.available, icon: <FaCheckCircle />, iconBg: "#ecfdf5", iconColor: "#10b981" },
           { label: "Assigned", value: d.assigned, icon: <FaBoxes />, iconBg: "#eff6ff", iconColor: "#2563eb" },
-          { label: "Disposed", value: d.disposed, icon: <FaRecycle />, iconBg: "#f1f5f9", iconColor: "#64748b" },
+          { label: "Lost / Missing", value: d.lost, icon: <FaTimes />, iconBg: "#fff5f5", iconColor: "#ef4444" },
           { label: "Under Maintenance", value: d.underMaintenance, icon: <FaClock />, iconBg: "#fffbeb", iconColor: "#d97706" },
+          { label: "Disposed", value: d.disposed, icon: <FaRecycle />, iconBg: "#f1f5f9", iconColor: "#64748b" },
         ].map((c) => (
           <StatCard key={c.label} {...c} />
         ))}

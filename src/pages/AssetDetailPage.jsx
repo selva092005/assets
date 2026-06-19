@@ -4,12 +4,13 @@ import { Box, Button, Chip, Typography, IconButton, Divider, Modal, Table, Table
 import SkeletonLoader from "../components/common/SkeletonLoader";
 import { useForm } from "react-hook-form";
 import { FormTextField } from "../components/FormFields";
-import { FaArrowLeft, FaEdit, FaBox, FaTrash, FaLayerGroup, FaPrint, FaMapMarkerAlt, FaExchangeAlt, FaTimes, FaUser, FaCalendarAlt, FaHistory } from "react-icons/fa";
+import { FaArrowLeft, FaEdit, FaBox, FaTrash, FaLayerGroup, FaPrint, FaMapMarkerAlt, FaExchangeAlt, FaTimes, FaUser, FaCalendarAlt, FaHistory, FaClipboardCheck, FaWrench } from "react-icons/fa";
 import { useSelector } from "react-redux";
 import toast from "../utils/toast.jsx";
 
 import { getAssetById, getImageUrl } from "../services/assets_service";
 import { getAssetHistory, moveAsset } from "../services/location_history_service";
+import { getLogsByAsset } from "../services/activity_log_service";
 import ImagePreviewDialog from "../components/common/ImagePreviewDialog";
 import {
   COLORS,
@@ -27,6 +28,7 @@ export default function AssetDetailPage() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [historyData, setHistoryData] = useState([]);
+  const [activityLogs, setActivityLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [imgOpen, setImgOpen] = useState(false);
   const { userRole, userName } = useSelector((s) => s.auth);
@@ -46,12 +48,14 @@ export default function AssetDetailPage() {
   useEffect(() => {
     const fetchAssetAndHistory = async () => {
       try {
-        const [assetRes, historyRes] = await Promise.all([
+        const [assetRes, historyRes, logsRes] = await Promise.all([
           getAssetById(id),
-          getAssetHistory(id).catch(() => [])
+          getAssetHistory(id).catch(() => []),
+          getLogsByAsset(id).catch(() => [])
         ]);
         setData(assetRes.data ?? assetRes);
         setHistoryData(historyRes.data ?? historyRes ?? []);
+        setActivityLogs(logsRes ?? []);
       } catch (e) {
         toast.error("Failed to load asset details");
         navigate("/home/assets");
@@ -101,12 +105,14 @@ export default function AssetDetailPage() {
 
       // Reload page details & history
       setLoading(true);
-      const [assetRes, historyRes] = await Promise.all([
+      const [assetRes, historyRes, logsRes] = await Promise.all([
         getAssetById(id),
-        getAssetHistory(id).catch(() => [])
+        getAssetHistory(id).catch(() => []),
+        getLogsByAsset(id).catch(() => [])
       ]);
       setData(assetRes.data ?? assetRes);
       setHistoryData(historyRes.data ?? historyRes ?? []);
+      setActivityLogs(logsRes ?? []);
     } catch (err) {
       toast.error(err.response?.data?.message || "Transfer failed");
     } finally {
@@ -312,6 +318,14 @@ export default function AssetDetailPage() {
                   <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Company</TableCell>
                   <TableCell sx={denseCellSx}>{data.companyName || "—"}</TableCell>
                 </TableRow>
+                <TableRow sx={{ background: "#fcfcfd" }}>
+                  <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Depreciation Rate</TableCell>
+                  <TableCell sx={denseCellSx}>{data.depreciationRate ? data.depreciationRate + "% / year" : "20% / year"}</TableCell>
+                  <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: COLORS.textMuted }}>Current Net Value</TableCell>
+                  <TableCell sx={{ ...denseCellSx, fontWeight: 700, color: "#0284c7" }}>
+                    {data.currentValue ? "₹" + data.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "—"}
+                  </TableCell>
+                </TableRow>
               </TableBody>
             </Table>
 
@@ -355,70 +369,108 @@ export default function AssetDetailPage() {
             )}
 
             {/* Section 4: History Timeline */}
-            <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.primary, mb: 1.5, textTransform: "uppercase", letterSpacing: "0.05em" }}>Movement & Allocation Timeline</Typography>
-            {historyData.length === 0 ? (
-              <Typography sx={{ fontSize: 10.5, color: COLORS.textMuted, fontStyle: "italic", p: 1.25, border: "1px solid " + COLORS.borderLight, borderRadius: "3px", textAlign: "center" }}>No movement history found.</Typography>
+            <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: COLORS.primary, mb: 1.5, textTransform: "uppercase", letterSpacing: "0.05em" }}>Unified Activity & Lifecycle Timeline</Typography>
+            {activityLogs.length === 0 ? (
+              <Typography sx={{ fontSize: 10.5, color: COLORS.textMuted, fontStyle: "italic", p: 1.25, border: "1px solid " + COLORS.borderLight, borderRadius: "3px", textAlign: "center" }}>No activity history found.</Typography>
             ) : (
               <Box sx={{ position: "relative", pl: 3.5, borderLeft: `2px solid ${COLORS.borderLight}`, ml: 1.5, display: "flex", flexDirection: "column", gap: 3, py: 1 }}>
-                {historyData.map((item, idx) => (
-                  <Box key={idx} sx={{ position: "relative" }}>
-                    {/* Timeline dot */}
-                    <Box sx={{
-                      position: "absolute",
-                      left: -42,
-                      top: 0,
-                      width: 28,
-                      height: 28,
-                      borderRadius: "50%",
-                      background: idx === 0 ? "rgba(37, 99, 235, 0.1)" : "#f1f5f9",
-                      border: `2px solid ${idx === 0 ? "#2563eb" : "#cbd5e1"}`,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      zIndex: 2,
-                      color: idx === 0 ? "#2563eb" : "#64748b",
-                      boxShadow: idx === 0 ? "0 0 0 3px rgba(37, 99, 235, 0.15)" : "none"
-                    }}>
-                      <FaHistory size={11} />
-                    </Box>
-                    {/* Timeline card/content */}
-                    <Box sx={{
-                      background: idx === 0 ? "#f8faff" : "#fff",
-                      border: `1px solid ${idx === 0 ? "#dbeafe" : COLORS.borderLight}`,
-                      borderRadius: "6px",
-                      p: 1.5,
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
-                    }}>
-                      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1, mb: 0.75 }}>
-                        <Typography sx={{ fontSize: 11, fontWeight: 700, color: idx === 0 ? "#1e40af" : COLORS.text }}>
-                          {item.fromLocationName || item.fromLocation || "Register"} → {item.toLocationName || item.toLocation || item.locationName}
-                        </Typography>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: COLORS.textMuted }}>
-                          <FaCalendarAlt size={9} />
-                          <Typography sx={{ fontSize: 9.5, fontWeight: 500 }}>
-                            {item.movedAt ? new Date(item.movedAt).toLocaleString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
-                          </Typography>
-                        </Box>
+                {activityLogs.map((item, idx) => {
+                  let icon = <FaHistory size={11} />;
+                  let bg = "#f1f5f9";
+                  let borderClr = "#cbd5e1";
+                  let textClr = "#64748b";
+
+                  if (item.action === "ALLOCATED") {
+                    icon = <FaUser size={11} />;
+                    bg = "rgba(37, 99, 235, 0.1)";
+                    borderClr = "#2563eb";
+                    textClr = "#2563eb";
+                  } else if (item.action === "RETURNED") {
+                    icon = <FaExchangeAlt size={11} />;
+                    bg = "rgba(16, 185, 129, 0.1)";
+                    borderClr = "#10b981";
+                    textClr = "#10b981";
+                  } else if (item.action === "TRANSFERRED") {
+                    icon = <FaMapMarkerAlt size={11} />;
+                    bg = "rgba(139, 92, 246, 0.1)";
+                    borderClr = "#8b5cf6";
+                    textClr = "#8b5cf6";
+                  } else if (item.action === "AUDITED") {
+                    icon = <FaClipboardCheck size={11} />;
+                    bg = "rgba(217, 119, 6, 0.1)";
+                    borderClr = "#d97706";
+                    textClr = "#d97706";
+                  } else if (item.action === "MAINTENANCE" || item.action === "MAINTENANCE_START" || item.action === "MAINTENANCE_END") {
+                    icon = <FaWrench size={11} />;
+                    bg = "rgba(239, 68, 68, 0.1)";
+                    borderClr = "#ef4444";
+                    textClr = "#ef4444";
+                  } else if (item.action === "DISPOSED") {
+                    icon = <FaTrash size={11} />;
+                    bg = "rgba(100, 116, 139, 0.1)";
+                    borderClr = "#64748b";
+                    textClr = "#64748b";
+                  }
+
+                  return (
+                    <Box key={item.logId || idx} sx={{ position: "relative" }}>
+                      {/* Timeline dot */}
+                      <Box sx={{
+                        position: "absolute",
+                        left: -42,
+                        top: 0,
+                        width: 28,
+                        height: 28,
+                        borderRadius: "50%",
+                        background: bg,
+                        border: `2px solid ${borderClr}`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: 2,
+                        color: textClr,
+                      }}>
+                        {icon}
                       </Box>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, bgcolor: "#f1f5f9", px: 0.75, py: 0.25, borderRadius: "4px" }}>
-                          <FaUser size={8} color="#64748b" />
-                          <Typography sx={{ fontSize: 9.5, fontWeight: 600, color: "#475569" }}>
-                            {item.movedByName || item.movedBy || "System"}
+                      {/* Timeline card/content */}
+                      <Box sx={{
+                        background: idx === 0 ? "#f8faff" : "#fff",
+                        border: `1px solid ${idx === 0 ? "#dbeafe" : COLORS.borderLight}`,
+                        borderRadius: "6px",
+                        p: 1.5,
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
+                      }}>
+                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1, mb: 0.75 }}>
+                          <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: idx === 0 ? "#1e40af" : COLORS.text, textTransform: "uppercase" }}>
+                            {item.action?.replace("_", " ")}
                           </Typography>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: COLORS.textMuted }}>
+                            <FaCalendarAlt size={9} />
+                            <Typography sx={{ fontSize: 9.5, fontWeight: 500 }}>
+                              {item.actionDate ? new Date(item.actionDate).toLocaleString() : "—"}
+                            </Typography>
+                          </Box>
                         </Box>
-                        {idx === 0 && (
-                          <Chip label="Latest Move" size="small" sx={{ height: 16, fontSize: 8.5, fontWeight: 700, bgcolor: "#dbeafe", color: "#1e40af" }} />
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, bgcolor: "#f1f5f9", px: 0.75, py: 0.25, borderRadius: "4px" }}>
+                            <FaUser size={8} color="#64748b" />
+                            <Typography sx={{ fontSize: 9.5, fontWeight: 600, color: "#475569" }}>
+                              {item.actionBy || "System"}
+                            </Typography>
+                          </Box>
+                          {idx === 0 && (
+                            <Chip label="Latest Event" size="small" sx={{ height: 16, fontSize: 8.5, fontWeight: 700, bgcolor: "#dbeafe", color: "#1e40af" }} />
+                          )}
+                        </Box>
+                        {item.details && (
+                          <Typography sx={{ fontSize: 10, color: COLORS.textMuted, borderLeft: "2px solid #cbd5e1", pl: 1, py: 0.25 }}>
+                            {item.details}
+                          </Typography>
                         )}
                       </Box>
-                      {item.reason && (
-                        <Typography sx={{ fontSize: 10, color: COLORS.textMuted, borderLeft: "2px solid #cbd5e1", pl: 1, py: 0.25, fontStyle: "italic" }}>
-                          {item.reason}
-                        </Typography>
-                      )}
                     </Box>
-                  </Box>
-                ))}
+                  );
+                })}
               </Box>
             )}
 
