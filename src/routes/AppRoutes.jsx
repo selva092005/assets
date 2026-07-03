@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import Layout from "../components/layout/Layout";
+import Layout from "../components/Layout/Layout";
 import Dashboard from "../pages/Dashboard";
 import Assets from "../pages/Assets";
 import AssetFormPage from "../pages/AssetFormPage";
