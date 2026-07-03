@@ -24,12 +24,27 @@ export const allocateAsset = async (data) => {
   return res.data;
 };
 
+// POST /api/allocations/bulk
+export const allocateAssetBulk = async (data) => {
+  const res = await API.post("/api/allocations/bulk", data);
+  return res.data;
+};
+
 // PUT /api/allocations/{id}/return
-export const returnAsset = async (allocationId, returnDate) => {
-  const params = returnDate ? { returnDate } : {};
+export const returnAsset = async (allocationId, returnDate, returnedCondition) => {
+  const params = {};
+  if (returnDate) params.returnDate = returnDate;
+  if (returnedCondition) params.returnedCondition = returnedCondition;
   const res = await API.put(`/api/allocations/${allocationId}/return`, null, { params });
   return res.data;
 };
+
+// PUT /api/allocations/bulk-return
+export const returnAssetBulk = async (data) => {
+  const res = await API.put("/api/allocations/bulk-return", data);
+  return res.data;
+};
+
 
 // GET /api/allocations/asset/{assetId}
 export const getAllocationsByAsset = async (assetId) => {

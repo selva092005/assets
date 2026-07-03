@@ -3,7 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
-  Box, Button, Chip, CircularProgress, Dialog, DialogActions,
+  Box, Button, Checkbox, Chip, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, IconButton, InputAdornment,
   MenuItem, Popover, List, ListItemButton, ListItemText,
   Select, Table, TableBody, TableCell, TableHead, TableRow,
@@ -22,7 +22,7 @@ import { getUsers } from "../services/users_service";
 import toast from "../utils/toast.jsx";
 
 import {
-  allocateAsset, getAllAllocations, getAllocationById, returnAsset, getAllocationOverview,
+  allocateAsset, allocateAssetBulk, getAllAllocations, getAllocationById, returnAsset, returnAssetBulk, getAllocationOverview,
 } from "../services/allocation_service";
 import { getAssets, getImageUrl } from "../services/assets_service";
 import { exportAllocations } from "../services/report_service";
@@ -312,6 +312,7 @@ export default function AssetAllocationPage() {
       return res?.data || res;
     },
     placeholderData: keepPreviousData,
+    staleTime: 30000,
   });
 
   const allocations = allocationsData?.content || [];
@@ -331,19 +332,35 @@ export default function AssetAllocationPage() {
         awaitingReturn: data.awaitingReturn ?? 0,
       };
     },
+    staleTime: 30000,
   });
 
-  const { data: recentActivities = [] } = useQuery({
+  // Optimize: Avoid duplicate request to allocations API on initial load if the parameters are the same as default.
+  const needsSeparateRecentFetch = page !== 0 || !!debouncedSearch || !!statusFilter || !!fromDate || !!toDate;
+
+  const { data: recentQueryData } = useQuery({
     queryKey: ["recentAllocations"],
     queryFn: async () => {
       const res = await getAllAllocations({ page: 0, size: 10 });
       const pageData = res?.data || res;
-      const items = pageData?.content || (Array.isArray(pageData) ? pageData : []);
+      return pageData?.content || (Array.isArray(pageData) ? pageData : []);
+    },
+    enabled: needsSeparateRecentFetch,
+    staleTime: 30000,
+  });
+
+  const recentActivities = (() => {
+    if (!needsSeparateRecentFetch && allocationsData?.content) {
+      const items = allocationsData.content;
       const sorted = [...items];
       sorted.sort((a, b) => (b.assignedDate || "") > (a.assignedDate || "") ? 1 : -1);
       return sorted;
-    },
-  });
+    }
+    const items = recentQueryData || [];
+    const sorted = [...items];
+    sorted.sort((a, b) => (b.assignedDate || "") > (a.assignedDate || "") ? 1 : -1);
+    return sorted;
+  })();
 
   // Fetch available assets (enabled when allocateOpen is true)
   const { data: availableAssets = [] } = useQuery({
@@ -376,6 +393,7 @@ export default function AssetAllocationPage() {
   const { control, handleSubmit, reset, setValue, setError, watch } = useForm({
     defaultValues: {
       assetId: "",
+      assetIds: [],
       assignedTo: "",
       assignedBy: userName || "",
       assignedDate: today(),
@@ -402,6 +420,14 @@ export default function AssetAllocationPage() {
   const [viewOpen, setViewOpen] = useState(false);
   const [viewData, setViewData] = useState(null);
   const [viewLoading, setViewLoading] = useState(false);
+
+  // ── Bulk Return state ──────────────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkReturnOpen, setBulkReturnOpen] = useState(false);
+  const [bulkReturnDate, setBulkReturnDate] = useState(today());
+  const [bulkCondition, setBulkCondition] = useState("GOOD");
+  const [bulkReturning, setBulkReturning] = useState(false);
+  const [bulkReturnDateError, setBulkReturnDateError] = useState("");
 
   const handleStatusChange = (e) => { setStatusFilter(e.target.value); setPage(0); };
   const handleFromDate = (e) => { setFromDate(e.target.value); setPage(0); };
@@ -441,8 +467,10 @@ export default function AssetAllocationPage() {
   };
 
   const openAllocate = async (preselectedAssetId = null) => {
+    const actualId = (preselectedAssetId && typeof preselectedAssetId !== "object") ? preselectedAssetId : null;
     reset({
-      assetId: preselectedAssetId || "",
+      assetId: actualId || "",
+      assetIds: actualId ? [actualId] : [],
       assignedTo: "",
       assignedBy: userName || "",
       assignedDate: today(),
@@ -464,15 +492,29 @@ export default function AssetAllocationPage() {
   const handleAllocate = async (data) => {
     setSaving(true);
     try {
-      await allocateAsset({
-        assetId: Number(data.assetId),
-        assignedTo: data.assignedTo,
-        assignedBy: data.assignedBy || userName,
-        assignedDate: data.assignedDate,
-        expectedReturnDate: data.expectedReturnDate || null,
-        remarks: data.remarks || null,
-      });
-      toast.success("Asset allocated successfully");
+      if (data.assetIds && data.assetIds.length > 0) {
+        const sanitizedIds = data.assetIds
+          .map(Number)
+          .filter((id) => !isNaN(id) && id > 0);
+        await allocateAssetBulk({
+          assetIds: sanitizedIds,
+          assignedTo: data.assignedTo,
+          assignedBy: data.assignedBy || userName,
+          assignedDate: data.assignedDate,
+          expectedReturnDate: data.expectedReturnDate || null,
+          remarks: data.remarks || null,
+        });
+      } else {
+        await allocateAsset({
+          assetId: Number(data.assetId),
+          assignedTo: data.assignedTo,
+          assignedBy: data.assignedBy || userName,
+          assignedDate: data.assignedDate,
+          expectedReturnDate: data.expectedReturnDate || null,
+          remarks: data.remarks || null,
+        });
+      }
+      toast.success("Asset(s) allocated successfully");
       setAllocateOpen(false);
       queryClient.invalidateQueries({ queryKey: ["allocations"] });
       queryClient.invalidateQueries({ queryKey: ["allocationOverview"] });
@@ -526,6 +568,43 @@ export default function AssetAllocationPage() {
     }
   };
 
+  const handleBulkReturnSubmit = async () => {
+    if (!bulkReturnDate) {
+      setBulkReturnDateError("Actual return date is required");
+      return;
+    }
+    const selectedAllocations = allocations.filter(a => selectedIds.includes(a.allocationId));
+    const maxAssignedDate = selectedAllocations.reduce((max, a) => {
+      if (!a.assignedDate) return max;
+      return a.assignedDate > max ? a.assignedDate : max;
+    }, "");
+
+    if (maxAssignedDate && bulkReturnDate < maxAssignedDate) {
+      setBulkReturnDateError(`Return date cannot be before the latest assigned date (${maxAssignedDate})`);
+      return;
+    }
+
+    setBulkReturning(true);
+    try {
+      await returnAssetBulk({
+        allocationIds: selectedIds,
+        returnDate: bulkReturnDate,
+        returnedCondition: bulkCondition,
+      });
+      toast.success(`Successfully returned ${selectedIds.length} asset(s)`);
+      queryClient.invalidateQueries({ queryKey: ["allocations"] });
+      queryClient.invalidateQueries({ queryKey: ["allocationOverview"] });
+      queryClient.invalidateQueries({ queryKey: ["recentAllocations"] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+      setBulkReturnOpen(false);
+      setSelectedIds([]);
+    } catch (e) {
+      toast.error(e.response?.data?.message || "Bulk return failed. Please try again.");
+    } finally {
+      setBulkReturning(false);
+    }
+  };
+
 
   // ─────────────────────────────────────────────────────────────────────────
   if (loading) {
@@ -558,6 +637,22 @@ export default function AssetAllocationPage() {
 
             {canWrite && (
               <Box sx={{ display: "flex", gap: 1 }}>
+                {selectedIds.length > 0 && (
+                  <Button
+                    variant="contained"
+                    color="error"
+                    startIcon={<FaUndo size={11} />}
+                    onClick={() => {
+                      setBulkReturnDate(new Date().toISOString().split("T")[0]);
+                      setBulkReturnDateError("");
+                      setBulkCondition("GOOD");
+                      setBulkReturnOpen(true);
+                    }}
+                    sx={{ ...primaryBtnSx, background: "#ef4444", "&:hover": { background: "#dc2626" } }}
+                  >
+                    Return Selected ({selectedIds.length})
+                  </Button>
+                )}
                 <Button
                   variant="outlined"
                   startIcon={<FaFileExport size={11} />}
@@ -569,7 +664,7 @@ export default function AssetAllocationPage() {
                 <Button
                   variant="contained"
                   startIcon={<FaPlus size={11} />}
-                  onClick={openAllocate}
+                  onClick={() => openAllocate(null)}
                   sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
                 >
                   Allocate Asset
@@ -665,6 +760,29 @@ export default function AssetAllocationPage() {
             <Table size="small" sx={{ minWidth: 860, tableLayout: "auto", borderCollapse: "collapse" }}>
               <TableHead>
                 <TableRow>
+                  {canWrite && (
+                    <TableCell sx={{
+                      width: 40,
+                      background: "#f8fafc",
+                      borderBottom: "2px solid #e2e8f0",
+                      px: 1
+                    }}>
+                      <Checkbox
+                        size="small"
+                        checked={allocations.filter(row => row.status === "ACTIVE").length > 0 && selectedIds.length === allocations.filter(row => row.status === "ACTIVE").length}
+                        indeterminate={selectedIds.length > 0 && selectedIds.length < allocations.filter(row => row.status === "ACTIVE").length}
+                        onChange={(e) => {
+                          const active = allocations.filter(row => row.status === "ACTIVE");
+                          if (e.target.checked) {
+                            setSelectedIds(active.map(a => a.allocationId));
+                          } else {
+                            setSelectedIds([]);
+                          }
+                        }}
+                        sx={{ p: 0.5 }}
+                      />
+                    </TableCell>
+                  )}
                   {["#", "Asset", "Code", "Assigned To", "Assigned By", "Date", "Expected Return", "Return Date", "Status", "Remarks", "Actions"].map((h) => (
                     <TableCell key={h} sx={{
                       fontWeight: 700,
@@ -682,8 +800,29 @@ export default function AssetAllocationPage() {
               <TableBody>
                 {allocations.map((row, i) => {
                   const overdue = isOverdue(row);
+                  const isRowSelected = selectedIds.includes(row.allocationId);
                   return (
                     <TableRow key={row.allocationId} sx={{ borderLeft: "3px solid transparent", transition: "all 180ms ease", "&:last-child td": { border: 0 }, "&:hover": { borderLeft: "3px solid #3b82f6", "& td": { background: overdue ? "#fff7ed" : "#f0f7ff" } }, "& td": { background: overdue ? "#fffbeb" : i % 2 === 0 ? "#fff" : "#f8faff", borderBottom: "1px solid #f1f5f9" } }}>
+                      {canWrite && (
+                        <TableCell sx={{ verticalAlign: "middle", px: 1 }}>
+                          {row.status === "ACTIVE" ? (
+                            <Checkbox
+                              size="small"
+                              checked={isRowSelected}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedIds([...selectedIds, row.allocationId]);
+                                } else {
+                                  setSelectedIds(selectedIds.filter(id => id !== row.allocationId));
+                                }
+                              }}
+                              sx={{ p: 0.5 }}
+                            />
+                          ) : (
+                            <Checkbox size="small" disabled sx={{ p: 0.5, opacity: 0.3 }} />
+                          )}
+                        </TableCell>
+                      )}
                       <TableCell sx={{ verticalAlign: "middle", color: COLORS.textFaint }}>{page * showCount + i + 1}</TableCell>
                       <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8", fontWeight: 600, color: "#1e1b4b" }}>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
@@ -752,76 +891,123 @@ export default function AssetAllocationPage() {
         </DialogTitle>
         <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.75, pt: "18px !important", pb: 2 }}>
           {/* Asset */}
+          {/* Asset */}
           <Controller
-            name="assetId"
+            name="assetIds"
             control={control}
-            rules={{ required: "Select an asset to allocate" }}
-            render={({ field, fieldState: { error } }) => (
-              <FormControl fullWidth error={!!error} sx={{ mb: 1.5 }}>
-                <Typography sx={{ fontSize: 11.5, color: COLORS.textMuted, mb: 0.5, fontWeight: 600 }}>
-                  Asset *
-                </Typography>
-                <OutlinedInput
-                  readOnly
-                  size="small"
-                  value={availableAssets.find((a) => a.assetId === field.value)
-                    ? `${availableAssets.find((a) => a.assetId === field.value).assetName}${availableAssets.find((a) => a.assetId === field.value).assetCode ? ` (${availableAssets.find((a) => a.assetId === field.value).assetCode})` : ""}`
-                    : ""}
-                  placeholder="Select asset to allocate..."
-                  onClick={(e) => setAssetAnchor(e.currentTarget)}
-                  error={!!error}
-                  endAdornment={<InputAdornment position="end"><Typography fontSize={11} color="#aaa">▾</Typography></InputAdornment>}
-                  sx={{
-                    background: "#ffffff",
-                    borderRadius: "6px",
-                    height: 30,
-                    fontSize: 11.5,
-                    cursor: "pointer",
-                    caretColor: "transparent",
-                    transition: "all 100ms ease",
-                    "& .MuiOutlinedInput-input": {
-                      py: "4px !important",
-                      px: "8px !important",
-                      cursor: "pointer"
-                    },
-                    "& fieldset": { borderColor: "#cbd5e1", transition: "all 100ms ease" },
-                    "&:hover fieldset": { borderColor: "#000000" },
-                    "&.Mui-focused fieldset": { borderColor: "#000000", borderWidth: "1px !important" },
-                    "&.Mui-focused": {
+            rules={{
+              validate: (val) => (val && val.length > 0) || "Select at least one asset to allocate"
+            }}
+            render={({ field, fieldState: { error } }) => {
+              const selectedAssetsText = field.value && field.value.length > 0
+                ? field.value.map(id => {
+                    const found = availableAssets.find(a => a.assetId === id);
+                    return found ? `${found.assetName}${found.assetCode ? ` (${found.assetCode})` : ""}` : "";
+                  }).filter(Boolean).join(", ")
+                : "";
+
+              return (
+                <FormControl fullWidth error={!!error} sx={{ mb: 1.5 }}>
+                  <Typography sx={{ fontSize: 11.5, color: COLORS.textMuted, mb: 0.5, fontWeight: 600 }}>
+                    Asset(s) *
+                  </Typography>
+                  <OutlinedInput
+                    readOnly
+                    size="small"
+                    value={selectedAssetsText}
+                    placeholder="Select asset(s) to allocate..."
+                    onClick={(e) => setAssetAnchor(e.currentTarget)}
+                    error={!!error}
+                    endAdornment={<InputAdornment position="end"><Typography fontSize={11} color="#aaa">▾</Typography></InputAdornment>}
+                    sx={{
                       background: "#ffffff",
-                      boxShadow: "0 0 0 3px rgba(0, 0, 0, 0.05)",
-                    }
-                  }}
-                />
-                {error && <FormHelperText error sx={{ mx: 0, mt: 0.5, fontSize: 11 }}>{error.message}</FormHelperText>}
-                <Popover open={Boolean(assetAnchor)} anchorEl={assetAnchor}
-                  onClose={() => { setAssetAnchor(null); setAssetSearch(""); }}
-                  anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-                  slotProps={{ paper: { sx: { width: assetAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column", borderRadius: "10px", boxShadow: "0 10px 25px rgba(0,0,0,0.08)", border: "1px solid #e2e8f0" } } }}>
-                  <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0" }}>
-                    <TextField autoFocus size="small" fullWidth placeholder="Search asset..."
-                      value={assetSearch} onChange={(e) => setAssetSearch(e.target.value)}
-                      slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
-                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 11.5 } }} />
-                  </Box>
-                  <List dense sx={{ overflowY: "auto", flex: 1 }}>
-                    {(() => {
-                      const q = assetSearch.toLowerCase();
-                      const filtered = availableAssets.filter((a) => !q || a.assetName?.toLowerCase().includes(q) || a.assetCode?.toLowerCase().includes(q));
-                      return filtered.length > 0 ? filtered.map((a) => (
-                        <ListItemButton key={a.assetId} selected={field.value === a.assetId}
-                          onClick={() => { field.onChange(a.assetId); setAssetAnchor(null); setAssetSearch(""); }} sx={{ py: 0.5 }}>
-                          <ListItemText
-                            primary={<Typography component="span" sx={{ fontSize: 12 }}>{a.assetName}</Typography>}
-                            secondary={<Typography component="span" sx={{ fontSize: 10.5, color: "#64748b" }}>{a.assetCode || ""}</Typography>}
-                          />
-                        </ListItemButton>
-                      )) : <ListItemButton disabled><ListItemText primary={<Typography component="span" sx={{ fontSize: 12 }}>No assets found</Typography>} /></ListItemButton>;
-                    })()}
-                  </List>
-                </Popover>
-              </FormControl>
-            )}
+                      borderRadius: "6px",
+                      minHeight: 30,
+                      fontSize: 11.5,
+                      cursor: "pointer",
+                      caretColor: "transparent",
+                      transition: "all 100ms ease",
+                      "& .MuiOutlinedInput-input": {
+                        py: "4px !important",
+                        px: "8px !important",
+                        cursor: "pointer",
+                        whiteSpace: "normal"
+                      },
+                      "& fieldset": { borderColor: "#cbd5e1", transition: "all 100ms ease" },
+                      "&:hover fieldset": { borderColor: "#000000" },
+                      "&.Mui-focused fieldset": { borderColor: "#000000", borderWidth: "1px !important" },
+                      "&.Mui-focused": {
+                        background: "#ffffff",
+                        boxShadow: "0 0 0 3px rgba(0, 0, 0, 0.05)",
+                      }
+                    }}
+                  />
+                  {error && <FormHelperText error sx={{ mx: 0, mt: 0.5, fontSize: 11 }}>{error.message}</FormHelperText>}
+                  <Popover open={Boolean(assetAnchor)} anchorEl={assetAnchor}
+                    onClose={() => { setAssetAnchor(null); setAssetSearch(""); }}
+                    anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+                    slotProps={{ paper: { sx: { width: assetAnchor?.offsetWidth, minWidth: 320, maxHeight: 280, display: "flex", flexDirection: "column", borderRadius: "10px", boxShadow: "0 10px 25px rgba(0,0,0,0.08)", border: "1px solid #e2e8f0" } } }}>
+                    <Box sx={{ p: 1, borderBottom: "1px solid #f0f0f0", display: "flex", gap: 1, alignItems: "center" }}>
+                      <TextField autoFocus size="small" fullWidth placeholder="Search asset..."
+                        value={assetSearch} onChange={(e) => setAssetSearch(e.target.value)}
+                        slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
+                        sx={{ "& .MuiOutlinedInput-root": { borderRadius: "6px", fontSize: 11.5 } }} />
+                      {field.value && field.value.length > 0 && (
+                        <Button size="small" onClick={() => field.onChange([])} sx={{ minWidth: "auto", fontSize: 10, py: 0.5, px: 1, textTransform: "none", color: "#ef4444", fontWeight: 600, "&:hover": { background: "rgba(239, 68, 68, 0.08)" } }}>
+                          Clear
+                        </Button>
+                      )}
+                    </Box>
+                    <List dense sx={{ overflowY: "auto", flex: 1 }}>
+                      {(() => {
+                        const q = assetSearch.toLowerCase();
+                        const filtered = availableAssets.filter((a) => !q || a.assetName?.toLowerCase().includes(q) || a.assetCode?.toLowerCase().includes(q));
+                        return filtered.length > 0 ? filtered.map((a) => {
+                          const isSelected = (field.value || []).includes(a.assetId);
+                          return (
+                            <ListItemButton key={a.assetId} onClick={() => {
+                              const newValue = isSelected
+                                ? (field.value || []).filter(id => id !== a.assetId)
+                                : [...(field.value || []), a.assetId];
+                              field.onChange(newValue);
+                            }} sx={{ py: 0.5 }}>
+                              <Checkbox size="small" checked={isSelected} sx={{ p: 0.5, mr: 1 }} />
+                              <ListItemText
+                                primary={<Typography component="span" sx={{ fontSize: 12 }}>{a.assetName}</Typography>}
+                                secondary={<Typography component="span" sx={{ fontSize: 10.5, color: "#64748b" }}>{a.assetCode || ""}</Typography>}
+                              />
+                            </ListItemButton>
+                          );
+                        }) : <ListItemButton disabled><ListItemText primary={<Typography component="span" sx={{ fontSize: 12 }}>No assets found</Typography>} /></ListItemButton>;
+                      })()}
+                    </List>
+                    <Box sx={{ p: 1, borderTop: "1px solid #f0f0f0", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc", borderBottomLeftRadius: "10px", borderBottomRightRadius: "10px" }}>
+                      <Typography sx={{ fontSize: 11, color: COLORS.textMuted, fontWeight: 500 }}>
+                        {field.value?.length || 0} selected
+                      </Typography>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        onClick={() => { setAssetAnchor(null); setAssetSearch(""); }}
+                        sx={{
+                          py: 0.5,
+                          px: 1.5,
+                          fontSize: 11.5,
+                          textTransform: "none",
+                          background: COLORS.primary,
+                          color: "#ffffff",
+                          borderRadius: "4px",
+                          fontWeight: 600,
+                          "&:hover": { background: COLORS.primaryDark }
+                        }}
+                      >
+                        Done
+                      </Button>
+                    </Box>
+                  </Popover>
+                </FormControl>
+              );
+            }}
           />
 
           {/* Assigned To */}
@@ -1121,6 +1307,60 @@ export default function AssetAllocationPage() {
           </Button>
           <Button onClick={handleReturnConfirmSubmit} variant="contained" sx={primaryBtnSx}>
             Return Asset
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ── Bulk Return Confirm Dialog Modal ── */}
+      <Dialog
+        open={bulkReturnOpen}
+        onClose={() => { if (!bulkReturning) setBulkReturnOpen(false); }}
+        PaperProps={{ sx: premiumDialogPaperSx }}
+      >
+        <DialogTitle sx={premiumDialogTitleSx}>Bulk Return Assets</DialogTitle>
+        <DialogContent sx={{ p: 3, display: "flex", flexDirection: "column", gap: 2, pt: "18px !important" }}>
+          <Typography sx={{ fontSize: 12, color: "#64748b" }}>
+            You are about to return <strong>{selectedIds.length}</strong> selected asset(s). Specify the return date and condition.
+          </Typography>
+          <TextField
+            label="Actual Return Date"
+            type="date"
+            fullWidth
+            value={bulkReturnDate}
+            onChange={(e) => {
+              setBulkReturnDate(e.target.value);
+              setBulkReturnDateError("");
+            }}
+            error={!!bulkReturnDateError}
+            helperText={bulkReturnDateError}
+            slotProps={{ inputLabel: { shrink: true } }}
+            sx={inputSx}
+          />
+          <FormControl fullWidth sx={{ mt: 1 }}>
+            <Typography sx={{ fontSize: 11.5, color: COLORS.textMuted, mb: 0.5, fontWeight: 600 }}>
+              Returned Condition
+            </Typography>
+            <Select
+              value={bulkCondition}
+              onChange={(e) => setBulkCondition(e.target.value)}
+              size="small"
+              sx={selectSx}
+            >
+              <MenuItem value="GOOD">Good</MenuItem>
+              <MenuItem value="BAD">Bad</MenuItem>
+              <MenuItem value="DAMAGED">Damaged</MenuItem>
+              <MenuItem value="POOR">Poor</MenuItem>
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setBulkReturnOpen(false)} sx={outlinedBtnSx} disabled={bulkReturning}>
+            Cancel
+          </Button>
+          <Button onClick={handleBulkReturnSubmit} variant="contained" disabled={bulkReturning}
+            startIcon={bulkReturning ? <CircularProgress size={12} color="inherit" /> : null}
+            sx={{ ...primaryBtnSx, background: "#ef4444", "&:hover": { background: "#dc2626" } }}>
+            {bulkReturning ? "Returning..." : "Return Assets"}
           </Button>
         </DialogActions>
       </Dialog>

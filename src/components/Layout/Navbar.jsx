@@ -54,6 +54,7 @@ const navItems = [
     ],
   },
   { label: "Reports", path: "/home/reports", roles: ["admin", "manager", "user"] },
+  { label: "Scheduler", path: "/home/cron-management", roles: ["admin"] },
 ];
 
 const getDropdownMeta = (label) => {

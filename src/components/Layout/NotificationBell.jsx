@@ -219,12 +219,29 @@ export const NotificationBell = () => {
 
     let ws = null;
     let reconnectTimeout = null;
+    let fallbackInterval = null;
+
+    const startFallbackPolling = () => {
+      if (!fallbackInterval) {
+        console.log("WebSocket inactive. Starting fallback HTTP polling (60s)...");
+        fallbackInterval = setInterval(() => fetchNotifications(false), 60000);
+      }
+    };
+
+    const stopFallbackPolling = () => {
+      if (fallbackInterval) {
+        console.log("WebSocket active. Stopping fallback HTTP polling.");
+        clearInterval(fallbackInterval);
+        fallbackInterval = null;
+      }
+    };
 
     const connectWebSocket = () => {
       ws = new WebSocket(`${wsProto}://${cleanHost}/ws-notifications?email=${encodeURIComponent(userEmail || userName)}`);
 
       ws.onopen = () => {
         console.log("WebSocket connected for notifications");
+        stopFallbackPolling();
       };
 
       ws.onmessage = (event) => {
@@ -333,6 +350,7 @@ export const NotificationBell = () => {
 
       ws.onclose = () => {
         console.log("WebSocket disconnected. Reconnecting in 5s...");
+        startFallbackPolling();
         reconnectTimeout = setTimeout(connectWebSocket, 5000);
       };
 
@@ -344,17 +362,17 @@ export const NotificationBell = () => {
 
     connectWebSocket();
 
-    const fallbackInterval = setInterval(() => fetchNotifications(false), 60000);
-
     return () => {
       if (ws) {
         ws.onclose = null;
         ws.close();
       }
       clearTimeout(reconnectTimeout);
-      clearInterval(fallbackInterval);
+      if (fallbackInterval) {
+        clearInterval(fallbackInterval);
+      }
     };
-  }, [isLoggedIn, userName]);
+  }, [isLoggedIn, userEmail, userName]);
 
   const handleNotifClick = (event) => {
     setNotifAnchorEl(event.currentTarget);

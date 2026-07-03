@@ -20,6 +20,7 @@ import AssetAudit from "../pages/AssetAudit";
 import AssetRequestPage from "../pages/AssetRequestPage";
 import AssetMaintenancePage from "../pages/AssetMaintenancePage";
 import ScanAsset from "../pages/ScanAsset";
+import CronManagement from "../pages/CronManagement";
 
 function ProtectedRoute({ children }) {
   const { isLoggedIn } = useSelector((s) => s.auth);
@@ -75,6 +76,7 @@ export default function AppRoutes() {
         <Route path="requests" element={<RoleRoute allowedRoles={["admin", "manager", "user"]}><AssetRequestPage /></RoleRoute>} />
         <Route path="maintenance" element={<RoleRoute allowedRoles={["admin", "manager"]}><AssetMaintenancePage /></RoleRoute>} />
         <Route path="scan" element={<RoleRoute allowedRoles={["admin", "manager"]}><ScanAsset /></RoleRoute>} />
+        <Route path="cron-management" element={<RoleRoute allowedRoles={["admin"]}><CronManagement /></RoleRoute>} />
       </Route>
 
       <Route path="*" element={<NotFound />} />
