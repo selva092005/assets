@@ -16,8 +16,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip as ReTooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from "recharts";
-import { FaTrash, FaTimes, FaRecycle, FaSearch, FaEye, FaFileExcel, FaDownload, FaCoins, FaExclamationTriangle, FaPlus, FaChartPie, FaChartBar, FaFileExport } from "react-icons/fa";
-import { MdRefresh } from "react-icons/md";
+import { FaTrash, FaTimes, FaRecycle, FaSearch, FaEye, FaFileExcel, FaDownload, FaCoins, FaExclamationTriangle, FaPlus, FaChartPie, FaChartBar, FaFileExport, FaSyncAlt } from "react-icons/fa";
 import { getUsers } from "../services/users_service";
 import toast from "../utils/toast.jsx";
 
@@ -401,7 +400,7 @@ export default function AssetDisposalPage() {
             aria-label="Reset"
             sx={resetBtnSx}
           >
-            <MdRefresh size={14} />
+            <FaSyncAlt size={11} />
           </IconButton>
         </Tooltip>
       </Box>

@@ -15,9 +15,8 @@ import { FormTextField } from "../components/FormFields";
 import {
   FaPlus, FaUndo, FaTimes, FaBoxOpen, FaSearch,
   FaEye, FaExclamationTriangle, FaDownload, FaFileExport,
-  FaLayerGroup, FaCheckCircle, FaBoxes, FaClock, FaCalendarAlt,
+  FaLayerGroup, FaCheckCircle, FaBoxes, FaClock, FaCalendarAlt, FaSyncAlt,
 } from "react-icons/fa";
-import { MdRefresh } from "react-icons/md";
 import { getUsers } from "../services/users_service";
 import toast from "../utils/toast.jsx";
 
@@ -744,7 +743,7 @@ export default function AssetAllocationPage() {
             aria-label="Reset"
             sx={resetBtnSx}
           >
-            <MdRefresh size={14} />
+            <FaSyncAlt size={11} />
           </IconButton>
         </Tooltip>
       </Box>

@@ -170,6 +170,26 @@ export const resetBtnSx = {
   }
 };
 
+export const locationIconSx = {
+  color: "#3b82f6",
+  verticalAlign: "middle",
+  marginRight: "3px",
+  display: "inline-flex",
+  alignItems: "center"
+};
+
+export const locationBadgeSx = (themeColor) => ({
+  width: 22,
+  height: 22,
+  borderRadius: "6px",
+  bgcolor: themeColor + "12",
+  color: themeColor,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  border: `1px solid ${themeColor}25`
+});
+
 export const dateFieldSx = (width = 130) => ({
   ...inputSx,
   width: width,
@@ -255,24 +275,37 @@ export const primaryBtnSx = {
 
 export const outlinedBtnSx = {
   ...sharedBtnSizingSx,
-  border: "1px solid #e5e5e5",
-  background: "#ffffff",
-  color: "#666666",
-  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.02)",
-  transition: "all 150ms ease-in-out",
-  "&:hover": {
-    borderColor: COLORS.primary,
-    color: COLORS.primary,
-    background: "rgba(37, 99, 235, 0.02)",
+  height: 22,
+  px: 1.5,
+  borderRadius: "12px",
+  border: "none",
+  background: "rgba(15, 23, 42, 0.04)",
+  color: "#475569",
+  fontSize: "10px",
+  transition: "all 200ms ease",
+  "& svg": { 
+    transition: "transform 0.4s ease" 
   },
-  "&:active": {
-    background: "#fafafa",
+  "&:hover": {
+    background: "#ffffff",
+    color: "#2563eb",
+    boxShadow: "0 2px 8px rgba(37, 99, 235, 0.12)",
+    "& svg": { 
+      transform: "rotate(360deg)", 
+      color: "#2563eb" 
+    }
+  },
+  "&:active": { 
+    transform: "scale(0.97)" 
   },
   "&.Mui-disabled": {
-    background: "#fafafa",
-    borderColor: "#eaeaea",
-    color: "#ccc",
+    background: "#f8fafc",
+    color: "#cbd5e1",
     boxShadow: "none",
+    transform: "none",
+    "& svg": {
+      color: "#cbd5e1"
+    }
   }
 };
 

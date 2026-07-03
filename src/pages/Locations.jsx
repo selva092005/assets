@@ -13,9 +13,8 @@ import { FormTextField, FormSelect } from "../components/FormFields";
 import {
   FaMapMarkerAlt, FaPlus, FaTimes, FaEdit, FaTrash,
   FaSearch, FaCheckCircle, FaBuilding, FaCrosshairs,
-  FaChevronDown,
+  FaChevronDown, FaSyncAlt, FaHome,
 } from "react-icons/fa";
-import { MdRefresh } from "react-icons/md";
 import toast from "../utils/toast.jsx";
 
 import {
@@ -29,7 +28,7 @@ import ConfirmDialog from "../components/common/ConfirmDialog";
 import StatCard from "../components/common/StatCard";
 import ErrorState from "../components/common/ErrorState";
 import SkeletonLoader from "../components/common/SkeletonLoader";
-import { COLORS, primaryBtnSx, outlinedBtnSx, inputSx, selectSx, chipSx, premiumDialogPaperSx, premiumDialogTitleSx, searchFieldSx, resetBtnSx } from "../theme/tokens";
+import { COLORS, primaryBtnSx, outlinedBtnSx, inputSx, selectSx, chipSx, premiumDialogPaperSx, premiumDialogTitleSx, searchFieldSx, resetBtnSx, locationIconSx } from "../theme/tokens";
 import { required } from "../utils/validate";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -405,7 +404,7 @@ export default function Locations() {
             onClick={clearFilters}
             sx={resetBtnSx}
           >
-            <MdRefresh size={14} />
+            <FaSyncAlt size={11} />
           </IconButton>
         </Tooltip>
       </Box>
@@ -493,8 +492,8 @@ export default function Locations() {
                                 <TableCell sx={{ fontSize: 11, fontWeight: 600, color: "#1e1b4b" }}>
                                   {row.locationName}
                                   {row.address && (
-                                    <Typography sx={{ fontSize: 9.5, color: COLORS.textMuted, fontWeight: 500, mt: 0.25 }}>
-                                      🏠 {row.address}
+                                    <Typography sx={{ fontSize: 9.5, color: COLORS.textMuted, fontWeight: 500, mt: 0.25, display: "flex", alignItems: "center", gap: 0.5 }}>
+                                      <FaHome size={10.5} style={{ color: "#64748b" }} /> {row.address}
                                     </Typography>
                                   )}
                                   {(row.latitude != null && row.longitude != null) && (
@@ -508,13 +507,13 @@ export default function Locations() {
                                           textDecoration: "none",
                                           display: "inline-flex",
                                           alignItems: "center",
-                                          gap: "2px",
+                                          gap: "3px",
                                           cursor: "pointer",
                                         }}
                                         onMouseOver={(e) => e.currentTarget.style.textDecoration = "underline"}
                                         onMouseOut={(e) => e.currentTarget.style.textDecoration = "none"}
                                       >
-                                        📍 {Number(row.latitude).toFixed(6)}, {Number(row.longitude).toFixed(6)}
+                                        <FaMapMarkerAlt size={9.5} style={locationIconSx} /> {Number(row.latitude).toFixed(6)}, {Number(row.longitude).toFixed(6)}
                                       </a>
                                     </Typography>
                                   )}

@@ -11,8 +11,7 @@ import {
   Tooltip, FormControlLabel, Checkbox, FormHelperText
 } from "@mui/material";
 import { useForm, Controller } from "react-hook-form";
-import { FaTimes, FaSearch, FaEye, FaClipboardCheck, FaPlus, FaCheck, FaExclamationTriangle, FaFileExcel } from "react-icons/fa";
-import { MdRefresh } from "react-icons/md";
+import { FaTimes, FaSearch, FaEye, FaClipboardCheck, FaPlus, FaCheck, FaExclamationTriangle, FaFileExcel, FaSyncAlt } from "react-icons/fa";
 import toast from "../utils/toast.jsx";
 
 import { createAudit, getAudits, getAuditOverview } from "../services/audit_service";
@@ -288,7 +287,7 @@ export default function AssetAudit() {
             onClick={() => { setSearchInput(""); setStatusFilter(""); setPage(0); }}
             sx={resetBtnSx}
           >
-            <MdRefresh size={15} />
+            <FaSyncAlt size={11} />
           </IconButton>
         </Tooltip>
       </Box>

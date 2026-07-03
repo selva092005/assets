@@ -11,8 +11,7 @@ import {
 } from "@mui/material";
 import { useForm, Controller } from "react-hook-form";
 import { FormTextField, FormSelect } from "../components/FormFields";
-import { FaExchangeAlt, FaCheck, FaTimes, FaSearch, FaClock, FaTruck, FaChevronDown, FaChevronUp, FaCheckCircle, FaTimesCircle, FaFileExport, FaFilter, FaEye, FaClipboardCheck } from "react-icons/fa";
-import { MdRefresh } from "react-icons/md";
+import { FaExchangeAlt, FaCheck, FaTimes, FaSearch, FaClock, FaTruck, FaChevronDown, FaChevronUp, FaCheckCircle, FaTimesCircle, FaFileExport, FaFilter, FaEye, FaClipboardCheck, FaSyncAlt } from "react-icons/fa";
 import toast from "../utils/toast.jsx";
 import PageHeader from "../components/common/PageHeader";
 import TableCard from "../components/common/TableCard";
@@ -712,7 +711,7 @@ export default function TransferPage() {
               aria-label="Reset"
               sx={resetBtnSx}
             >
-              <MdRefresh size={14} />
+              <FaSyncAlt size={11} />
             </IconButton>
           </Tooltip>
         </Box>

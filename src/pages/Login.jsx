@@ -132,6 +132,7 @@ export default function Login() {
   const [passwordTyped, setPasswordTyped] = useState(false);
   const [loginFailed, setLoginFailed] = useState(false);
   const [isRepairing, setIsRepairing] = useState(false);
+  const [isWaitingForColdStart, setIsWaitingForColdStart] = useState(false);
 
   if (isLoggedIn && !isZooming) return <Navigate to="/home" replace />;
 
@@ -160,25 +161,91 @@ export default function Login() {
     }
     setFieldErrors({ email: "", password: "" });
     setIsZooming(true);
-    const result = await dispatch(loginThunk(email, password));
-    if (result?.success) {
-      setLoginSuccess(true);
-      toast.success("Welcome back!");
-      setTimeout(() => navigate("/home"), 850);
-    } else {
-      setIsZooming(false);
-      setShakeTrigger(true);
-      setTimeout(() => setShakeTrigger(false), 500);
-      setLoginFailed(true);
-      const errMsg = result?.error || storeError || "Login failed";
-      toast.error(errMsg);
+    setIsWaitingForColdStart(false);
 
-      const normalizedErr = errMsg.toLowerCase();
-      if (normalizedErr.includes("password") || normalizedErr.includes("credential")) {
-        setFieldErrors({ email: "", password: errMsg });
+    // Show warning if it takes > 3.5 seconds (likely Render cold-start)
+    const coldStartTimer = setTimeout(() => {
+      setIsWaitingForColdStart(true);
+    }, 3500);
+
+    try {
+      const result = await dispatch(loginThunk(email, password));
+      clearTimeout(coldStartTimer);
+      setIsWaitingForColdStart(false);
+
+      if (result?.success) {
+        setLoginSuccess(true);
+        toast.success("Welcome back!");
+        setTimeout(() => navigate("/home"), 850);
       } else {
-        setFieldErrors({ email: errMsg, password: "" });
+        setIsZooming(false);
+        setShakeTrigger(true);
+        setTimeout(() => setShakeTrigger(false), 500);
+        setLoginFailed(true);
+        const errMsg = result?.error || storeError || "Login failed";
+        toast.error(errMsg);
+
+        const normalizedErr = errMsg.toLowerCase();
+        if (normalizedErr.includes("password") || normalizedErr.includes("credential")) {
+          setFieldErrors({ email: "", password: errMsg });
+        } else {
+          setFieldErrors({ email: errMsg, password: "" });
+        }
       }
+    } catch (err) {
+      clearTimeout(coldStartTimer);
+      setIsWaitingForColdStart(false);
+      setIsZooming(false);
+      toast.error("An unexpected login error occurred");
+    }
+  };
+
+  const handleDemoLogin = async (role) => {
+    let demoEmail = "";
+    let demoPassword = "";
+    
+    if (role === "admin") {
+      demoEmail = "admin@gmail.com";
+      demoPassword = "Admin@123";
+    } else {
+      demoEmail = "user@organization.com";
+      demoPassword = "User@123";
+    }
+    
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    setPasswordTyped(true);
+    setFieldErrors({ email: "", password: "" });
+    setIsZooming(true);
+    setIsWaitingForColdStart(false);
+
+    // Show warning if it takes > 3.5 seconds (likely Render cold-start)
+    const coldStartTimer = setTimeout(() => {
+      setIsWaitingForColdStart(true);
+    }, 3500);
+
+    try {
+      const result = await dispatch(loginThunk(demoEmail, demoPassword));
+      clearTimeout(coldStartTimer);
+      setIsWaitingForColdStart(false);
+
+      if (result?.success) {
+        setLoginSuccess(true);
+        toast.success("Welcome back!");
+        setTimeout(() => navigate("/home"), 850);
+      } else {
+        setIsZooming(false);
+        setShakeTrigger(true);
+        setTimeout(() => setShakeTrigger(false), 500);
+        setLoginFailed(true);
+        const errMsg = result?.error || storeError || "Login failed";
+        toast.error(errMsg);
+      }
+    } catch (err) {
+      clearTimeout(coldStartTimer);
+      setIsWaitingForColdStart(false);
+      setIsZooming(false);
+      toast.error("An unexpected login error occurred");
     }
   };
 
@@ -188,8 +255,9 @@ export default function Login() {
     <ThemeProvider theme={theme}>
       <Box
         sx={{
-          minHeight: "100vh",
+          height: "100vh",
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           background: "linear-gradient(135deg, #e0f2fe 0%, #dbeafe 50%, #eff6ff 100%)",
@@ -247,7 +315,13 @@ export default function Login() {
             } ${loginSuccess ? "success-transition" : ""
             } ${shakeTrigger ? "error-shake" : ""
             }`}
-          sx={{ width: "100%", maxWidth: 410, position: "relative", mt: 4, zIndex: 10 }}
+          sx={{ 
+            width: "100%", 
+            maxWidth: 410, 
+            position: "relative", 
+            transform: "translateY(-40px)", 
+            zIndex: 10 
+          }}
         >
 
           {/* Card Outer Shadow Halo */}
@@ -288,8 +362,8 @@ export default function Login() {
               borderRadius: "16px",
               boxShadow: "0 1px 3px rgba(15, 23, 42, 0.02), 0 10px 20px -5px rgba(15, 23, 42, 0.03), 0 30px 60px -15px rgba(15, 23, 42, 0.06)",
               overflow: "visible",
-              p: 4.5,
-              pt: 6,
+              p: 3.5,
+              pt: 5,
               transition: "all 300ms cubic-bezier(0.34, 1.56, 0.64, 1)",
               "&:hover": {
                 transform: "translateY(-4px)",
@@ -350,7 +424,7 @@ export default function Login() {
             </Box>
 
             {/* Form */}
-            <Box component="form" onSubmit={handleLogin} sx={{ display: "flex", flexDirection: "column", gap: 3.25 }}>
+            <Box component="form" onSubmit={handleLogin} sx={{ display: "flex", flexDirection: "column", gap: 2.25 }}>
 
               {/* Email Section with Static Top Label */}
               <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
@@ -454,6 +528,82 @@ export default function Login() {
               >
                 {(loading || isZooming) ? "Signing In..." : "Sign In"}
               </Button>
+
+              {/* Render Free-Tier Cold-Start Alert */}
+              {isWaitingForColdStart && (loading || isZooming) && (
+                <Box
+                  sx={{
+                    mt: 1.5,
+                    p: 1.5,
+                    borderRadius: "8px",
+                    background: "rgba(245, 158, 11, 0.08)",
+                    border: "1px dashed rgba(245, 158, 11, 0.3)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 0.5,
+                    textAlign: "left",
+                    animation: "fadeInAlert 0.3s ease-in-out",
+                    "@keyframes fadeInAlert": {
+                      "0%": { opacity: 0, transform: "translateY(5px)" },
+                      "100%": { opacity: 1, transform: "translateY(0)" }
+                    }
+                  }}
+                >
+                  <Typography sx={{ fontSize: "0.75rem", fontWeight: 600, color: "#d97706", display: "flex", alignItems: "center", gap: 0.5 }}>
+                    ⏳ Server is waking up...
+                  </Typography>
+                  <Typography sx={{ fontSize: "0.7rem", color: "#78350f", lineHeight: 1.3 }}>
+                    The backend is hosted on a free server. If it was asleep, waking it up can take 50-90 seconds. Thank you for your patience!
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+
+            {/* Quick Demo Login Section */}
+            <Box sx={{ mt: 3, pt: 2, borderTop: "1px dashed #cbd5e1", textAlign: "center" }}>
+              <Typography sx={{ fontSize: "0.75rem", fontWeight: 600, color: "#64748b", mb: 1.5 }}>
+                Quick Demo Login
+              </Typography>
+              <Box sx={{ display: "flex", gap: 1.5, justifyContent: "center" }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => handleDemoLogin("admin")}
+                  disabled={loading || isZooming}
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: "6px",
+                    fontSize: "0.7rem",
+                    borderColor: "#3b82f6",
+                    color: "#2563eb",
+                    "&:hover": {
+                      background: "rgba(37, 99, 235, 0.04)",
+                      borderColor: "#2563eb",
+                    }
+                  }}
+                >
+                  🔑 Demo Admin
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  onClick={() => handleDemoLogin("user")}
+                  disabled={loading || isZooming}
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: "6px",
+                    fontSize: "0.7rem",
+                    borderColor: "#64748b",
+                    color: "#475569",
+                    "&:hover": {
+                      background: "rgba(100, 116, 139, 0.04)",
+                      borderColor: "#475569",
+                    }
+                  }}
+                >
+                  👤 Demo Staff
+                </Button>
+              </Box>
             </Box>
           </Card>
         </Box>

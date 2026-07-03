@@ -10,8 +10,7 @@ import {
   Tooltip
 } from "@mui/material";
 import { useForm, Controller } from "react-hook-form";
-import { FaTimes, FaSearch, FaEye, FaPlus, FaCheck, FaBan, FaHourglassHalf, FaWrench, FaTools, FaCheckCircle, FaUpload } from "react-icons/fa";
-import { MdRefresh } from "react-icons/md";
+import { FaTimes, FaSearch, FaEye, FaPlus, FaCheck, FaBan, FaHourglassHalf, FaWrench, FaTools, FaCheckCircle, FaUpload, FaSyncAlt } from "react-icons/fa";
 import toast from "../utils/toast.jsx";
 
 import { createRequest, getRequests, updateRequestStatus, getRequestOverview, uploadFile } from "../services/request_service";
@@ -271,7 +270,7 @@ export default function AssetRequestPage() {
             onClick={() => { setSearchInput(""); setStatusFilter(""); setTypeFilter(""); setPage(0); }}
             sx={resetBtnSx}
           >
-            <MdRefresh size={15} />
+            <FaSyncAlt size={11} />
           </IconButton>
         </Tooltip>
       </Box>

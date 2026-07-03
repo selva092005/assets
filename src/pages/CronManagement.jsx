@@ -189,7 +189,7 @@ export default function CronManagement() {
         actions={
           <Button
             variant="outlined"
-            startIcon={<FaSyncAlt />}
+            startIcon={<FaSyncAlt size={11} />}
             onClick={() => {
               refetchJobs();
               if (tabValue === 1) refetchLogs();

@@ -34,7 +34,8 @@ import {
   FaTrashAlt,
   FaUpload,
   FaFileAlt,
-  FaTimes
+  FaTimes,
+  FaMapMarkerAlt
 } from "react-icons/fa";
 import toast from "../utils/toast.jsx";
 import { getDashboard, getImageUrl, getAssets } from "../services/assets_service";
@@ -43,7 +44,7 @@ import { getAllTransfers, approveTransfer, rejectTransfer } from "../services/tr
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { setAssetSearch, setAssetPage } from "../store/slices/assetSlice";
-import { COLORS, outlinedBtnSx } from "../theme/tokens";
+import { COLORS, outlinedBtnSx, locationBadgeSx } from "../theme/tokens";
 import StatCard from "../components/common/StatCard";
 import PremiumCard from "../components/common/PremiumCard";
 import PageHeader from "../components/common/PageHeader";
@@ -548,20 +549,8 @@ export default function Dashboard() {
                   <Box key={item.name} sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
                     <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                        <Box sx={{
-                          width: 22,
-                          height: 22,
-                          borderRadius: "6px",
-                          bgcolor: themeColor + "12",
-                          color: themeColor,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: 11,
-                          fontWeight: "bold",
-                          border: `1px solid ${themeColor}25`
-                        }}>
-                          📍
+                        <Box sx={locationBadgeSx(themeColor)}>
+                          <FaMapMarkerAlt size={10} />
                         </Box>
                         <Typography sx={{ fontSize: "11px", fontWeight: 800, color: "#1e293b" }}>
                           {item.name}
