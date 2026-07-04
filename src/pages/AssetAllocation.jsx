@@ -617,61 +617,6 @@ export default function AssetAllocationPage() {
       <PageHeader
         title="Asset Allocation"
         subtitle="Allocate, track, assign and manage employee asset assignments"
-        actions={
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-            {/* Show count */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
-              Showing
-              <Select
-                value={showCount}
-                onChange={(e) => { setShowCount(Number(e.target.value)); setPage(0); }}
-                size="small"
-                sx={selectSx}
-              >
-                {[5, 10, 20, 50].map((n) => (
-                  <MenuItem key={n} value={n} sx={{ fontSize: 11 }}>{n}</MenuItem>
-                ))}
-              </Select>
-            </Box>
-
-            {canWrite && (
-              <Box sx={{ display: "flex", gap: 1 }}>
-                {selectedIds.length > 0 && (
-                  <Button
-                    variant="contained"
-                    color="error"
-                    startIcon={<FaUndo size={11} />}
-                    onClick={() => {
-                      setBulkReturnDate(new Date().toISOString().split("T")[0]);
-                      setBulkReturnDateError("");
-                      setBulkCondition("GOOD");
-                      setBulkReturnOpen(true);
-                    }}
-                    sx={{ ...primaryBtnSx, background: "#ef4444", "&:hover": { background: "#dc2626" } }}
-                  >
-                    Return Selected ({selectedIds.length})
-                  </Button>
-                )}
-                <Button
-                  variant="outlined"
-                  startIcon={<FaFileExport size={11} />}
-                  onClick={handleExportExcel}
-                  sx={outlinedBtnSx}
-                >
-                  Export
-                </Button>
-                <Button
-                  variant="contained"
-                  startIcon={<FaPlus size={11} />}
-                  onClick={() => openAllocate(null)}
-                  sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
-                >
-                  Allocate Asset
-                </Button>
-              </Box>
-            )}
-          </Box>
-        }
       />
 
       {/* ── Stat Cards ──────────────────────────────────────────────────── */}
@@ -695,57 +640,146 @@ export default function AssetAllocationPage() {
         <StatCard label="Overdue" value={overdueCount} icon={<FaClock size={15} />} iconBg="#fffbeb" iconColor="#d97706" onClick={() => { setStatusFilter("ACTIVE"); setPage(0); }} />
       </Box>
 
-      {/* (AssetOverview moved below the table) */}
-
-      {/* ── Filters ─────────────────────────────────────────────────────── */}
-      <Box sx={{ display: "flex", gap: 1.5, mb: 2, flexWrap: "wrap", alignItems: "center" }}>
-        <TextField
-          size="small"
-          placeholder="Search asset, code, employee…"
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-          slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
-          sx={searchFieldSx(240, 300)}
-        />
-        <Select
-          size="small" value={statusFilter} onChange={handleStatusChange} displayEmpty
-          sx={{ ...selectSx, minWidth: 130 }}
-        >
-          <MenuItem value="">All</MenuItem>
-          <MenuItem value="ACTIVE">Active</MenuItem>
-          <MenuItem value="RETURNED">Returned</MenuItem>
-        </Select>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography sx={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>From</Typography>
+      {/* Actions and Filters Bar */}
+      <Box sx={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 1.5,
+        alignItems: "center",
+        justifyContent: "space-between",
+        width: "100%",
+        mb: 2,
+        animation: "fadeLeft 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "@keyframes fadeLeft": {
+          from: { opacity: 0, transform: "translateX(15px)" },
+          to: { opacity: 1, transform: "translateX(0)" },
+        }
+      }}>
+        {/* Left Side: Search & Filters */}
+        <Box sx={{
+          display: "flex",
+          gap: 1.5,
+          alignItems: "center",
+          flexWrap: "wrap",
+          flex: { xs: "1 1 100%", md: "auto" },
+          order: { xs: 2, md: 1 }
+        }}>
           <TextField
-            type="date"
             size="small"
-            value={fromDate}
-            onChange={handleFromDate}
-            sx={dateFieldSx(130)}
+            placeholder="Search asset, code, employee…"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+            slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
+            sx={{
+              ...searchFieldSx(240, 300),
+              width: { xs: "100%", sm: "auto" },
+              minWidth: { xs: "100%", sm: 240 }
+            }}
           />
-        </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography sx={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>To</Typography>
-          <TextField
-            type="date"
-            size="small"
-            value={toDate}
-            onChange={handleToDate}
-            sx={dateFieldSx(130)}
-          />
-        </Box>
-
-        {/* Reset icon button — same style as existing app buttons */}
-        <Tooltip title="Reset filters">
-          <IconButton
-            onClick={clearFilters}
-            aria-label="Reset"
-            sx={resetBtnSx}
+          <Select
+            size="small" value={statusFilter} onChange={handleStatusChange} displayEmpty
+            sx={{ ...selectSx, minWidth: 130, flex: { xs: 1, sm: "initial" } }}
           >
-            <FaSyncAlt size={11} />
-          </IconButton>
-        </Tooltip>
+            <MenuItem value="">All</MenuItem>
+            <MenuItem value="ACTIVE">Active</MenuItem>
+            <MenuItem value="RETURNED">Returned</MenuItem>
+          </Select>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: { xs: "1 1 auto", sm: "initial" } }}>
+            <Typography sx={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>From</Typography>
+            <TextField
+              type="date"
+              size="small"
+              value={fromDate}
+              onChange={handleFromDate}
+              sx={{ ...dateFieldSx(130), width: "100%" }}
+            />
+          </Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: { xs: "1 1 auto", sm: "initial" } }}>
+            <Typography sx={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>To</Typography>
+            <TextField
+              type="date"
+              size="small"
+              value={toDate}
+              onChange={handleToDate}
+              sx={{ ...dateFieldSx(130), width: "100%" }}
+            />
+          </Box>
+
+          {/* Reset icon button — same style as existing app buttons */}
+          <Tooltip title="Reset filters">
+            <IconButton
+              onClick={clearFilters}
+              aria-label="Reset"
+              sx={resetBtnSx}
+            >
+              <FaSyncAlt size={11} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* Right Side: Actions */}
+        <Box sx={{
+          display: "flex",
+          gap: 1.5,
+          alignItems: "center",
+          flexWrap: "wrap",
+          justifyContent: { xs: "flex-end", md: "flex-end" },
+          flex: { xs: "1 1 100%", md: "auto" },
+          mt: { xs: 0.5, md: 0 },
+          order: { xs: 1, md: 2 }
+        }}>
+          {/* Show count */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
+            Showing
+            <Select
+              value={showCount}
+              onChange={(e) => { setShowCount(Number(e.target.value)); setPage(0); }}
+              size="small"
+              sx={selectSx}
+            >
+              {[5, 10, 20, 50].map((n) => (
+                <MenuItem key={n} value={n} sx={{ fontSize: 11 }}>{n}</MenuItem>
+              ))}
+            </Select>
+          </Box>
+
+          {canWrite && (
+            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              {selectedIds.length > 0 && (
+                <Button
+                  variant="contained"
+                  color="error"
+                  startIcon={<FaUndo size={11} />}
+                  onClick={() => {
+                    setBulkReturnDate(new Date().toISOString().split("T")[0]);
+                    setBulkReturnDateError("");
+                    setBulkCondition("GOOD");
+                    setBulkReturnOpen(true);
+                  }}
+                  sx={{ ...primaryBtnSx, background: "#ef4444", "&:hover": { background: "#dc2626" } }}
+                >
+                  Return Selected ({selectedIds.length})
+                </Button>
+              )}
+              <Button
+                variant="outlined"
+                startIcon={<FaFileExport size={11} />}
+                onClick={handleExportExcel}
+                sx={outlinedBtnSx}
+              >
+                Export
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<FaPlus size={11} />}
+                onClick={() => openAllocate(null)}
+                sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
+              >
+                Allocate Asset
+              </Button>
+            </Box>
+          )}
+        </Box>
       </Box>
 
       {/* ── Table ───────────────────────────────────────────────────────── */}
@@ -843,26 +877,26 @@ export default function AssetAllocationPage() {
                       </TableCell>
                       <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>
                         <Box sx={{ display: "flex", gap: 0.5 }}>
-                           <ActionBtn
-                             title="View Details"
-                             color="#3b82f6"
-                             hoverBg="rgba(59, 130, 246, 0.08)"
-                             onClick={() => openView(row.allocationId)}
-                             sx={{ border: "none", background: "transparent" }}
-                           >
-                             <FaEye size={11} />
-                           </ActionBtn>
-                           {canWrite && row.status === "ACTIVE" && (
-                             <ActionBtn
-                               title="Mark as Returned"
-                               color="#10b981"
-                               hoverBg="rgba(16, 185, 129, 0.08)"
-                               onClick={() => handleReturnClick(row)}
-                               sx={{ border: "none", background: "transparent" }}
-                             >
-                               <FaUndo size={11} />
-                             </ActionBtn>
-                           )}
+                          <ActionBtn
+                            title="View Details"
+                            color="#3b82f6"
+                            hoverBg="rgba(59, 130, 246, 0.08)"
+                            onClick={() => openView(row.allocationId)}
+                            sx={{ border: "none", background: "transparent" }}
+                          >
+                            <FaEye size={11} />
+                          </ActionBtn>
+                          {canWrite && row.status === "ACTIVE" && (
+                            <ActionBtn
+                              title="Mark as Returned"
+                              color="#10b981"
+                              hoverBg="rgba(16, 185, 129, 0.08)"
+                              onClick={() => handleReturnClick(row)}
+                              sx={{ border: "none", background: "transparent" }}
+                            >
+                              <FaUndo size={11} />
+                            </ActionBtn>
+                          )}
                         </Box>
                       </TableCell>
                     </TableRow>
@@ -900,9 +934,9 @@ export default function AssetAllocationPage() {
             render={({ field, fieldState: { error } }) => {
               const selectedAssetsText = field.value && field.value.length > 0
                 ? field.value.map(id => {
-                    const found = availableAssets.find(a => a.assetId === id);
-                    return found ? `${found.assetName}${found.assetCode ? ` (${found.assetCode})` : ""}` : "";
-                  }).filter(Boolean).join(", ")
+                  const found = availableAssets.find(a => a.assetId === id);
+                  return found ? `${found.assetName}${found.assetCode ? ` (${found.assetCode})` : ""}` : "";
+                }).filter(Boolean).join(", ")
                 : "";
 
               return (

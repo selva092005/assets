@@ -259,6 +259,34 @@ export default function ReportsPage() {
         subtitle="Aggregated system telemetry and premium exports hub"
       />
 
+      {/* ── Compact Stat KPI Row ────────────────────────────────────────────── */}
+      <Box sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "repeat(2, minmax(0, 1fr))",
+          sm: "repeat(3, minmax(0, 1fr))",
+          md: "repeat(6, minmax(0, 1fr))"
+        },
+        gap: 2,
+        mb: 2.5,
+        animation: "fadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "@keyframes fadeUp": {
+          from: { opacity: 0, transform: "translateY(10px)" },
+          to: { opacity: 1, transform: "translateY(0)" }
+        }
+      }}>
+        {[
+          { label: "Total Assets", value: d.totalAssets, icon: <FaBoxes />, iconBg: "#e8eaf6", iconColor: "#3949ab" },
+          { label: "Available", value: d.available, icon: <FaCheckCircle />, iconBg: "#ecfdf5", iconColor: "#10b981" },
+          { label: "Assigned", value: d.assigned, icon: <FaBoxes />, iconBg: "#eff6ff", iconColor: "#2563eb" },
+          { label: "Lost / Missing", value: d.lost, icon: <FaTimes />, iconBg: "#fff5f5", iconColor: "#ef4444" },
+          { label: "Under Maintenance", value: d.underMaintenance, icon: <FaClock />, iconBg: "#fffbeb", iconColor: "#d97706" },
+          { label: "Disposed", value: d.disposed, icon: <FaRecycle />, iconBg: "#f1f5f9", iconColor: "#64748b" },
+        ].map((c) => (
+          <StatCard key={c.label} {...c} />
+        ))}
+      </Box>
+
       {/* ── Compact Interactive Download Center ──────────────────────────────── */}
       <Paper elevation={0} sx={{
         background: "linear-gradient(135deg, #ffffff, #fcfdff)",
@@ -266,7 +294,13 @@ export default function ReportsPage() {
         border: "1px solid #f1f5f9",
         boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.04)",
         p: 1.5,
-        mb: 2.5
+        mb: 2.5,
+        animation: "fadeLeft 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        animationDelay: "50ms",
+        "@keyframes fadeLeft": {
+          from: { opacity: 0, transform: "translateX(15px)" },
+          to: { opacity: 1, transform: "translateX(0)" },
+        }
       }}>
         <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5, pb: 1, borderBottom: "1px solid #f1f5f9" }}>
           <Box>
@@ -340,29 +374,6 @@ export default function ReportsPage() {
           ))}
         </Box>
       </Paper>
-
-      {/* ── Compact Stat KPI Row ────────────────────────────────────────────── */}
-      <Box sx={{
-        display: "grid",
-        gridTemplateColumns: {
-          xs: "repeat(2, minmax(0, 1fr))",
-          sm: "repeat(3, minmax(0, 1fr))",
-          md: "repeat(6, minmax(0, 1fr))"
-        },
-        gap: 2,
-        mb: 2.5
-      }}>
-        {[
-          { label: "Total Assets", value: d.totalAssets, icon: <FaBoxes />, iconBg: "#e8eaf6", iconColor: "#3949ab" },
-          { label: "Available", value: d.available, icon: <FaCheckCircle />, iconBg: "#ecfdf5", iconColor: "#10b981" },
-          { label: "Assigned", value: d.assigned, icon: <FaBoxes />, iconBg: "#eff6ff", iconColor: "#2563eb" },
-          { label: "Lost / Missing", value: d.lost, icon: <FaTimes />, iconBg: "#fff5f5", iconColor: "#ef4444" },
-          { label: "Under Maintenance", value: d.underMaintenance, icon: <FaClock />, iconBg: "#fffbeb", iconColor: "#d97706" },
-          { label: "Disposed", value: d.disposed, icon: <FaRecycle />, iconBg: "#f1f5f9", iconColor: "#64748b" },
-        ].map((c) => (
-          <StatCard key={c.label} {...c} />
-        ))}
-      </Box>
 
       {/* ── Section: Distribution charts (Highly space-efficient CSS Grid) ──── */}
       <Box sx={{

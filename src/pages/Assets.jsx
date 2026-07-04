@@ -5,12 +5,12 @@ import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-quer
 import {
   Box, Button, Select, MenuItem, CircularProgress,
   Typography, Chip,
-  Tooltip, IconButton, InputAdornment,
+  Tooltip, IconButton, InputAdornment, TextField,
   Dialog, DialogTitle, DialogContent, DialogActions,
 } from "@mui/material";
 import { useForm } from "react-hook-form";
 import { FormTextField, FormSelect } from "../components/FormFields";
-import { FaFilter, FaFileExport, FaPlus, FaUpload, FaBoxes, FaCheckCircle, FaExclamationTriangle, FaWrench, FaTools, FaExchangeAlt } from "react-icons/fa";
+import { FaFilter, FaFileExport, FaPlus, FaUpload, FaBoxes, FaCheckCircle, FaExclamationTriangle, FaWrench, FaTools, FaExchangeAlt, FaSearch, FaSyncAlt } from "react-icons/fa";
 import toast from "../utils/toast.jsx";
 import {
   setAssetPage, setAssetSearch, setAssetFilter, setAssetStatusFilter, resetAssetFilters,
@@ -21,7 +21,7 @@ import {
   getAssets
 } from "../services/assets_service";
 import { requestBulkTransfer, getAllLocations } from "../services/transfer_service";
-import { COLORS, primaryBtnSx, outlinedBtnSx, selectSx, inputSx } from "../theme/tokens";
+import { COLORS, primaryBtnSx, outlinedBtnSx, selectSx, inputSx, searchFieldSx, resetBtnSx } from "../theme/tokens";
 
 import PageHeader from "../components/common/PageHeader";
 import SearchBar from "../components/common/SearchBar";
@@ -344,116 +344,6 @@ export default function AssetsPage() {
       <PageHeader
         title="Assets"
         subtitle="Track, audit, search and manage organizational inventory"
-        actions={
-          <Box sx={{
-            display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center",
-            animation: "fadeLeft 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
-            animationDelay: "50ms",
-            "@keyframes fadeLeft": {
-              from: { opacity: 0, transform: "translateX(15px)" },
-              to: { opacity: 1, transform: "translateX(0)" },
-            }
-          }}>
-            {/* Show count */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
-              Showing
-              <Select
-                value={showCount}
-                onChange={(e) => handleShowCountChange(e.target.value)}
-                size="small"
-                sx={selectSx}
-              >
-                {[5, 10, 20, 50].map((n) => (
-                  <MenuItem key={n} value={n} sx={{ fontSize: 11 }}>{n}</MenuItem>
-                ))}
-              </Select>
-            </Box>
-
-            {/* Filter by type */}
-            <Select
-              value={filterType}
-              onChange={(e) => handleFilterChange(e.target.value)}
-              displayEmpty
-              size="small"
-              sx={selectSx}
-              startAdornment={
-                <InputAdornment position="start" sx={{ mr: 0.25, pl: 0.5 }}>
-                  <FaFilter size={9} color={COLORS.textMuted} />
-                </InputAdornment>
-              }
-            >
-              <MenuItem value="" sx={{ fontSize: 11 }}>All</MenuItem>
-              {types.map((t) => (
-                <MenuItem key={t.typeId} value={t.typeId} sx={{ fontSize: 11 }}>{t.typeName}</MenuItem>
-              ))}
-              {canWrite && (
-                <MenuItem value="ADD_NEW" sx={{ fontSize: 11, color: "#2563eb", fontWeight: 600, borderTop: "1px solid #e2e8f0", mt: 0.5 }}>
-                  + Add New Type...
-                </MenuItem>
-              )}
-            </Select>
-
-            {/* Filter by status */}
-            <Select
-              value={filterStatus}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              displayEmpty
-              size="small"
-              sx={selectSx}
-              startAdornment={
-                <InputAdornment position="start" sx={{ mr: 0.25, pl: 0.5 }}>
-                  <FaFilter size={9} color={COLORS.textMuted} />
-                </InputAdornment>
-              }
-            >
-              <MenuItem value="" sx={{ fontSize: 11 }}>All</MenuItem>
-              {['AVAILABLE', 'ASSIGNED', 'DAMAGED', 'DISPOSED', 'LOST', 'UNDER_MAINTENANCE'].map((status) => (
-                <MenuItem key={status} value={status} sx={{ fontSize: 11 }}>{status}</MenuItem>
-              ))}
-            </Select>
-
-            {/* Export — admin + manager */}
-            {canExport && (
-              <Tooltip title="Exports all active assets to Excel">
-                <span>
-                  <Button
-                    variant="outlined"
-                    startIcon={exportLoading ? <CircularProgress size={11} /> : <FaFileExport size={11} />}
-                    onClick={handleExport}
-                    disabled={exportLoading}
-                    sx={outlinedBtnSx}
-                  >
-                    Export
-                  </Button>
-                </span>
-              </Tooltip>
-            )}
-
-            {/* Bulk Upload — admin only */}
-            {canBulk && (
-              <Button
-                variant="outlined"
-                startIcon={<FaUpload size={11} />}
-                onClick={() => navigate("/home/assets/bulk-upload")}
-                sx={outlinedBtnSx}
-              >
-                Bulk Upload
-              </Button>
-            )}
-
-            {/* Add New — admin + manager */}
-            {canWrite && (
-              <Button
-                variant="contained"
-                startIcon={<FaPlus size={11} />}
-                onClick={() => navigate("/home/assets/new")}
-                sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
-              >
-                Add New Asset
-              </Button>
-            )}
-          </Box>
-        }
       />
 
       {/* ── Stat Ribbon (5 Symmetrical Columns with Clean Top Color Accents) ── */}
@@ -479,13 +369,173 @@ export default function AssetsPage() {
         <StatCard label="Damaged" value={stats?.damaged ?? 0} icon={<FaExclamationTriangle />} iconColor="#f43f5e" onClick={() => handleStatusChange("DAMAGED")} />
       </Box>
 
-      <SearchBar
-        value={inputValue}
-        placeholder="Search by name, serial, asset code, location..."
-        onChange={(e) => setInputValue(e.target.value)}
-        onSearch={handleSearch}
-        onReset={handleReset}
-      />
+      {/* Actions and Filters Bar */}
+      <Box sx={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 1.5,
+        alignItems: "center",
+        justifyContent: "space-between",
+        width: "100%",
+        mb: 2,
+        animation: "fadeLeft 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "@keyframes fadeLeft": {
+          from: { opacity: 0, transform: "translateX(15px)" },
+          to: { opacity: 1, transform: "translateX(0)" },
+        }
+      }}>
+        {/* Left Side: Search & Filters */}
+        <Box sx={{
+          display: "flex",
+          gap: 1.5,
+          alignItems: "center",
+          flexWrap: "wrap",
+          flex: { xs: "1 1 100%", md: "auto" },
+          order: { xs: 2, md: 1 }
+        }}>
+          <TextField
+            size="small"
+            placeholder="Search by name, serial, asset code, location..."
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            slotProps={{
+              input: {
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <FaSearch size={11} color="#aaa" />
+                  </InputAdornment>
+                )
+              }
+            }}
+            sx={{
+              ...searchFieldSx(280, 340),
+              width: { xs: "100%", sm: "auto" },
+              minWidth: { xs: "100%", sm: 280 }
+            }}
+          />
+
+          {/* Filter by type */}
+          <Select
+            value={filterType}
+            onChange={(e) => handleFilterChange(e.target.value)}
+            displayEmpty
+            size="small"
+            sx={{ ...selectSx, minWidth: 130, flex: { xs: 1, sm: "initial" } }}
+            startAdornment={
+              <InputAdornment position="start" sx={{ mr: 0.25, pl: 0.5 }}>
+                <FaFilter size={9} color={COLORS.textMuted} />
+              </InputAdornment>
+            }
+          >
+            <MenuItem value="" sx={{ fontSize: 11 }}>All Types</MenuItem>
+            {types.map((t) => (
+              <MenuItem key={t.typeId} value={t.typeId} sx={{ fontSize: 11 }}>{t.typeName}</MenuItem>
+            ))}
+            {canWrite && (
+              <MenuItem value="ADD_NEW" sx={{ fontSize: 11, color: "#2563eb", fontWeight: 600, borderTop: "1px solid #e2e8f0", mt: 0.5 }}>
+                + Add New Type...
+              </MenuItem>
+            )}
+          </Select>
+
+          {/* Filter by status */}
+          <Select
+            value={filterStatus}
+            onChange={(e) => handleStatusChange(e.target.value)}
+            displayEmpty
+            size="small"
+            sx={{ ...selectSx, minWidth: 130, flex: { xs: 1, sm: "initial" } }}
+            startAdornment={
+              <InputAdornment position="start" sx={{ mr: 0.25, pl: 0.5 }}>
+                <FaFilter size={9} color={COLORS.textMuted} />
+              </InputAdornment>
+            }
+          >
+            <MenuItem value="" sx={{ fontSize: 11 }}>All Statuses</MenuItem>
+            {['AVAILABLE', 'ASSIGNED', 'DAMAGED', 'DISPOSED', 'LOST', 'UNDER_MAINTENANCE'].map((status) => (
+              <MenuItem key={status} value={status} sx={{ fontSize: 11 }}>{status}</MenuItem>
+            ))}
+          </Select>
+
+          <Tooltip title="Reset filters">
+            <IconButton
+              onClick={handleReset}
+              sx={resetBtnSx}
+            >
+              <FaSyncAlt size={11} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* Right Side: Actions */}
+        <Box sx={{
+          display: "flex",
+          gap: 1.5,
+          alignItems: "center",
+          flexWrap: "wrap",
+          justifyContent: { xs: "flex-end", md: "flex-end" },
+          flex: { xs: "1 1 100%", md: "auto" },
+          mt: { xs: 0.5, md: 0 },
+          order: { xs: 1, md: 2 }
+        }}>
+          {/* Show count */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
+            Showing
+            <Select
+              value={showCount}
+              onChange={(e) => handleShowCountChange(e.target.value)}
+              size="small"
+              sx={selectSx}
+            >
+              {[5, 10, 20, 50].map((n) => (
+                <MenuItem key={n} value={n} sx={{ fontSize: 11 }}>{n}</MenuItem>
+              ))}
+            </Select>
+          </Box>
+
+          {/* Export — admin + manager */}
+          {canExport && (
+            <Tooltip title="Exports all active assets to Excel">
+              <span>
+                <Button
+                  variant="outlined"
+                  startIcon={exportLoading ? <CircularProgress size={11} /> : <FaFileExport size={11} />}
+                  onClick={handleExport}
+                  disabled={exportLoading}
+                  sx={outlinedBtnSx}
+                >
+                  Export
+                </Button>
+              </span>
+            </Tooltip>
+          )}
+
+          {/* Bulk Upload — admin only */}
+          {canBulk && (
+            <Button
+              variant="outlined"
+              startIcon={<FaUpload size={11} />}
+              onClick={() => navigate("/home/assets/bulk-upload")}
+              sx={outlinedBtnSx}
+            >
+              Bulk Upload
+            </Button>
+          )}
+
+          {/* Add New — admin + manager */}
+          {canWrite && (
+            <Button
+              variant="contained"
+              startIcon={<FaPlus size={11} />}
+              onClick={() => navigate("/home/assets/new")}
+              sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
+            >
+              Add New Asset
+            </Button>
+          )}
+        </Box>
+      </Box>
 
       {selectedAssetIds.length > 0 && (
         <Box sx={{

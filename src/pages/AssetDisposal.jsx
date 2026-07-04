@@ -324,85 +324,135 @@ export default function AssetDisposalPage() {
       <PageHeader
         title="Asset Disposal"
         subtitle="Archive and record retired, sold or decommissioned organizational assets"
-        actions={
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-            {/* Show count */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
-              Showing
-              <Select
-                value={showCount}
-                onChange={(e) => { setShowCount(Number(e.target.value)); setPage(0); }}
-                size="small"
-                sx={selectSx}
-              >
-                {[5, 10, 20, 50].map((n) => (
-                  <MenuItem key={n} value={n} sx={{ fontSize: 11 }}>{n}</MenuItem>
-                ))}
-              </Select>
-            </Box>
-
-            <Button
-              variant="outlined"
-              startIcon={exporting ? <CircularProgress size={11} color="inherit" /> : <FaFileExport size={11} />}
-              onClick={handleExportExcel}
-              disabled={exporting}
-              sx={outlinedBtnSx}
-            >
-              Export
-            </Button>
-            {canDispose && (
-              <Button
-                variant="contained"
-                startIcon={<FaTrash size={11} />}
-                onClick={openDispose}
-                sx={{ ...primaryBtnSx, background: "#c62828", borderColor: "#b71c1c", "&:hover": { background: "#b71c1c" } }}
-              >
-                Dispose Asset
-              </Button>
-            )}
-          </Box>
-        }
       />
       {/* ── KPI Cards Row ── */}
-      <Box sx={{ display: "flex", gap: 1.5, mb: 2.5, flexWrap: "wrap" }}>
+      <Box sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "repeat(2, 1fr)",
+          sm: "repeat(4, 1fr)"
+        },
+        gap: 2,
+        mb: 2,
+        animation: "fadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "@keyframes fadeUp": {
+          from: { opacity: 0, transform: "translateY(10px)" },
+          to: { opacity: 1, transform: "translateY(0)" }
+        }
+      }}>
         <StatCard label="Total Retired" value={totalRecords} icon={<FaRecycle size={15} />} iconBg="#e8eaf6" iconColor="#3949ab" onClick={() => { setMethodFilter(""); setPage(0); }} />
         <StatCard label="Capital Recovered" value={`₹${totalRecovered.toLocaleString("en-IN")}`} icon={<FaCoins size={15} />} iconBg="#ecfdf5" iconColor="#10b981" />
         <StatCard label="Recycled/Sold Value" value={`₹${scrapSoldRecovery.toLocaleString("en-IN")}`} icon={<FaFileExcel size={15} />} iconBg="#eff6ff" iconColor="#2563eb" />
         <StatCard label="Total Damaged (Loss)" value={damagedCount} icon={<FaExclamationTriangle size={15} />} iconBg="#ffe4e6" iconColor="#f43f5e" onClick={() => { setMethodFilter("DAMAGED"); setPage(0); }} />
       </Box>
 
-      <Box sx={{ display: "flex", gap: 1.5, mb: 2, flexWrap: "wrap", alignItems: "center" }}>
-        <TextField
-          size="small"
-          placeholder="Search asset, code, disposer or reason…"
-          value={searchInput}
-          onChange={handleSearchChange}
-          slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
-          sx={searchFieldSx(280, 340)}
-        />
-        <Select
-          size="small"
-          value={methodFilter}
-          onChange={handleMethodChange}
-          displayEmpty
-          sx={{ ...selectSx, minWidth: 150 }}
-        >
-          <MenuItem value="">All</MenuItem>
-          {DISPOSAL_METHODS.map((m) => (
-            <MenuItem key={m} value={m} sx={{ fontSize: 11.5 }}>{m}</MenuItem>
-          ))}
-        </Select>
-
-        {/* Filter reset button */}
-        <Tooltip title="Reset filters">
-          <IconButton
-            onClick={clearFilters}
-            aria-label="Reset"
-            sx={resetBtnSx}
+      {/* Actions and Filters Bar */}
+      <Box sx={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 1.5,
+        alignItems: "center",
+        justifyContent: "space-between",
+        width: "100%",
+        mb: 2,
+        animation: "fadeLeft 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "@keyframes fadeLeft": {
+          from: { opacity: 0, transform: "translateX(15px)" },
+          to: { opacity: 1, transform: "translateX(0)" },
+        }
+      }}>
+        {/* Left Side: Search & Filters */}
+        <Box sx={{
+          display: "flex",
+          gap: 1.5,
+          alignItems: "center",
+          flexWrap: "wrap",
+          flex: { xs: "1 1 100%", md: "auto" },
+          order: { xs: 2, md: 1 }
+        }}>
+          <TextField
+            size="small"
+            placeholder="Search asset, code, disposer or reason…"
+            value={searchInput}
+            onChange={handleSearchChange}
+            slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
+            sx={{
+              ...searchFieldSx(280, 340),
+              width: { xs: "100%", sm: "auto" },
+              minWidth: { xs: "100%", sm: 280 }
+            }}
+          />
+          <Select
+            size="small"
+            value={methodFilter}
+            onChange={handleMethodChange}
+            displayEmpty
+            sx={{ ...selectSx, minWidth: 150, flex: { xs: 1, sm: "initial" } }}
           >
-            <FaSyncAlt size={11} />
-          </IconButton>
-        </Tooltip>
+            <MenuItem value="">All</MenuItem>
+            {DISPOSAL_METHODS.map((m) => (
+              <MenuItem key={m} value={m} sx={{ fontSize: 11.5 }}>{m}</MenuItem>
+            ))}
+          </Select>
+
+          {/* Filter reset button */}
+          <Tooltip title="Reset filters">
+            <IconButton
+              onClick={clearFilters}
+              aria-label="Reset"
+              sx={resetBtnSx}
+            >
+              <FaSyncAlt size={11} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* Right Side: Actions */}
+        <Box sx={{
+          display: "flex",
+          gap: 1.5,
+          alignItems: "center",
+          flexWrap: "wrap",
+          justifyContent: { xs: "flex-end", md: "flex-end" },
+          flex: { xs: "1 1 100%", md: "auto" },
+          mt: { xs: 0.5, md: 0 },
+          order: { xs: 1, md: 2 }
+        }}>
+          {/* Show count */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
+            Showing
+            <Select
+              value={showCount}
+              onChange={(e) => { setShowCount(Number(e.target.value)); setPage(0); }}
+              size="small"
+              sx={selectSx}
+            >
+              {[5, 10, 20, 50].map((n) => (
+                <MenuItem key={n} value={n} sx={{ fontSize: 11 }}>{n}</MenuItem>
+              ))}
+            </Select>
+          </Box>
+
+          <Button
+            variant="outlined"
+            startIcon={exporting ? <CircularProgress size={11} color="inherit" /> : <FaFileExport size={11} />}
+            onClick={handleExportExcel}
+            disabled={exporting}
+            sx={outlinedBtnSx}
+          >
+            Export
+          </Button>
+          {canDispose && (
+            <Button
+              variant="contained"
+              startIcon={<FaTrash size={11} />}
+              onClick={openDispose}
+              sx={{ ...primaryBtnSx, background: "#c62828", borderColor: "#b71c1c", "&:hover": { background: "#b71c1c" } }}
+            >
+              Dispose Asset
+            </Button>
+          )}
+        </Box>
       </Box>
 
       <Box sx={{ mb: 2.5 }}>

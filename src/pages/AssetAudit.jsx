@@ -228,68 +228,117 @@ export default function AssetAudit() {
       <PageHeader
         title="Asset Audit & Inspection"
         subtitle="Manage periodic physical audits, verify device health status, and record component checks"
-        actions={
-          <Box sx={{ display: "flex", gap: 1.5 }}>
-            <Button
-              variant="outlined"
-              startIcon={<FaFileExcel size={12} />}
-              onClick={handleExportAudits}
-              disabled={exporting}
-              sx={outlinedBtnSx}
-            >
-              Export Excel
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<FaClipboardCheck size={12} />}
-              onClick={() => openAuditModal()}
-              sx={primaryBtnSx}
-            >
-              Start Audit
-            </Button>
-          </Box>
-        }
       />
 
       {/* Overview Cards */}
-      <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
+      <Box sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "repeat(2, 1fr)",
+          sm: "repeat(4, 1fr)"
+        },
+        gap: 2,
+        mb: 2,
+        animation: "fadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "@keyframes fadeUp": {
+          from: { opacity: 0, transform: "translateY(10px)" },
+          to: { opacity: 1, transform: "translateY(0)" }
+        }
+      }}>
         <StatCard label="Total Audits Done" value={overview.totalAudits} icon={<FaClipboardCheck size={16} />} iconBg="#eef2ff" iconColor="#4f46e5" />
         <StatCard label="Operational (Good)" value={overview.goodCount} icon={<FaCheck size={14} />} iconBg="#ecfdf5" iconColor="#10b981" />
         <StatCard label="Flagged Damaged" value={overview.damagedCount} icon={<FaExclamationTriangle size={15} />} iconBg="#fffbeb" iconColor="#d97706" />
         <StatCard label="Flagged Lost" value={overview.lostCount} icon={<FaTimes size={15} />} iconBg="#fef2f2" iconColor="#ef4444" />
       </Box>
 
-      {/* Filters Bar */}
-      <Box sx={{ display: "flex", gap: 1.5, mb: 2.5, flexWrap: "wrap", alignItems: "center" }}>
-        <TextField
-          size="small"
-          placeholder="Search by asset, code, or auditor…"
-          value={searchInput}
-          onChange={(e) => { setSearchInput(e.target.value); setPage(0); }}
-          slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
-          sx={searchFieldSx(280, 340)}
-        />
-        <Select
-          size="small"
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-          displayEmpty
-          sx={{ ...selectSx, minWidth: 150 }}
-        >
-          <MenuItem value="">All Statuses</MenuItem>
-          {AUDIT_STATUSES.map((st) => (
-            <MenuItem key={st} value={st} sx={{ fontSize: 12 }}>{st}</MenuItem>
-          ))}
-        </Select>
-
-        <Tooltip title="Clear filters">
-          <IconButton
-            onClick={() => { setSearchInput(""); setStatusFilter(""); setPage(0); }}
-            sx={resetBtnSx}
+      {/* Actions and Filters Bar */}
+      <Box sx={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 1.5,
+        alignItems: "center",
+        justifyContent: "space-between",
+        width: "100%",
+        mb: 2,
+        animation: "fadeLeft 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "@keyframes fadeLeft": {
+          from: { opacity: 0, transform: "translateX(15px)" },
+          to: { opacity: 1, transform: "translateX(0)" },
+        }
+      }}>
+        {/* Left Side: Search & Filters */}
+        <Box sx={{
+          display: "flex",
+          gap: 1.5,
+          alignItems: "center",
+          flexWrap: "wrap",
+          flex: { xs: "1 1 100%", md: "auto" },
+          order: { xs: 2, md: 1 }
+        }}>
+          <TextField
+            size="small"
+            placeholder="Search by asset, code, or auditor…"
+            value={searchInput}
+            onChange={(e) => { setSearchInput(e.target.value); setPage(0); }}
+            slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
+            sx={{
+              ...searchFieldSx(280, 340),
+              width: { xs: "100%", sm: "auto" },
+              minWidth: { xs: "100%", sm: 280 }
+            }}
+          />
+          <Select
+            size="small"
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
+            displayEmpty
+            sx={{ ...selectSx, minWidth: 150, flex: { xs: 1, sm: "initial" } }}
           >
-            <FaSyncAlt size={11} />
-          </IconButton>
-        </Tooltip>
+            <MenuItem value="">All Statuses</MenuItem>
+            {AUDIT_STATUSES.map((st) => (
+              <MenuItem key={st} value={st} sx={{ fontSize: 12 }}>{st}</MenuItem>
+            ))}
+          </Select>
+
+          <Tooltip title="Clear filters">
+            <IconButton
+              onClick={() => { setSearchInput(""); setStatusFilter(""); setPage(0); }}
+              sx={resetBtnSx}
+            >
+              <FaSyncAlt size={11} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* Right Side: Actions */}
+        <Box sx={{
+          display: "flex",
+          gap: 1.5,
+          alignItems: "center",
+          flexWrap: "wrap",
+          justifyContent: { xs: "flex-end", md: "flex-end" },
+          flex: { xs: "1 1 100%", md: "auto" },
+          mt: { xs: 0.5, md: 0 },
+          order: { xs: 1, md: 2 }
+        }}>
+          <Button
+            variant="outlined"
+            startIcon={<FaFileExcel size={12} />}
+            onClick={handleExportAudits}
+            disabled={exporting}
+            sx={outlinedBtnSx}
+          >
+            Export Excel
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<FaClipboardCheck size={12} />}
+            onClick={() => openAuditModal()}
+            sx={primaryBtnSx}
+          >
+            Start Audit
+          </Button>
+        </Box>
       </Box>
 
       {/* Audit Logs Table */}

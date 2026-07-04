@@ -6,7 +6,7 @@ const Layout = () => (
   <Box sx={{ display: "flex", flexDirection: "column" }}>
     <Navbar />
     <Box sx={{
-      pt: "54px",
+      pt: { xs: "60px", md: "54px" },
       px: 1,
       pb: 1,
       minHeight: "100vh",

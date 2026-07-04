@@ -360,7 +360,9 @@ export default function Dashboard() {
         <StatCard label="Maintenance" value={underMaintenance} icon={<FaWrench />} iconBg="#fffbeb" iconColor="#d97706" onClick={() => navigate("/home/assets?status=UNDER_MAINTENANCE")} />
         <StatCard label="Damaged" value={damaged} icon={<FaExclamationTriangle />} iconBg="#fff1f2" iconColor="#f43f5e" onClick={() => navigate("/home/assets?status=DAMAGED")} />
         <StatCard label="Lost / Missing" value={lost} icon={<FaTimes />} iconBg="#fef2f2" iconColor="#ef4444" onClick={() => navigate("/home/assets?status=LOST")} />
-        <StatCard label="Asset Utilization" value={totalAssets > 0 ? `${((assigned / totalAssets) * 100).toFixed(1)}%` : "0%"} icon={<FaChartPie />} iconBg="#f5f3ff" iconColor="#7c3aed" onClick={() => navigate("/home/allocation")} />
+        <Box sx={{ gridColumn: { xs: "span 2", sm: "span 3", md: "span 1" } }}>
+          <StatCard label="Asset Utilization" value={totalAssets > 0 ? `${((assigned / totalAssets) * 100).toFixed(1)}%` : "0%"} icon={<FaChartPie />} iconBg="#f5f3ff" iconColor="#7c3aed" onClick={() => navigate("/home/allocation")} />
+        </Box>
       </Box>
 
       {/* ── Main Layout Grid ── */}

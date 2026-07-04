@@ -161,7 +161,99 @@ export default function AssetMaintenancePage() {
       <PageHeader
         title="Asset Maintenance & Repair History"
         subtitle="Log device repair details, track hardware service vendors, monitor costs, and archive outcomes"
-        actions={
+      />
+
+      {/* KPI stats */}
+      <Box sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "repeat(2, 1fr)",
+          sm: "repeat(4, 1fr)"
+        },
+        gap: 2,
+        mb: 2,
+        animation: "fadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "@keyframes fadeUp": {
+          from: { opacity: 0, transform: "translateY(10px)" },
+          to: { opacity: 1, transform: "translateY(0)" }
+        }
+      }}>
+        <StatCard label="Total Repairs Logged" value={totalCount} icon={<FaHammer size={15} />} iconBg="#eef2ff" iconColor="#4f46e5" />
+        <StatCard label="Total Spent" value={`₹${totalRepairsCost.toLocaleString("en-IN")}`} icon={<FaCoins size={14} />} iconBg="#ecfdf5" iconColor="#10b981" />
+        <StatCard label="Successfully Fixed" value={fixedCount} icon={<FaCheck size={14} />} iconBg="#f0fdf4" iconColor="#15803d" onClick={() => { setOutcomeFilter("FIXED"); setPage(0); }} />
+        <StatCard label="Scrapped Outcomes" value={scrapCount} icon={<FaBan size={14} />} iconBg="#fff5f5" iconColor="#e53e3e" onClick={() => { setOutcomeFilter("SCRAPPED"); setPage(0); }} />
+      </Box>
+
+      {/* Actions and Filters Bar */}
+      <Box sx={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 1.5,
+        alignItems: "center",
+        justifyContent: "space-between",
+        width: "100%",
+        mb: 2,
+        animation: "fadeLeft 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "@keyframes fadeLeft": {
+          from: { opacity: 0, transform: "translateX(15px)" },
+          to: { opacity: 1, transform: "translateX(0)" },
+        }
+      }}>
+        {/* Left Side: Search & Filters */}
+        <Box sx={{
+          display: "flex",
+          gap: 1.5,
+          alignItems: "center",
+          flexWrap: "wrap",
+          flex: { xs: "1 1 100%", md: "auto" },
+          order: { xs: 2, md: 1 }
+        }}>
+          <TextField
+            size="small"
+            placeholder="Search by asset, code, or vendor..."
+            value={searchInput}
+            onChange={(e) => { setSearchInput(e.target.value); setPage(0); }}
+            slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
+            sx={{
+              ...searchFieldSx(280, 340),
+              width: { xs: "100%", sm: "auto" },
+              minWidth: { xs: "100%", sm: 280 }
+            }}
+          />
+          <Select
+            size="small"
+            value={outcomeFilter}
+            onChange={(e) => { setOutcomeFilter(e.target.value); setPage(0); }}
+            displayEmpty
+            sx={{ ...selectSx, minWidth: 150, flex: { xs: 1, sm: "initial" } }}
+          >
+            <MenuItem value="">All Outcomes</MenuItem>
+            {OUTCOMES.map(o => (
+              <MenuItem key={o} value={o} sx={{ fontSize: 12 }}>{o}</MenuItem>
+            ))}
+          </Select>
+
+          <Tooltip title="Reset filters">
+            <IconButton
+              onClick={() => { setSearchInput(""); setOutcomeFilter(""); setPage(0); }}
+              sx={resetBtnSx}
+            >
+              <FaSyncAlt size={11} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* Right Side: Actions */}
+        <Box sx={{
+          display: "flex",
+          gap: 1.5,
+          alignItems: "center",
+          flexWrap: "wrap",
+          justifyContent: { xs: "flex-end", md: "flex-end" },
+          flex: { xs: "1 1 100%", md: "auto" },
+          mt: { xs: 0.5, md: 0 },
+          order: { xs: 1, md: 2 }
+        }}>
           <Button
             variant="contained"
             startIcon={<FaPlus size={10} />}
@@ -170,48 +262,7 @@ export default function AssetMaintenancePage() {
           >
             Log Maintenance
           </Button>
-        }
-      />
-
-      {/* KPI stats */}
-      <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
-        <StatCard label="Total Repairs Logged" value={totalCount} icon={<FaHammer size={15} />} iconBg="#eef2ff" iconColor="#4f46e5" />
-        <StatCard label="Total Spent" value={`₹${totalRepairsCost.toLocaleString("en-IN")}`} icon={<FaCoins size={14} />} iconBg="#ecfdf5" iconColor="#10b981" />
-        <StatCard label="Successfully Fixed" value={fixedCount} icon={<FaCheck size={14} />} iconBg="#f0fdf4" iconColor="#15803d" onClick={() => { setOutcomeFilter("FIXED"); setPage(0); }} />
-        <StatCard label="Scrapped Outcomes" value={scrapCount} icon={<FaBan size={14} />} iconBg="#fff5f5" iconColor="#e53e3e" onClick={() => { setOutcomeFilter("SCRAPPED"); setPage(0); }} />
-      </Box>
-
-      {/* Filters Bar */}
-      <Box sx={{ display: "flex", gap: 1.5, mb: 2.5, flexWrap: "wrap", alignItems: "center" }}>
-        <TextField
-          size="small"
-          placeholder="Search by asset, code, or vendor..."
-          value={searchInput}
-          onChange={(e) => { setSearchInput(e.target.value); setPage(0); }}
-          slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
-          sx={searchFieldSx(280, 340)}
-        />
-        <Select
-          size="small"
-          value={outcomeFilter}
-          onChange={(e) => { setOutcomeFilter(e.target.value); setPage(0); }}
-          displayEmpty
-          sx={{ ...selectSx, minWidth: 150 }}
-        >
-          <MenuItem value="">All Outcomes</MenuItem>
-          {OUTCOMES.map(o => (
-            <MenuItem key={o} value={o} sx={{ fontSize: 12 }}>{o}</MenuItem>
-          ))}
-        </Select>
-
-        <Tooltip title="Reset filters">
-          <IconButton
-            onClick={() => { setSearchInput(""); setOutcomeFilter(""); setPage(0); }}
-            sx={resetBtnSx}
-          >
-            <FaSyncAlt size={11} />
-          </IconButton>
-        </Tooltip>
+        </Box>
       </Box>
 
       {/* Logs Table */}

@@ -317,35 +317,6 @@ export default function Locations() {
       <PageHeader
         title="Office Locations"
         subtitle="Manage company offices, sites and remote hubs"
-        actions={
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-            {/* Show count */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
-              Showing
-              <Select
-                value={showCount}
-                onChange={(e) => { setShowCount(Number(e.target.value)); setPage(0); }}
-                size="small"
-                sx={selectSx}
-              >
-                {[5, 10, 20, 50].map((n) => (
-                  <MenuItem key={n} value={n} sx={{ fontSize: 11 }}>{n}</MenuItem>
-                ))}
-              </Select>
-            </Box>
-
-            {canWrite && (
-              <Button
-                variant="contained"
-                startIcon={<FaPlus size={11} />}
-                onClick={openAdd}
-                sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
-              >
-                Add Location
-              </Button>
-            )}
-          </Box>
-        }
       />
 
       {/* ── Symmetrical Statistics Ribbon ── */}
@@ -356,7 +327,7 @@ export default function Locations() {
           sm: "repeat(4, 1fr)"
         },
         gap: 2,
-        mb: 2.5,
+        mb: 2,
         animation: "fadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
         "@keyframes fadeUp": {
           from: { opacity: 0, transform: "translateY(10px)" },
@@ -369,44 +340,111 @@ export default function Locations() {
         <StatCard label="IP Geolocation Status" value="Online" icon={<FaCrosshairs size={15} />} iconBg="#fffbeb" iconColor="#d97706" />
       </Box>
 
-      <Box sx={{ display: "flex", gap: 1.5, mb: 2, alignItems: "center" }}>
-        <TextField
-          size="small"
-          placeholder="Search location name, code, company..."
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-          slotProps={{
-            input: {
-              startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment>
-            }
-          }}
-          sx={searchFieldSx(280, 340)}
-        />
+      {/* Actions and Filters Bar */}
+      <Box sx={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 1.5,
+        alignItems: "center",
+        justifyContent: "space-between",
+        width: "100%",
+        mb: 2,
+        animation: "fadeLeft 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "@keyframes fadeLeft": {
+          from: { opacity: 0, transform: "translateX(15px)" },
+          to: { opacity: 1, transform: "translateX(0)" },
+        }
+      }}>
+        {/* Left Side: Search & Filters */}
+        <Box sx={{
+          display: "flex",
+          gap: 1.5,
+          alignItems: "center",
+          flexWrap: "wrap",
+          flex: { xs: "1 1 100%", md: "auto" },
+          order: { xs: 2, md: 1 }
+        }}>
+          <TextField
+            size="small"
+            placeholder="Search location name, code, company..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+            slotProps={{
+              input: {
+                startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment>
+              }
+            }}
+            sx={{
+              ...searchFieldSx(280, 340),
+              width: { xs: "100%", sm: "auto" },
+              minWidth: { xs: "100%", sm: 280 }
+            }}
+          />
 
-        <Select
-          value={typeFilter}
-          onChange={(e) => { setTypeFilter(e.target.value); setPage(0); }}
-          size="small"
-          displayEmpty
-          sx={{
-            ...selectSx,
-            minWidth: 140,
-          }}
-        >
-          <MenuItem value="" sx={{ fontSize: 11.5 }}>All</MenuItem>
-          {["HQ", "Office", "Warehouse", "Lab", "Remote Hub"].map((t) => (
-            <MenuItem key={t} value={t} sx={{ fontSize: 11.5 }}>{t}</MenuItem>
-          ))}
-        </Select>
-
-        <Tooltip title="Clear filters">
-          <IconButton
-            onClick={clearFilters}
-            sx={resetBtnSx}
+          <Select
+            value={typeFilter}
+            onChange={(e) => { setTypeFilter(e.target.value); setPage(0); }}
+            size="small"
+            displayEmpty
+            sx={{
+              ...selectSx,
+              minWidth: 140,
+              flex: { xs: 1, sm: "initial" }
+            }}
           >
-            <FaSyncAlt size={11} />
-          </IconButton>
-        </Tooltip>
+            <MenuItem value="" sx={{ fontSize: 11.5 }}>All</MenuItem>
+            {["HQ", "Office", "Warehouse", "Lab", "Remote Hub"].map((t) => (
+              <MenuItem key={t} value={t} sx={{ fontSize: 11.5 }}>{t}</MenuItem>
+            ))}
+          </Select>
+
+          <Tooltip title="Clear filters">
+            <IconButton
+              onClick={clearFilters}
+              sx={resetBtnSx}
+            >
+              <FaSyncAlt size={11} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+
+        {/* Right Side: Actions */}
+        <Box sx={{
+          display: "flex",
+          gap: 1.5,
+          alignItems: "center",
+          flexWrap: "wrap",
+          justifyContent: { xs: "flex-end", md: "flex-end" },
+          flex: { xs: "1 1 100%", md: "auto" },
+          mt: { xs: 0.5, md: 0 },
+          order: { xs: 1, md: 2 }
+        }}>
+          {/* Show count */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
+            Showing
+            <Select
+              value={showCount}
+              onChange={(e) => { setShowCount(Number(e.target.value)); setPage(0); }}
+              size="small"
+              sx={selectSx}
+            >
+              {[5, 10, 20, 50].map((n) => (
+                <MenuItem key={n} value={n} sx={{ fontSize: 11 }}>{n}</MenuItem>
+              ))}
+            </Select>
+          </Box>
+
+          {canWrite && (
+            <Button
+              variant="contained"
+              startIcon={<FaPlus size={11} />}
+              onClick={openAdd}
+              sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
+            >
+              Add Location
+            </Button>
+          )}
+        </Box>
       </Box>
 
       {/* ── Data Table ── */}

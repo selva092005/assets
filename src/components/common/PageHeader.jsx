@@ -32,7 +32,13 @@ export default function PageHeader({ title, subtitle, actions }) {
         </Box>
       </Box>
       {actions && (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap" }}>
+        <Box sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          ml: "auto",
+          justifyContent: "flex-end"
+        }}>
           {actions}
         </Box>
       )}

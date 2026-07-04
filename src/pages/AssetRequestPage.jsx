@@ -208,44 +208,76 @@ export default function AssetRequestPage() {
       <PageHeader
         title={isAdminOrManager ? "Service & Procurement Requests" : "My Service & Asset Requests"}
         subtitle={isAdminOrManager ? "Review and respond to employee asset requests and damage reports" : "Submit new asset requests or report maintenance issues on your devices"}
-        actions={
-          !isAdminOrManager && (
-            <Button
-              variant="contained"
-              startIcon={<FaPlus size={10} />}
-              onClick={openRequestModal}
-              sx={primaryBtnSx}
-            >
-              New Request
-            </Button>
-          )
-        }
       />
 
       {/* KPI Overviews */}
-      <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
+      <Box sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "repeat(2, 1fr)",
+          sm: "repeat(4, 1fr)"
+        },
+        gap: 2,
+        mb: 2,
+        animation: "fadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "@keyframes fadeUp": {
+          from: { opacity: 0, transform: "translateY(10px)" },
+          to: { opacity: 1, transform: "translateY(0)" }
+        }
+      }}>
         <StatCard label="Total Requests" value={overview.total} icon={<FaTools size={15} />} iconBg="#eef2ff" iconColor="#4f46e5" />
         <StatCard label="Pending Approval" value={overview.pending} icon={<FaHourglassHalf size={14} />} iconBg="#ffe4e6" iconColor="#f43f5e" onClick={() => { setStatusFilter("PENDING"); setPage(0); }} />
         <StatCard label="Under Action" value={overview.inProgress} icon={<FaWrench size={14} />} iconBg="#eff6ff" iconColor="#2563eb" onClick={() => { setStatusFilter("IN_PROGRESS"); setPage(0); }} />
         <StatCard label="Resolved Tickets" value={overview.resolved} icon={<FaCheckCircle size={14} />} iconBg="#ecfdf5" iconColor="#10b981" onClick={() => { setStatusFilter("RESOLVED"); setPage(0); }} />
       </Box>
 
+      {/* Actions and Filters bar placed below cards */}
+      {!isAdminOrManager && (
+        <Box sx={{
+          display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center", justifyContent: { xs: "flex-end", md: "flex-end" },
+          width: "100%", mb: 1,
+          animation: "fadeLeft 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+          animationDelay: "50ms",
+          "@keyframes fadeLeft": {
+            from: { opacity: 0, transform: "translateX(15px)" },
+            to: { opacity: 1, transform: "translateX(0)" },
+          }
+        }}>
+          <Button
+            variant="contained"
+            startIcon={<FaPlus size={10} />}
+            onClick={openRequestModal}
+            sx={primaryBtnSx}
+          >
+            New Request
+          </Button>
+        </Box>
+      )}
+
       {/* Filters Bar */}
-      <Box sx={{ display: "flex", gap: 1.5, mb: 2.5, flexWrap: "wrap", alignItems: "center" }}>
+      <Box sx={{
+        display: "flex", gap: 1.5, mb: 2.5, flexWrap: "wrap", alignItems: "center",
+        justifyContent: { xs: "flex-end", md: "flex-start" },
+        width: "100%"
+      }}>
         <TextField
           size="small"
           placeholder="Search requests, users, descriptions..."
           value={searchInput}
           onChange={(e) => { setSearchInput(e.target.value); setPage(0); }}
           slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
-          sx={searchFieldSx(280, 340)}
+          sx={{
+            ...searchFieldSx(280, 340),
+            width: { xs: "100%", sm: "auto" },
+            minWidth: { xs: "100%", sm: 280 }
+          }}
         />
         <Select
           size="small"
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
           displayEmpty
-          sx={{ ...selectSx, minWidth: 150 }}
+          sx={{ ...selectSx, minWidth: 150, flex: { xs: 1, sm: "initial" } }}
         >
           <MenuItem value="">All Statuses</MenuItem>
           {["PENDING", "IN_PROGRESS", "APPROVED", "REJECTED", "RESOLVED"].map(s => (
@@ -257,7 +289,7 @@ export default function AssetRequestPage() {
           value={typeFilter}
           onChange={(e) => { setTypeFilter(e.target.value); setPage(0); }}
           displayEmpty
-          sx={{ ...selectSx, minWidth: 150 }}
+          sx={{ ...selectSx, minWidth: 150, flex: { xs: 1, sm: "initial" } }}
         >
           <MenuItem value="">All Request Types</MenuItem>
           {REQUEST_TYPES.map(t => (

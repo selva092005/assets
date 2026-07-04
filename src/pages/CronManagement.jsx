@@ -186,20 +186,6 @@ export default function CronManagement() {
       <PageHeader
         title="Cron Management"
         subtitle="Manage background automations, system cleanups, and audit execution logs"
-        actions={
-          <Button
-            variant="outlined"
-            startIcon={<FaSyncAlt size={11} />}
-            onClick={() => {
-              refetchJobs();
-              if (tabValue === 1) refetchLogs();
-              toast.success("Refreshed data");
-            }}
-            sx={outlinedBtnSx}
-          >
-            Refresh
-          </Button>
-        }
       />
 
       {/* ── Stats Ribbon ── */}
@@ -207,11 +193,41 @@ export default function CronManagement() {
         display: "grid",
         gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(3, 1fr)" },
         gap: 2,
-        mb: 3
+        mb: 2,
+        animation: "fadeUp 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "@keyframes fadeUp": {
+          from: { opacity: 0, transform: "translateY(10px)" },
+          to: { opacity: 1, transform: "translateY(0)" }
+        }
       }}>
         <StatCard label="Total Scheduler Jobs" value={jobs.length} icon={<FaClock />} iconColor="#2563eb" />
         <StatCard label="Active Schedules" value={activeCount} icon={<FaCheckCircle />} iconColor="#10b981" />
         <StatCard label="Disabled/Paused" value={disabledCount} icon={<FaTimesCircle />} iconColor="#ef4444" />
+      </Box>
+
+      {/* Actions and Filters bar placed below cards */}
+      <Box sx={{
+        display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center", justifyContent: { xs: "flex-end", md: "flex-end" },
+        width: "100%", mb: 1,
+        animation: "fadeLeft 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        animationDelay: "50ms",
+        "@keyframes fadeLeft": {
+          from: { opacity: 0, transform: "translateX(15px)" },
+          to: { opacity: 1, transform: "translateX(0)" },
+        }
+      }}>
+        <Button
+          variant="outlined"
+          startIcon={<FaSyncAlt size={11} />}
+          onClick={() => {
+            refetchJobs();
+            if (tabValue === 1) refetchLogs();
+            toast.success("Refreshed data");
+          }}
+          sx={outlinedBtnSx}
+        >
+          Refresh
+        </Button>
       </Box>
 
       {/* ── Tabs Bar ── */}

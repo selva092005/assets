@@ -531,51 +531,6 @@ export default function TransferPage() {
       <PageHeader
         title="Asset Transfers"
         subtitle="Manage location-to-location asset transfers"
-        actions={
-          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-            {/* Show count */}
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
-              Showing
-              <Select
-                value={showCount}
-                onChange={(e) => { setShowCount(Number(e.target.value)); setPage(0); }}
-                size="small"
-                sx={selectSx}
-              >
-                {[5, 10, 20, 50].map((n) => (
-                  <MenuItem key={n} value={n} sx={{ fontSize: 11 }}>{n}</MenuItem>
-                ))}
-              </Select>
-            </Box>
-
-            {(userRole === "admin" || userRole === "manager") && (
-              <Tooltip title="Export transfer logs to Excel">
-                <span>
-                  <Button
-                    variant="outlined"
-                    startIcon={exportLoading ? <CircularProgress size={11} /> : <FaFileExport size={10} />}
-                    onClick={handleExport}
-                    disabled={exportLoading}
-                    sx={outlinedBtnSx}
-                  >
-                    Export
-                  </Button>
-                </span>
-              </Tooltip>
-            )}
-
-            {canRequest && (
-              <Button
-                variant="contained"
-                startIcon={<FaExchangeAlt size={11} />}
-                onClick={openRequest}
-                sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
-              >
-                Request Transfer
-              </Button>
-            )}
-          </Box>
-        }
       />
 
       {/* ── Overview stat chips ──────────────────────────────────────────── */}
@@ -605,115 +560,195 @@ export default function TransferPage() {
         <Tabs value={tab} onChange={(_, v) => { setTab(v); setPage(0); setStatusFilter(""); setPriorityFilter(""); setMyRequestsOnly(false); setSearchQuery(""); setStartDate(""); setEndDate(""); setSelectedIds([]); setExpandedId(null); }}
           sx={{ "& .MuiTabs-indicator": { backgroundColor: COLORS.primary, height: 2 }, minHeight: 0 }}>
           <Tab label={<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}><FaClock size={10} />Pending Requests ({overview.pending || 0})</Box>}
-            sx={{ ...tabSx, minHeight: 0, py: 1 }} />
+             sx={{ ...tabSx, minHeight: 0, py: 1 }} />
           <Tab label={<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}><FaExchangeAlt size={10} />All Transfers ({overview.total || 0})</Box>}
-            sx={{ ...tabSx, minHeight: 0, py: 1 }} />
+             sx={{ ...tabSx, minHeight: 0, py: 1 }} />
         </Tabs>
       </Box>
 
-      {/* ── Filters (Pending and All Transfers tabs) ──────────────────────── */}
+      {/* ── Filters & Actions Bar (Pending and All Transfers tabs) ──────────────────────── */}
       {(tab === 0 || tab === 1) && (
-        <Box sx={{ display: "flex", gap: 1.5, mb: 2, alignItems: "center", flexWrap: "wrap" }}>
-          <TextField
-            size="small"
-            placeholder="Search asset, code, employee..."
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
-            slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
-            sx={searchFieldSx(240, 300)}
-          />
+        <Box sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 1.5,
+          alignItems: "center",
+          justifyContent: "space-between",
+          width: "100%",
+          mb: 2,
+          animation: "fadeLeft 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
+          "@keyframes fadeLeft": {
+            from: { opacity: 0, transform: "translateX(15px)" },
+            to: { opacity: 1, transform: "translateX(0)" },
+          }
+        }}>
+          {/* Left Side: Search & Filters */}
+          <Box sx={{
+            display: "flex",
+            gap: 1.5,
+            alignItems: "center",
+            flexWrap: "wrap",
+            flex: { xs: "1 1 100%", md: "auto" },
+            order: { xs: 2, md: 1 }
+          }}>
+            <TextField
+              size="small"
+              placeholder="Search asset, code, employee..."
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setPage(0); }}
+              slotProps={{ input: { startAdornment: <InputAdornment position="start"><FaSearch size={11} color="#aaa" /></InputAdornment> } }}
+              sx={{
+                ...searchFieldSx(240, 300),
+                width: { xs: "100%", sm: "auto" },
+                minWidth: { xs: "100%", sm: 240 }
+              }}
+            />
 
-          {tab === 1 && (
+            {tab === 1 && (
+              <Select
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setSelectedIds([]); setExpandedId(null); }}
+                displayEmpty
+                size="small"
+                sx={{ ...selectSx, minWidth: 130, flex: { xs: 1, sm: "initial" } }}
+                startAdornment={
+                  <InputAdornment position="start" sx={{ mr: 0.25, pl: 0.5 }}>
+                    <FaFilter size={9} color={COLORS.textMuted} />
+                  </InputAdornment>
+                }
+              >
+                <MenuItem value="" sx={{ fontSize: 11.5 }}>All Statuses</MenuItem>
+                <MenuItem value="PENDING" sx={{ fontSize: 11.5 }}>Pending</MenuItem>
+                <MenuItem value="IN_TRANSIT" sx={{ fontSize: 11.5 }}>In Transit</MenuItem>
+                <MenuItem value="APPROVED" sx={{ fontSize: 11.5 }}>Approved</MenuItem>
+                <MenuItem value="REJECTED" sx={{ fontSize: 11.5 }}>Rejected</MenuItem>
+              </Select>
+            )}
+
             <Select
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setSelectedIds([]); setExpandedId(null); }}
+              value={priorityFilter}
+              onChange={(e) => { setPriorityFilter(e.target.value); setPage(0); setSelectedIds([]); setExpandedId(null); }}
               displayEmpty
               size="small"
-              sx={{ ...selectSx, minWidth: 130 }}
+              sx={{ ...selectSx, minWidth: 130, flex: { xs: 1, sm: "initial" } }}
               startAdornment={
                 <InputAdornment position="start" sx={{ mr: 0.25, pl: 0.5 }}>
                   <FaFilter size={9} color={COLORS.textMuted} />
                 </InputAdornment>
               }
             >
-              <MenuItem value="" sx={{ fontSize: 11.5 }}>All</MenuItem>
-              <MenuItem value="PENDING" sx={{ fontSize: 11.5 }}>Pending</MenuItem>
-              <MenuItem value="IN_TRANSIT" sx={{ fontSize: 11.5 }}>In Transit</MenuItem>
-              <MenuItem value="APPROVED" sx={{ fontSize: 11.5 }}>Approved</MenuItem>
-              <MenuItem value="REJECTED" sx={{ fontSize: 11.5 }}>Rejected</MenuItem>
+              <MenuItem value="" sx={{ fontSize: 11.5 }}>All Priorities</MenuItem>
+              <MenuItem value="LOW" sx={{ fontSize: 11.5 }}>Low</MenuItem>
+              <MenuItem value="MEDIUM" sx={{ fontSize: 11.5 }}>Medium</MenuItem>
+              <MenuItem value="HIGH" sx={{ fontSize: 11.5 }}>High</MenuItem>
             </Select>
-          )}
 
-          <Select
-            value={priorityFilter}
-            onChange={(e) => { setPriorityFilter(e.target.value); setPage(0); setSelectedIds([]); setExpandedId(null); }}
-            displayEmpty
-            size="small"
-            sx={{ ...selectSx, minWidth: 130 }}
-            startAdornment={
-              <InputAdornment position="start" sx={{ mr: 0.25, pl: 0.5 }}>
-                <FaFilter size={9} color={COLORS.textMuted} />
-              </InputAdornment>
-            }
-          >
-            <MenuItem value="" sx={{ fontSize: 11.5 }}>All</MenuItem>
-            <MenuItem value="LOW" sx={{ fontSize: 11.5 }}>Low</MenuItem>
-            <MenuItem value="MEDIUM" sx={{ fontSize: 11.5 }}>Medium</MenuItem>
-            <MenuItem value="HIGH" sx={{ fontSize: 11.5 }}>High</MenuItem>
-          </Select>
-
-          <Chip
-            label="My Requests"
-            clickable
-            color={myRequestsOnly ? "primary" : "default"}
-            variant={myRequestsOnly ? "filled" : "outlined"}
-            onClick={() => { setMyRequestsOnly(!myRequestsOnly); setPage(0); setSelectedIds([]); setExpandedId(null); }}
-            sx={{
-              height: 26,
-              fontSize: 11,
-              fontWeight: 500,
-              borderRadius: "6px",
-              borderColor: myRequestsOnly ? COLORS.primary : "#e0e0e0",
-              bgcolor: myRequestsOnly ? `${COLORS.primary} !important` : "#ffffff",
-              color: myRequestsOnly ? "#ffffff" : "#4b5563",
-              "&:hover": {
-                bgcolor: myRequestsOnly ? COLORS.primary : "#f3f4f6",
-              }
-            }}
-          />
-
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography sx={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>From</Typography>
-            <TextField
-              type="date"
-              size="small"
-              value={startDate}
-              onChange={(e) => { setStartDate(e.target.value); setPage(0); }}
-              sx={dateFieldSx(130)}
+            <Chip
+              label="My Requests"
+              clickable
+              color={myRequestsOnly ? "primary" : "default"}
+              variant={myRequestsOnly ? "filled" : "outlined"}
+              onClick={() => { setMyRequestsOnly(!myRequestsOnly); setPage(0); setSelectedIds([]); setExpandedId(null); }}
+              sx={{
+                height: 26,
+                fontSize: 11,
+                fontWeight: 500,
+                borderRadius: "6px",
+                borderColor: myRequestsOnly ? COLORS.primary : "#e0e0e0",
+                bgcolor: myRequestsOnly ? `${COLORS.primary} !important` : "#ffffff",
+                color: myRequestsOnly ? "#ffffff" : "#4b5563",
+                "&:hover": {
+                  bgcolor: myRequestsOnly ? COLORS.primary : "#f3f4f6",
+                }
+              }}
             />
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: { xs: "1 1 auto", sm: "initial" } }}>
+              <Typography sx={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>From</Typography>
+              <TextField
+                type="date"
+                size="small"
+                value={startDate}
+                onChange={(e) => { setStartDate(e.target.value); setPage(0); }}
+                sx={{ ...dateFieldSx(130), width: "100%" }}
+              />
+            </Box>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flex: { xs: "1 1 auto", sm: "initial" } }}>
+              <Typography sx={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>To</Typography>
+              <TextField
+                type="date"
+                size="small"
+                value={endDate}
+                onChange={(e) => { setEndDate(e.target.value); setPage(0); }}
+                sx={{ ...dateFieldSx(130), width: "100%" }}
+              />
+            </Box>
+
+            <Tooltip title="Reset filters">
+              <IconButton
+                onClick={handleResetFilters}
+                aria-label="Reset"
+                sx={resetBtnSx}
+              >
+                <FaSyncAlt size={11} />
+              </IconButton>
+            </Tooltip>
           </Box>
 
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Typography sx={{ fontSize: 11, fontWeight: 600, color: COLORS.textMuted }}>To</Typography>
-            <TextField
-              type="date"
-              size="small"
-              value={endDate}
-              onChange={(e) => { setEndDate(e.target.value); setPage(0); }}
-              sx={dateFieldSx(130)}
-            />
-          </Box>
+          {/* Right Side: Actions */}
+          <Box sx={{
+            display: "flex",
+            gap: 1.5,
+            alignItems: "center",
+            flexWrap: "wrap",
+            justifyContent: { xs: "flex-end", md: "flex-end" },
+            flex: { xs: "1 1 100%", md: "auto" },
+            mt: { xs: 0.5, md: 0 },
+            order: { xs: 1, md: 2 }
+          }}>
+            {/* Show count */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
+              Showing
+              <Select
+                value={showCount}
+                onChange={(e) => { setShowCount(Number(e.target.value)); setPage(0); }}
+                size="small"
+                sx={selectSx}
+              >
+                {[5, 10, 20, 50].map((n) => (
+                  <MenuItem key={n} value={n} sx={{ fontSize: 11 }}>{n}</MenuItem>
+                ))}
+              </Select>
+            </Box>
 
-          {/* Filter reset button */}
-          <Tooltip title="Reset filters">
-            <IconButton
-              onClick={handleResetFilters}
-              aria-label="Reset"
-              sx={resetBtnSx}
-            >
-              <FaSyncAlt size={11} />
-            </IconButton>
-          </Tooltip>
+            {(userRole === "admin" || userRole === "manager") && (
+              <Tooltip title="Export transfer logs to Excel">
+                <span>
+                  <Button
+                    variant="outlined"
+                    startIcon={exportLoading ? <CircularProgress size={11} color="inherit" /> : <FaFileExport size={10} />}
+                    onClick={handleExport}
+                    disabled={exportLoading}
+                    sx={outlinedBtnSx}
+                  >
+                    Export
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
+
+            {canRequest && (
+              <Button
+                variant="contained"
+                startIcon={<FaExchangeAlt size={11} />}
+                onClick={openRequest}
+                sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
+              >
+                Request Transfer
+              </Button>
+            )}
+          </Box>
         </Box>
       )}
 

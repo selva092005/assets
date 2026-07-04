@@ -286,7 +286,7 @@ const Navbar = () => {
           "@keyframes navLightSweep": { "0%": { left: "-40%" }, "100%": { left: "100%" } },
         }}
       >
-        <Toolbar sx={{ minHeight: { xs: 42, md: 46 }, px: { xs: 1.5, md: 2.5 }, gap: 1, justifyContent: "space-between" }}>
+        <Toolbar sx={{ minHeight: { xs: 48, md: 46 }, px: { xs: 1.5, md: 2.5 }, gap: 1, justifyContent: "space-between" }}>
 
           {/* Logo */}
           <Box component={Link} to="/home"
@@ -489,7 +489,14 @@ const Navbar = () => {
 
             {/* Mobile hamburger */}
             <IconButton aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"} onClick={() => setMenuOpen((prev) => !prev)} size="small"
-              sx={{ border: "1px solid #e5e7eb", display: { xs: "inline-flex", md: "none" }, p: 0.5, "&:hover": { bgcolor: "#eff6ff" } }}>
+              sx={{
+                width: 32,
+                height: 32,
+                border: "1px solid #e5e7eb",
+                display: { xs: "inline-flex", md: "none" },
+                p: 0.5,
+                "&:hover": { bgcolor: "#eff6ff" }
+              }}>
               {menuOpen ? <CloseIcon sx={{ fontSize: 18 }} /> : <MenuIcon sx={{ fontSize: 18 }} />}
             </IconButton>
 
@@ -503,21 +510,23 @@ const Navbar = () => {
                   sx={{
                     display: "flex",
                     alignItems: "center",
+                    justifyContent: { xs: "center", md: "flex-start" },
                     height: 32,
+                    width: { xs: 32, md: "auto" },
                     minWidth: 32,
                     borderRadius: "16px",
                     background: roleStyle.bg,
                     color: roleStyle.color,
                     border: `1.5px solid ${roleStyle.color}22`,
-                    pl: 0.5,
-                    pr: 0.5,
+                    pl: { xs: 0, md: 0.5 },
+                    pr: { xs: 0, md: 0.5 },
                     cursor: "pointer",
                     boxShadow: "0 1px 3px rgba(15, 23, 42, 0.04)",
                     transition: "all 380ms cubic-bezier(0.4, 0, 0.2, 1)",
                     overflow: "hidden",
                     "&:hover": {
-                      pl: 0.75,
-                      pr: 1.5,
+                      pl: { xs: 0, md: 0.75 },
+                      pr: { xs: 0, md: 1.5 },
                       boxShadow: `0 4px 14px ${roleStyle.color}20`,
                       borderColor: `${roleStyle.color}45`,
                       "& .icon-rotator": {
@@ -532,10 +541,10 @@ const Navbar = () => {
                         transform: "scale(1) rotate(0)",
                       },
                       "& .username-reveal": {
-                        maxWidth: 160,
-                        opacity: 1,
+                        maxWidth: { xs: 0, md: 160 },
+                        opacity: { xs: 0, md: 1 },
                         transform: "translateX(0)",
-                        pl: 0.75,
+                        pl: { xs: 0, md: 0.75 },
                       }
                     }
                   }}
@@ -605,8 +614,41 @@ const Navbar = () => {
                   </Box>
                 </Box>
 
+                {/* Logout - Icon only on mobile, text on desktop */}
+                <IconButton
+                  onClick={() => setLogoutConfirmOpen(true)}
+                  sx={{
+                    display: { xs: "inline-flex", md: "none" },
+                    width: 32,
+                    height: 32,
+                    border: "1px solid",
+                    borderColor: "rgba(226, 232, 240, 0.8)",
+                    bgcolor: "rgba(248, 250, 252, 0.6)",
+                    color: "#64748b",
+                    "&:hover": {
+                      bgcolor: "#fef2f2",
+                      color: "#ef4444",
+                      borderColor: "rgba(239, 68, 68, 0.2)"
+                    }
+                  }}
+                  title="Logout"
+                >
+                  <LogoutIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+
                 <Button onClick={() => setLogoutConfirmOpen(true)} startIcon={<LogoutIcon sx={{ fontSize: "13px !important" }} />}
-                  sx={{ color: "#64748b", fontSize: 11, fontWeight: 600, minHeight: 0, py: "3px", px: 1, textTransform: "none", borderRadius: "6px", "&:hover": { bgcolor: "#fef2f2", color: "#ef4444" } }}>
+                  sx={{
+                    display: { xs: "none", md: "inline-flex" },
+                    color: "#64748b",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    minHeight: 0,
+                    py: "3px",
+                    px: 1,
+                    textTransform: "none",
+                    borderRadius: "6px",
+                    "&:hover": { bgcolor: "#fef2f2", color: "#ef4444" }
+                  }}>
                   Logout
                 </Button>
               </>
@@ -622,7 +664,7 @@ const Navbar = () => {
 
       {/* ── Mobile menu ─────────────────────────────── */}
       {menuOpen && (
-        <Box sx={{ animation: "mobileMenuReveal 260ms cubic-bezier(.2,.8,.2,1) both", bgcolor: "#ffffff", borderBottom: "1px solid #e5e7eb", boxShadow: "0 8px 24px rgba(15,23,42,0.10)", display: { xs: "block", md: "none" }, left: 0, position: "fixed", right: 0, top: 42, zIndex: (t) => t.zIndex.appBar - 1, "@keyframes mobileMenuReveal": { "0%": { clipPath: "inset(0 0 100% 0)", opacity: 0, transform: "translateY(-10px)" }, "70%": { clipPath: "inset(0 0 0 0)", opacity: 1 }, "100%": { opacity: 1, transform: "translateY(0)" } } }}>
+        <Box sx={{ animation: "mobileMenuReveal 260ms cubic-bezier(.2,.8,.2,1) both", bgcolor: "#ffffff", borderBottom: "1px solid #e5e7eb", boxShadow: "0 8px 24px rgba(15,23,42,0.10)", display: { xs: "block", md: "none" }, left: 0, position: "fixed", right: 0, top: 48, zIndex: (t) => t.zIndex.appBar - 1, "@keyframes mobileMenuReveal": { "0%": { clipPath: "inset(0 0 100% 0)", opacity: 0, transform: "translateY(-10px)" }, "70%": { clipPath: "inset(0 0 0 0)", opacity: 1 }, "100%": { opacity: 1, transform: "translateY(0)" } } }}>
           <List sx={{ p: 1 }}>
             {visibleNavItems.map((item) => {
               const active = item.path === "/home/assets"
@@ -630,8 +672,13 @@ const Navbar = () => {
                 : item.path === "/home/maintenance"
                 ? isMaintenanceActive
                 : isActivePath(item);
-              const visibleDropdown = item.dropdown?.filter((d) => d.roles.includes(userRole));
-              if (visibleDropdown?.length) {
+              const visibleDropdown = item.dropdown?.filter((d) => d.roles.includes(userRole)) || [];
+              if (visibleDropdown.length) {
+                const firstLabel = item.label === "Assets" ? "Assets Registry" : "Repairs & Logs";
+                const fullDropdown = [
+                  { label: firstLabel, path: item.path, roles: item.roles },
+                  ...visibleDropdown
+                ];
                 return (
                   <Box key={item.path}>
                     <ListItemButton
@@ -640,12 +687,17 @@ const Navbar = () => {
                       <ListItemText primary={<Typography component="span" sx={{ fontSize: 13, fontWeight: active ? 700 : 500 }}>{item.label}</Typography>} />
                       <KeyboardArrowDownIcon sx={{ fontSize: 15, transition: "transform 160ms ease", transform: mobileOpenSubmenu === item.label ? "rotate(180deg)" : "rotate(0deg)" }} />
                     </ListItemButton>
-                    {mobileOpenSubmenu === item.label && visibleDropdown.map((d) => (
-                      <ListItemButton key={d.path} component={Link} to={d.path} onClick={() => { setMenuOpen(false); setMobileOpenSubmenu(null); }}
-                        sx={{ bgcolor: location.pathname.startsWith(d.path) ? "#eff6ff" : "#f8fafc", borderBottom: "1px solid #f3f4f6", color: location.pathname.startsWith(d.path) ? "#1d4ed8" : "#374151", pl: 3, py: 0.6, "&:hover": { bgcolor: "#eff6ff" } }}>
-                        <ListItemText primary={<Typography component="span" sx={{ fontSize: 12, fontWeight: 500 }}>{d.label}</Typography>} />
-                      </ListItemButton>
-                    ))}
+                    {mobileOpenSubmenu === item.label && fullDropdown.map((d) => {
+                      const isSubActive = d.path === item.path
+                        ? (location.pathname.startsWith(item.path) && !visibleDropdown.some(sub => location.pathname.startsWith(sub.path)))
+                        : location.pathname.startsWith(d.path);
+                      return (
+                        <ListItemButton key={d.path} component={Link} to={d.path} onClick={() => { setMenuOpen(false); setMobileOpenSubmenu(null); }}
+                          sx={{ bgcolor: isSubActive ? "#eff6ff" : "#f8fafc", borderBottom: "1px solid #f3f4f6", color: isSubActive ? "#1d4ed8" : "#374151", pl: 3, py: 0.6, "&:hover": { bgcolor: "#eff6ff" } }}>
+                          <ListItemText primary={<Typography component="span" sx={{ fontSize: 12, fontWeight: 500 }}>{d.label}</Typography>} />
+                        </ListItemButton>
+                      );
+                    })}
                   </Box>
                 );
               }

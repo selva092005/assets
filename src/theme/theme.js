@@ -144,6 +144,19 @@ export const theme = createTheme({
           fontSize: "11px !important",
           background: "#f4f6fb",
         },
+        "input[type=\"date\"]": {
+          position: "relative",
+          paddingRight: "28px !important",
+          "&::-webkit-calendar-picker-indicator": {
+            position: "absolute",
+            right: "8px",
+            top: "50%",
+            transform: "translateY(-50%)",
+            cursor: "pointer",
+            padding: 0,
+            margin: 0,
+          }
+        },
         "*": {
           scrollbarWidth: "thin",
           scrollbarColor: "rgba(148, 163, 184, 0.3) transparent",
