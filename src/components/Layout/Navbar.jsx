@@ -184,6 +184,16 @@ const Navbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [mobileOpenSubmenu, setMobileOpenSubmenu] = useState(null);
+  const [profileAnchorEl, setProfileAnchorEl] = useState(null);
+  const openProfileMenu = Boolean(profileAnchorEl);
+
+  const handleProfileClick = (event) => {
+    setProfileAnchorEl(event.currentTarget);
+  };
+
+  const handleProfileClose = () => {
+    setProfileAnchorEl(null);
+  };
 
   const [hoveredItemLabel, setHoveredItemLabel] = useState(null);
   const hoverTimer = useRef(null);
@@ -490,14 +500,14 @@ const Navbar = () => {
             {/* Mobile hamburger */}
             <IconButton aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"} onClick={() => setMenuOpen((prev) => !prev)} size="small"
               sx={{
-                width: 32,
-                height: 32,
+                width: 29,
+                height: 29,
                 border: "1px solid #e5e7eb",
                 display: { xs: "inline-flex", md: "none" },
                 p: 0.5,
                 "&:hover": { bgcolor: "#eff6ff" }
               }}>
-              {menuOpen ? <CloseIcon sx={{ fontSize: 18 }} /> : <MenuIcon sx={{ fontSize: 18 }} />}
+              {menuOpen ? <CloseIcon sx={{ fontSize: 16 }} /> : <MenuIcon sx={{ fontSize: 16 }} />}
             </IconButton>
 
             {isLoggedIn ? (
@@ -507,45 +517,27 @@ const Navbar = () => {
 
                 {/* Ultra-Premium 3D Coin-Spin Reveal Morph Profile Capsule */}
                 <Box
+                  onClick={handleProfileClick}
                   sx={{
                     display: "flex",
                     alignItems: "center",
                     justifyContent: { xs: "center", md: "flex-start" },
-                    height: 32,
-                    width: { xs: 32, md: "auto" },
-                    minWidth: 32,
-                    borderRadius: "16px",
+                    height: 29,
+                    width: { xs: 29, md: "auto" },
+                    minWidth: 29,
+                    borderRadius: "14.5px",
                     background: roleStyle.bg,
                     color: roleStyle.color,
                     border: `1.5px solid ${roleStyle.color}22`,
-                    pl: { xs: 0, md: 0.5 },
-                    pr: { xs: 0, md: 0.5 },
+                    pl: openProfileMenu ? { xs: 0, md: 0.7 } : { xs: 0, md: 0.5 },
+                    pr: openProfileMenu ? { xs: 0, md: 1.4 } : { xs: 0, md: 0.5 },
                     cursor: "pointer",
-                    boxShadow: "0 1px 3px rgba(15, 23, 42, 0.04)",
+                    boxShadow: openProfileMenu ? `0 4px 14px ${roleStyle.color}20` : "0 1px 3px rgba(15, 23, 42, 0.04)",
+                    borderColor: openProfileMenu ? `${roleStyle.color}45` : `1.5px solid ${roleStyle.color}22`,
                     transition: "all 380ms cubic-bezier(0.4, 0, 0.2, 1)",
                     overflow: "hidden",
                     "&:hover": {
-                      pl: { xs: 0, md: 0.75 },
-                      pr: { xs: 0, md: 1.5 },
-                      boxShadow: `0 4px 14px ${roleStyle.color}20`,
-                      borderColor: `${roleStyle.color}45`,
-                      "& .icon-rotator": {
-                        transform: "rotate(360deg)",
-                      },
-                      "& .role-letter": {
-                        opacity: 0,
-                        transform: "scale(0) rotate(-180deg)",
-                      },
-                      "& .role-icon-reveal": {
-                        opacity: 1,
-                        transform: "scale(1) rotate(0)",
-                      },
-                      "& .username-reveal": {
-                        maxWidth: { xs: 0, md: 160 },
-                        opacity: { xs: 0, md: 1 },
-                        transform: "translateX(0)",
-                        pl: { xs: 0, md: 0.75 },
-                      }
+                      boxShadow: `0 2px 6px ${roleStyle.color}15`,
                     }
                   }}
                   title={`${roleLabel} Account: ${userName || "Guest"}`}
@@ -555,12 +547,13 @@ const Navbar = () => {
                     className="icon-rotator"
                     sx={{
                       position: "relative",
-                      width: 20,
-                      height: 20,
+                      width: 18.5,
+                      height: 18.5,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
+                      transform: openProfileMenu ? "rotate(360deg)" : "rotate(0)",
                       transition: "transform 420ms cubic-bezier(0.4, 0, 0.2, 1)",
                     }}
                   >
@@ -569,12 +562,12 @@ const Navbar = () => {
                       className="role-letter"
                       sx={{
                         position: "absolute",
-                        fontSize: 12,
+                        fontSize: 11,
                         fontWeight: 900,
                         fontFamily: FONT_FAMILIES.header,
                         textTransform: "uppercase",
-                        opacity: 1,
-                        transform: "scale(1) rotate(0)",
+                        opacity: openProfileMenu ? 0 : 1,
+                        transform: openProfileMenu ? "scale(0) rotate(-180deg)" : "scale(1) rotate(0)",
                         transition: "all 350ms cubic-bezier(0.4, 0, 0.2, 1)",
                       }}
                     >
@@ -586,9 +579,9 @@ const Navbar = () => {
                       className="role-icon-reveal"
                       sx={{
                         position: "absolute",
-                        fontSize: 13,
-                        opacity: 0,
-                        transform: "scale(0) rotate(180deg)",
+                        fontSize: 12,
+                        opacity: openProfileMenu ? 1 : 0,
+                        transform: openProfileMenu ? "scale(1) rotate(0)" : "scale(0) rotate(180deg)",
                         transition: "all 350ms cubic-bezier(0.4, 0, 0.2, 1)",
                       }}
                     />
@@ -598,59 +591,136 @@ const Navbar = () => {
                   <Box
                     className="username-reveal"
                     sx={{
-                      fontSize: 11.5,
+                      fontSize: 10.5,
                       fontWeight: 700,
                       fontFamily: FONT_FAMILIES.header,
                       letterSpacing: "0.2px",
                       whiteSpace: "nowrap",
-                      maxWidth: 0,
-                      opacity: 0,
-                      transform: "translateX(-8px)",
+                      maxWidth: openProfileMenu ? { xs: 0, md: 150 } : 0,
+                      opacity: openProfileMenu ? { xs: 0, md: 1 } : 0,
+                      transform: openProfileMenu ? "translateX(0)" : "translateX(-8px)",
                       transition: "all 380ms cubic-bezier(0.4, 0, 0.2, 1)",
-                      pl: 0,
+                      pl: openProfileMenu ? { xs: 0, md: 0.6 } : 0,
                     }}
                   >
                     {userName || "Guest"}
                   </Box>
                 </Box>
 
-                {/* Logout - Icon only on mobile, text on desktop */}
-                <IconButton
-                  onClick={() => setLogoutConfirmOpen(true)}
-                  sx={{
-                    display: { xs: "inline-flex", md: "none" },
-                    width: 32,
-                    height: 32,
-                    border: "1px solid",
-                    borderColor: "rgba(226, 232, 240, 0.8)",
-                    bgcolor: "rgba(248, 250, 252, 0.6)",
-                    color: "#64748b",
-                    "&:hover": {
-                      bgcolor: "#fef2f2",
-                      color: "#ef4444",
-                      borderColor: "rgba(239, 68, 68, 0.2)"
+                {/* Profile Dropdown Popover */}
+                <Popover
+                  open={openProfileMenu}
+                  anchorEl={profileAnchorEl}
+                  onClose={handleProfileClose}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                  transformOrigin={{ vertical: "top", horizontal: "right" }}
+                  slotProps={{
+                    paper: {
+                      sx: {
+                        mt: 1,
+                        width: 200,
+                        borderRadius: "8px",
+                        border: "1px solid #e2e8f0",
+                        boxShadow: "0 10px 15px -3px rgba(15, 23, 42, 0.08)",
+                        p: 1.5,
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1.25,
+                        background: "#ffffff",
+                        transformOrigin: "top right",
+                        animation: "avatarCardUnfold 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
+                        "@keyframes avatarCardUnfold": {
+                          "0%": {
+                            opacity: 0,
+                            transform: "scale(0.95) translateY(-5px)",
+                          },
+                          "100%": {
+                            opacity: 1,
+                            transform: "scale(1) translateY(0)",
+                          }
+                        }
+                      }
                     }
                   }}
-                  title="Logout"
                 >
-                  <LogoutIcon sx={{ fontSize: 16 }} />
-                </IconButton>
+                  {/* Compact Profile Details */}
+                  <Box sx={{ display: "flex", gap: 1.25, alignItems: "center", px: 0.5 }}>
+                    <Box
+                      sx={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: "50%",
+                        background: "linear-gradient(135deg, #f1f5f9, #e2e8f0)",
+                        color: "#475569",
+                        border: "1px solid #cbd5e1",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: 800,
+                        fontSize: 12,
+                        fontFamily: FONT_FAMILIES.header,
+                        flexShrink: 0
+                      }}
+                    >
+                      {userName ? userName[0].toUpperCase() : "G"}
+                    </Box>
+                    <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                      <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#1e293b", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {userName || "Guest User"}
+                      </Typography>
+                      <Typography sx={{ fontSize: 9.5, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", mb: 0.25 }}>
+                        {userEmail || "no-email@example.com"}
+                      </Typography>
+                      <Box sx={{
+                        display: "inline-flex",
+                        px: 0.5,
+                        py: 0.05,
+                        borderRadius: "3px",
+                        fontSize: 7.5,
+                        fontWeight: 800,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.03em",
+                        background: roleStyle.bg,
+                        color: roleStyle.color,
+                        border: `1px solid ${roleStyle.color}15`,
+                      }}>
+                        {roleLabel}
+                      </Box>
+                    </Box>
+                  </Box>
 
-                <Button onClick={() => setLogoutConfirmOpen(true)} startIcon={<LogoutIcon sx={{ fontSize: "13px !important" }} />}
-                  sx={{
-                    display: { xs: "none", md: "inline-flex" },
-                    color: "#64748b",
-                    fontSize: 11,
-                    fontWeight: 600,
-                    minHeight: 0,
-                    py: "3px",
-                    px: 1,
-                    textTransform: "none",
-                    borderRadius: "6px",
-                    "&:hover": { bgcolor: "#fef2f2", color: "#ef4444" }
-                  }}>
-                  Logout
-                </Button>
+                  {/* Divider */}
+                  <Divider sx={{ borderColor: "#f1f5f9" }} />
+
+                  {/* Sign Out Action Button */}
+                  <Button
+                    fullWidth
+                    variant="text"
+                    startIcon={<LogoutIcon sx={{ fontSize: "12px !important" }} />}
+                    onClick={() => {
+                      handleProfileClose();
+                      setLogoutConfirmOpen(true);
+                    }}
+                    sx={{
+                      justifyContent: "flex-start",
+                      textTransform: "none",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: "#64748b",
+                      borderRadius: "6px",
+                      py: 0.5,
+                      px: 1,
+                      minHeight: 0,
+                      transition: "all 150ms ease",
+                      "&:hover": {
+                        background: "#fef2f2",
+                        color: "#dc2626"
+                      }
+                    }}
+                  >
+                    Sign Out
+                  </Button>
+                </Popover>
               </>
             ) : (
               <Button component={Link} to="/" variant="outlined"

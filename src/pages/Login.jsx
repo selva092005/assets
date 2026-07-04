@@ -168,29 +168,38 @@ export default function Login() {
       setIsWaitingForColdStart(true);
     }, 3500);
 
+    const startTime = Date.now();
+
     try {
       const result = await dispatch(loginThunk(email, password));
       clearTimeout(coldStartTimer);
       setIsWaitingForColdStart(false);
 
-      if (result?.success) {
-        setLoginSuccess(true);
-        toast.success("Welcome back!");
-        setTimeout(() => navigate("/home"), 850);
-      } else {
-        setIsZooming(false);
-        setShakeTrigger(true);
-        setTimeout(() => setShakeTrigger(false), 500);
-        setLoginFailed(true);
-        const errMsg = result?.error || storeError || "Login failed";
-        toast.error(errMsg);
+      const elapsedTime = Date.now() - startTime;
+      const remainingDelay = Math.max(0, 1800 - elapsedTime);
 
-        const normalizedErr = errMsg.toLowerCase();
-        if (normalizedErr.includes("password") || normalizedErr.includes("credential")) {
-          setFieldErrors({ email: "", password: errMsg });
-        } else {
-          setFieldErrors({ email: errMsg, password: "" });
-        }
+      if (result?.success) {
+        setTimeout(() => {
+          setLoginSuccess(true);
+          toast.success("Welcome back!");
+          setTimeout(() => navigate("/home"), 850);
+        }, remainingDelay);
+      } else {
+        setTimeout(() => {
+          setIsZooming(false);
+          setShakeTrigger(true);
+          setTimeout(() => setShakeTrigger(false), 500);
+          setLoginFailed(true);
+          const errMsg = result?.error || storeError || "Login failed";
+          toast.error(errMsg);
+
+          const normalizedErr = errMsg.toLowerCase();
+          if (normalizedErr.includes("password") || normalizedErr.includes("credential")) {
+            setFieldErrors({ email: "", password: errMsg });
+          } else {
+            setFieldErrors({ email: errMsg, password: "" });
+          }
+        }, remainingDelay);
       }
     } catch (err) {
       clearTimeout(coldStartTimer);
@@ -203,7 +212,7 @@ export default function Login() {
   const handleDemoLogin = async (role) => {
     let demoEmail = "";
     let demoPassword = "";
-    
+
     if (role === "admin") {
       demoEmail = "admin@gmail.com";
       demoPassword = "Admin@123";
@@ -211,7 +220,7 @@ export default function Login() {
       demoEmail = "user@organization.com";
       demoPassword = "User@123";
     }
-    
+
     setEmail(demoEmail);
     setPassword(demoPassword);
     setPasswordTyped(true);
@@ -224,22 +233,31 @@ export default function Login() {
       setIsWaitingForColdStart(true);
     }, 3500);
 
+    const startTime = Date.now();
+
     try {
       const result = await dispatch(loginThunk(demoEmail, demoPassword));
       clearTimeout(coldStartTimer);
       setIsWaitingForColdStart(false);
 
+      const elapsedTime = Date.now() - startTime;
+      const remainingDelay = Math.max(0, 1800 - elapsedTime);
+
       if (result?.success) {
-        setLoginSuccess(true);
-        toast.success("Welcome back!");
-        setTimeout(() => navigate("/home"), 850);
+        setTimeout(() => {
+          setLoginSuccess(true);
+          toast.success("Welcome back!");
+          setTimeout(() => navigate("/home"), 850);
+        }, remainingDelay);
       } else {
-        setIsZooming(false);
-        setShakeTrigger(true);
-        setTimeout(() => setShakeTrigger(false), 500);
-        setLoginFailed(true);
-        const errMsg = result?.error || storeError || "Login failed";
-        toast.error(errMsg);
+        setTimeout(() => {
+          setIsZooming(false);
+          setShakeTrigger(true);
+          setTimeout(() => setShakeTrigger(false), 500);
+          setLoginFailed(true);
+          const errMsg = result?.error || storeError || "Login failed";
+          toast.error(errMsg);
+        }, remainingDelay);
       }
     } catch (err) {
       clearTimeout(coldStartTimer);
@@ -315,12 +333,12 @@ export default function Login() {
             } ${loginSuccess ? "success-transition" : ""
             } ${shakeTrigger ? "error-shake" : ""
             }`}
-          sx={{ 
-            width: "100%", 
-            maxWidth: 410, 
-            position: "relative", 
-            transform: "translateY(-40px)", 
-            zIndex: 10 
+          sx={{
+            width: "100%",
+            maxWidth: 410,
+            position: "relative",
+            transform: "translateY(-40px)",
+            zIndex: 10
           }}
         >
 
@@ -631,7 +649,7 @@ export default function Login() {
           }} />
 
           {/* Speed Lines moving from right to left (always visible, accelerating when zooming) */}
-          <Box className={`speed-lines-container ${isZooming ? "zooming" : ""}`} sx={{ position: "absolute", width: "100%", height: "100%", top: 0, left: 0 }}>
+          <Box className={`speed-lines-container ${isZooming ? "zooming" : ""} ${isZooming && !loginSuccess ? "loading-progress" : ""} ${loginSuccess ? "login-success" : ""}`} sx={{ position: "absolute", width: "100%", height: "100%", top: 0, left: 0 }}>
             <Box className="speed-line speed-line-1" sx={{ top: 20, width: 40 }} />
             <Box className="speed-line speed-line-2" sx={{ top: 40, width: 60 }} />
             <Box className="speed-line speed-line-3" sx={{ top: 60, width: 30 }} />
@@ -640,7 +658,7 @@ export default function Login() {
           </Box>
 
           {/* Moving Vehicle Container */}
-          <Box className={`truck-container ${isZooming ? "zooming" : ""} ${loginFailed ? "crashed" : ""} ${isRepairing ? "repairing" : ""}`}>
+          <Box className={`truck-container ${isZooming ? "zooming" : ""} ${isZooming && !loginSuccess ? "loading-progress" : ""} ${loginSuccess ? "login-success" : ""} ${loginFailed ? "crashed" : ""} ${isRepairing ? "repairing" : ""}`}>
             {/* Exhaust puff particles emitting from the rear bumper tailpipe */}
             <Box className="exhaust-puff puff-1" />
             <Box className="exhaust-puff puff-2" />
@@ -836,11 +854,19 @@ export default function Login() {
           left: calc(50% - 60px);
           width: 120px;
           height: 80px;
+          transition: left 0.3s ease;
         }
 
-        /* Fast Zoom-Off State on Form Submission */
-        .truck-container.zooming {
-          animation: zoomOff 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+        /* Loading/Progress State while API call is running (crawls slowly across screen) */
+        .truck-container.loading-progress {
+          left: 75% !important;
+          transition: left 18s cubic-bezier(0.1, 0.8, 0.25, 1) !important;
+        }
+
+        /* Fast Zoom-Off on Success */
+        .truck-container.login-success {
+          left: 120% !important;
+          transition: left 0.45s cubic-bezier(0.4, 0, 0.2, 1) !important;
         }
 
         /* Chassis and Cab normal suspension vibration */
@@ -854,14 +880,20 @@ export default function Login() {
           animation-delay: -0.05s;
         }
 
-        /* Server Cabinet & Monitor shake dynamically under high acceleration zoom */
-        .zooming .flatbed-assets {
-          animation: shakeAssets 0.1s linear infinite !important;
+        /* Server Cabinet & Monitor shake dynamically under loading / acceleration */
+        .loading-progress .flatbed-assets {
+          animation: shakeAssets 0.25s linear infinite !important;
+        }
+        .login-success .flatbed-assets {
+          animation: shakeAssets 0.08s linear infinite !important;
         }
 
-        /* Torque lift and chassis vibration on zoom off */
-        .zooming .truck-body {
-          animation: truckZoomBob 0.1s linear infinite !important;
+        /* Torque lift and chassis vibration on loading / zoom off */
+        .loading-progress .truck-body {
+          animation: truckZoomBob 0.25s linear infinite !important;
+        }
+        .login-success .truck-body {
+          animation: truckZoomBob 0.08s linear infinite !important;
         }
 
         {/* Flashing server rack cabinet indicators */}
@@ -880,9 +912,12 @@ export default function Login() {
           animation: none !important;
         }
 
-        /* Spin wheels at triple speed when zooming off */
-        .zooming .truck-wheel {
-          animation: spin 0.12s linear infinite !important;
+        /* Spin wheels relative to vehicle speed state */
+        .loading-progress .truck-wheel {
+          animation: spin 0.6s linear infinite !important;
+        }
+        .login-success .truck-wheel {
+          animation: spin 0.08s linear infinite !important;
         }
 
         /* Slower exhaust puff smoke particles emitting when parked/idling */
@@ -901,16 +936,23 @@ export default function Login() {
         .puff-2 { animation-delay: 0.8s; }
         .puff-3 { animation-delay: 1.6s; }
 
-        /* Speed up exhaust smoke and turn it into a glowing jet trail when zooming off */
-        .zooming .exhaust-puff {
-          width: 10px;
-          height: 10px;
+        /* Speed up exhaust smoke and turn it into a glowing jet trail when moving */
+        .loading-progress .exhaust-puff {
+          width: 7px;
+          height: 7px;
           background: radial-gradient(circle, #38bdf8 0%, #1d4ed8 75%, transparent 100%);
-          filter: drop-shadow(0 0 6px #38bdf8);
-          animation: puffFast 0.3s infinite linear !important;
+          filter: drop-shadow(0 0 4px #38bdf8);
+          animation: puffFast 0.8s infinite linear !important;
+        }
+        .login-success .exhaust-puff {
+          width: 12px;
+          height: 12px;
+          background: radial-gradient(circle, #38bdf8 0%, #1d4ed8 75%, transparent 100%);
+          filter: drop-shadow(0 0 8px #38bdf8);
+          animation: puffFast 0.15s infinite linear !important;
         }
 
-        /* Exhaust rocket fire boost plume (only active when zooming) */
+        /* Exhaust rocket fire boost plume (only active when login is successful) */
         .exhaust-flame {
           position: absolute;
           left: 4px;
@@ -923,8 +965,9 @@ export default function Login() {
           pointer-events: none;
           transform-origin: right center;
         }
-        .zooming .exhaust-flame {
-          animation: flameBoost 0.8s ease-out forwards;
+        .login-success .exhaust-flame {
+          animation: flameBoost 0.5s ease-out forwards !important;
+          opacity: 1 !important;
         }
 
         /* Tire burnout smoke particles */
@@ -943,8 +986,11 @@ export default function Login() {
         .smoke-left-2 { left: 28px; animation-delay: 0.15s; }
         .smoke-right-1 { left: 78px; animation-delay: 0.08s; }
         .smoke-right-2 { left: 84px; animation-delay: 0.22s; }
-        .zooming .tire-smoke {
-          animation: burnout 0.35s infinite ease-out !important;
+        .loading-progress .tire-smoke {
+          animation: burnout 0.8s infinite ease-out !important;
+        }
+        .login-success .tire-smoke {
+          animation: burnout 0.2s infinite ease-out !important;
         }
 
         /* Headlight beam glow scaling and flicker */
@@ -952,11 +998,15 @@ export default function Login() {
           transform-origin: 106px 51px;
           transition: all 0.3s ease;
         }
-        .zooming .headlight-beam {
-          fill: rgba(250, 204, 21, 0.5);
-          transform: scaleX(2.0) scaleY(1.4);
-          filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.9));
-          animation: headlightFlicker 0.08s infinite alternate;
+        .loading-progress .headlight-beam {
+          fill: rgba(250, 204, 21, 0.35);
+          animation: headlightFlicker 0.15s infinite alternate;
+        }
+        .login-success .headlight-beam {
+          fill: rgba(250, 204, 21, 0.6);
+          transform: scaleX(2.2) scaleY(1.5);
+          filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.95));
+          animation: headlightFlicker 0.05s infinite alternate;
         }
 
         /* Speed lines styling & animation (always visible, accelerating when zooming) */
@@ -975,11 +1025,17 @@ export default function Login() {
         .speed-line-4 { animation-delay: 3.3s; }
         .speed-line-5 { animation-delay: 4.4s; }
 
-        .zooming .speed-line {
-          height: 2.2px;
+        .loading-progress .speed-line {
+          height: 1.8px;
+          background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.6) 50%, transparent);
+          opacity: 0.25;
+          animation: speedMoveFast 1.5s linear infinite !important;
+        }
+        .login-success .speed-line {
+          height: 2.5px;
           background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.95) 50%, transparent);
-          opacity: 0.45;
-          animation: speedMoveFast 0.6s linear infinite !important;
+          opacity: 0.6;
+          animation: speedMoveFast 0.3s linear infinite !important;
         }
 
         @keyframes speedMoveSlow {
@@ -1131,6 +1187,8 @@ export default function Login() {
 
         /* 1. Whole truck: hard brake jolt — lurches forward then settles */
         .truck-container.crashed {
+          left: calc(50% - 60px) !important;
+          transition: none !important;
           animation: brakeLurch 0.6s cubic-bezier(0.22,1,0.36,1) both !important;
           transform-origin: center bottom;
         }

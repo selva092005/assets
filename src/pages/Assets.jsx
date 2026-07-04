@@ -366,7 +366,9 @@ export default function AssetsPage() {
         <StatCard label="Available" value={stats?.available ?? 0} icon={<FaCheckCircle />} iconColor="#10b981" onClick={() => handleStatusChange("AVAILABLE")} />
         <StatCard label="Assigned" value={stats?.assigned ?? 0} icon={<FaTools />} iconColor="#2563eb" onClick={() => handleStatusChange("ASSIGNED")} />
         <StatCard label="Maintenance" value={stats?.underMaintenance ?? 0} icon={<FaWrench />} iconColor="#d97706" onClick={() => handleStatusChange("UNDER_MAINTENANCE")} />
-        <StatCard label="Damaged" value={stats?.damaged ?? 0} icon={<FaExclamationTriangle />} iconColor="#f43f5e" onClick={() => handleStatusChange("DAMAGED")} />
+        <Box sx={{ gridColumn: { xs: "span 2", sm: "span 2", md: "span 1" } }}>
+          <StatCard label="Damaged" value={stats?.damaged ?? 0} icon={<FaExclamationTriangle />} iconColor="#f43f5e" onClick={() => handleStatusChange("DAMAGED")} />
+        </Box>
       </Box>
 
       {/* Actions and Filters Bar */}
@@ -540,8 +542,10 @@ export default function AssetsPage() {
       {selectedAssetIds.length > 0 && (
         <Box sx={{
           display: "flex",
-          alignItems: "center",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "flex-start", sm: "center" },
           justifyContent: "space-between",
+          gap: 1.5,
           bgcolor: "rgba(37, 99, 235, 0.08)",
           border: "1px solid #bfdbfe",
           borderRadius: "8px",
@@ -556,7 +560,7 @@ export default function AssetsPage() {
           <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#1e40af" }}>
             {selectedAssetIds.length} asset{selectedAssetIds.length > 1 ? "s" : ""} selected for bulk actions
           </Typography>
-          <Box sx={{ display: "flex", gap: 1 }}>
+          <Box sx={{ display: "flex", gap: 1, width: { xs: "100%", sm: "auto" }, justifyContent: { xs: "flex-start", sm: "flex-end" } }}>
             <Button
               variant="contained"
               size="small"
@@ -567,7 +571,8 @@ export default function AssetsPage() {
                 fontWeight: 700,
                 textTransform: "none",
                 bgcolor: "#2563eb",
-                "&:hover": { bgcolor: "#1d4ed8" }
+                "&:hover": { bgcolor: "#1d4ed8" },
+                flex: { xs: 1, sm: "initial" }
               }}
             >
               Request Bulk Transfer
@@ -582,7 +587,8 @@ export default function AssetsPage() {
                 textTransform: "none",
                 color: "#64748b",
                 borderColor: "#cbd5e1",
-                "&:hover": { borderColor: "#94a3b8" }
+                "&:hover": { borderColor: "#94a3b8" },
+                flex: { xs: 1, sm: "initial" }
               }}
             >
               Clear Selection
@@ -748,7 +754,7 @@ export default function AssetsPage() {
             ))}
           </FormSelect>
 
-          <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
             <FormTextField
               name="expectedDate"
               control={bulkTransferForm.control}

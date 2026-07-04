@@ -560,9 +560,9 @@ export default function TransferPage() {
         <Tabs value={tab} onChange={(_, v) => { setTab(v); setPage(0); setStatusFilter(""); setPriorityFilter(""); setMyRequestsOnly(false); setSearchQuery(""); setStartDate(""); setEndDate(""); setSelectedIds([]); setExpandedId(null); }}
           sx={{ "& .MuiTabs-indicator": { backgroundColor: COLORS.primary, height: 2 }, minHeight: 0 }}>
           <Tab label={<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}><FaClock size={10} />Pending Requests ({overview.pending || 0})</Box>}
-             sx={{ ...tabSx, minHeight: 0, py: 1 }} />
+            sx={{ ...tabSx, minHeight: 0, py: 1 }} />
           <Tab label={<Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}><FaExchangeAlt size={10} />All Transfers ({overview.total || 0})</Box>}
-             sx={{ ...tabSx, minHeight: 0, py: 1 }} />
+            sx={{ ...tabSx, minHeight: 0, py: 1 }} />
         </Tabs>
       </Box>
 

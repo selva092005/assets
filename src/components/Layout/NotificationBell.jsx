@@ -424,8 +424,8 @@ export const NotificationBell = () => {
           aria-describedby={notifId}
           onClick={handleNotifClick}
           sx={{
-            width: 32,
-            height: 32,
+            width: 29,
+            height: 29,
             border: "1px solid",
             borderColor: notifOpen ? "rgba(37, 99, 235, 0.25)" : "rgba(226, 232, 240, 0.8)",
             bgcolor: notifOpen ? "rgba(37, 99, 235, 0.08)" : "rgba(248, 250, 252, 0.6)",
@@ -451,7 +451,7 @@ export const NotificationBell = () => {
           {unreadCount > 0 ? (
             <NotificationsActiveIcon
               sx={{
-                fontSize: 18,
+                fontSize: 16,
                 animation: "ring 2.5s ease-in-out infinite",
                 transformOrigin: "50% 0",
                 "@keyframes ring": {
@@ -470,32 +470,32 @@ export const NotificationBell = () => {
               }}
             />
           ) : (
-            <NotificationsNoneIcon sx={{ fontSize: 18 }} />
+            <NotificationsNoneIcon sx={{ fontSize: 16 }} />
           )}
 
           {unreadCount > 0 && (
             <Box
               sx={{
                 position: "absolute",
-                top: -2,
-                right: -2,
-                minWidth: 15,
-                height: 15,
+                top: -3,
+                right: -3,
+                minWidth: 13.5,
+                height: 13.5,
                 borderRadius: "50%",
                 background: "linear-gradient(135deg, #ef4444, #dc2626)",
                 color: "#ffffff",
-                fontSize: "8.5px",
+                fontSize: "8px",
                 fontWeight: 800,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                px: "4px",
-                boxShadow: "0 0 0 2px #ffffff, 0 2px 6px rgba(239, 68, 68, 0.4)",
+                px: "3px",
+                boxShadow: "0 0 0 1.5px #ffffff, 0 1.5px 4px rgba(239, 68, 68, 0.4)",
                 animation: "pulse 2s infinite",
                 "@keyframes pulse": {
-                  "0%": { boxShadow: "0 0 0 0 rgba(239, 68, 68, 0.5), 0 0 0 2px #ffffff" },
-                  "70%": { boxShadow: "0 0 0 6px rgba(239, 68, 68, 0), 0 0 0 2px #ffffff" },
-                  "100%": { boxShadow: "0 0 0 0 rgba(239, 68, 68, 0), 0 0 0 2px #ffffff" }
+                  "0%": { boxShadow: "0 0 0 0 rgba(239, 68, 68, 0.5), 0 0 0 1.5px #ffffff" },
+                  "70%": { boxShadow: "0 0 0 5px rgba(239, 68, 68, 0), 0 0 0 1.5px #ffffff" },
+                  "100%": { boxShadow: "0 0 0 0 rgba(239, 68, 68, 0), 0 0 0 1.5px #ffffff" }
                 }
               }}
             >

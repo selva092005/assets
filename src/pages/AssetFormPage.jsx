@@ -555,7 +555,7 @@ export default function AssetFormPage() {
               {/* Status & Condition */}
               <Section icon={<FaCheckCircle size={13} />} title="Status & Condition" index={2} />
               <Grid container spacing={2}>
-                <Grid size={6} sx={anim(8)}>
+                <Grid size={{ xs: 12, sm: 6 }} sx={anim(8)}>
                   <FormSelect
                     name="status"
                     control={control}
@@ -583,7 +583,7 @@ export default function AssetFormPage() {
                     </Typography>
                   )}
                 </Grid>
-                <Grid size={6} sx={anim(9)}>
+                <Grid size={{ xs: 12, sm: 6 }} sx={anim(9)}>
                   <FormSelect
                     name="assetCondition"
                     control={control}
@@ -609,7 +609,7 @@ export default function AssetFormPage() {
               {/* Purchase Details */}
               <Section icon={<FaDollarSign size={13} />} title="Purchase Details" index={1} />
               <Grid container spacing={2} sx={{ mb: 1 }}>
-                <Grid size={3} sx={anim(5)}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={anim(5)}>
                   <FormTextField
                     name="purchaseDate"
                     control={control}
@@ -622,7 +622,7 @@ export default function AssetFormPage() {
                     slotProps={{ inputLabel: { shrink: true } }}
                   />
                 </Grid>
-                <Grid size={3} sx={anim(6)}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={anim(6)}>
                   <FormTextField
                     name="warrantyExpiry"
                     control={control}
@@ -637,7 +637,7 @@ export default function AssetFormPage() {
                     slotProps={{ inputLabel: { shrink: true } }}
                   />
                 </Grid>
-                <Grid size={3} sx={anim(7)}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={anim(7)}>
                   <FormTextField
                     name="cost"
                     control={control}
@@ -651,7 +651,7 @@ export default function AssetFormPage() {
                     slotProps={{ input: { startAdornment: adorn(<FaDollarSign size={12} />) } }}
                   />
                 </Grid>
-                <Grid size={3} sx={anim(7.5)}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }} sx={anim(7.5)}>
                   <FormTextField
                     name="depreciationRate"
                     control={control}
@@ -671,7 +671,7 @@ export default function AssetFormPage() {
               {/* Location & Company */}
               <Section icon={<FaMapMarkerAlt size={13} />} title="Location & Company" index={3} />
               <Grid container spacing={2} sx={{ mb: 1 }}>
-                <Grid size={6} sx={anim(10)}>
+                <Grid size={{ xs: 12, sm: 6 }} sx={anim(10)}>
                   <FormSelect
                     name="companyName"
                     control={control}
@@ -682,7 +682,7 @@ export default function AssetFormPage() {
                     {companies.map((c) => <MenuItem key={c.companyId} value={c.companyName} sx={{ fontSize: 13 }}>{c.companyName}</MenuItem>)}
                   </FormSelect>
                 </Grid>
-                <Grid size={6} sx={anim(11)}>
+                <Grid size={{ xs: 12, sm: 6 }} sx={anim(11)}>
                   <Box sx={{ display: "flex", alignItems: "flex-end", gap: 1 }}>
                     <Box sx={{ flex: 1 }}>
                       <FormSelect
@@ -705,19 +705,19 @@ export default function AssetFormPage() {
                     <Tooltip title={!selectedCompany ? "Select a company first" : "Detect my location"}>
                       <span>
                         <IconButton
-                          disabled={detecting || !selectedCompany}
-                          onClick={handleDetectLocation}
-                          sx={{
-                            mb: 0.5,
-                            p: "6px",
-                            height: 30,
-                            width: 30,
-                            border: `1px solid ${COLORS.border}`,
-                            borderRadius: "4px",
-                            color: COLORS.primary,
-                            "&:hover": { background: COLORS.primaryLight },
-                            "&.Mui-disabled": { border: `1px solid ${COLORS.borderLight}` }
-                          }}
+                           disabled={detecting || !selectedCompany}
+                           onClick={handleDetectLocation}
+                           sx={{
+                             mb: 0.5,
+                             p: "6px",
+                             height: 30,
+                             width: 30,
+                             border: `1px solid ${COLORS.border}`,
+                             borderRadius: "4px",
+                             color: COLORS.primary,
+                             "&:hover": { background: COLORS.primaryLight },
+                             "&.Mui-disabled": { border: `1px solid ${COLORS.borderLight}` }
+                           }}
                         >
                           {detecting ? <CircularProgress size={14} thickness={5} /> : <MyLocationIcon sx={{ fontSize: 16 }} />}
                         </IconButton>
