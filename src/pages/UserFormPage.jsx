@@ -151,7 +151,12 @@ export default function UserFormPage() {
   );
 
   return (
-    <Box sx={{ height: "calc(100vh - 70px)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <Box sx={{
+      height: { xs: "auto", md: "calc(100vh - 70px)" },
+      display: "flex",
+      flexDirection: "column",
+      overflow: { xs: "visible", md: "hidden" }
+    }}>
       {/* ── Top bar ── */}
       <Box sx={{
         px: 1.5, py: 0.75, background: "#fff", borderBottom: `1px solid ${COLORS.borderLight}`,
@@ -180,7 +185,16 @@ export default function UserFormPage() {
       </Box>
 
       {/* ── Page content ── */}
-      <Box sx={{ flex: 1, display: "flex", flexDirection: "column", p: 2, overflow: "hidden", maxWidth: 1100, width: "100%", mx: "auto" }}>
+      <Box sx={{
+        flex: { xs: "initial", md: 1 },
+        display: "flex",
+        flexDirection: "column",
+        p: 2,
+        overflow: { xs: "visible", md: "hidden" },
+        maxWidth: 1100,
+        width: "100%",
+        mx: "auto"
+      }}>
         {/* Page title */}
         <Box sx={{
           display: "flex", alignItems: "center", gap: 1.5, mb: 1.5, flexShrink: 0,
@@ -208,21 +222,28 @@ export default function UserFormPage() {
 
         {/* ── Card ── */}
         <Box sx={{
-          flex: 1,
+          flex: { xs: "initial", md: 1 },
           background: "rgba(255, 255, 255, 0.98)",
           borderRadius: "14px",
           border: `1px solid rgba(226, 232, 240, 0.8)`,
           boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04)",
-          p: 3,
+          p: { xs: 2, md: 3 },
           display: "flex",
           flexDirection: "column",
-          overflow: "hidden",
+          overflow: { xs: "visible", md: "hidden" },
           animation: "cardIn .45s cubic-bezier(.22,1,.36,1) .08s both",
           "@keyframes cardIn": { from: { opacity: 0, transform: "translateY(20px)" }, to: { opacity: 1, transform: "translateY(0)" } },
         }}>
-          <Grid container spacing={4} sx={{ flex: 1, overflow: "hidden" }}>
+          <Grid container spacing={4} sx={{ flex: { xs: "initial", md: 1 }, overflow: { xs: "visible", md: "hidden" } }}>
             {/* Left Column: Account Credentials & Roles */}
-            <Grid size={{ xs: 12, md: 6 }} sx={{ display: "flex", flexDirection: "column", gap: 1.5, height: "100%", overflowY: "auto", pr: 2 }}>
+            <Grid size={{ xs: 12, md: 6 }} sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 1.5,
+              height: { xs: "auto", md: "100%" },
+              overflowY: { xs: "visible", md: "auto" },
+              pr: { xs: 0, md: 2 }
+            }}>
               <Section icon={<MdManageAccounts size={15} />} title="Account Credentials" index={0} />
               <FormTextField
                 name="userName"
@@ -294,7 +315,17 @@ export default function UserFormPage() {
             </Grid>
 
             {/* Right Column: Professional Profile */}
-            <Grid size={{ xs: 12, md: 6 }} sx={{ display: "flex", flexDirection: "column", gap: 1.5, height: "100%", overflowY: "auto", pl: 2, borderLeft: { md: "1px solid #f1f5f9" } }}>
+            <Grid size={{ xs: 12, md: 6 }} sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 1.5,
+              height: { xs: "auto", md: "100%" },
+              overflowY: { xs: "visible", md: "auto" },
+              pl: { xs: 0, md: 2 },
+              borderLeft: { md: "1px solid #f1f5f9" },
+              borderTop: { xs: "1px solid #f1f5f9", md: "none" },
+              pt: { xs: 2, md: 0 }
+            }}>
               <Section icon={<FaBriefcase size={12} />} title="Professional Profile" index={1} />
               <FormTextField
                 name="employeeId"
