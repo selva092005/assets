@@ -66,6 +66,9 @@ export default function ScanAsset() {
       } else if (searchKey.includes("/assets/view/")) {
         const parts = searchKey.split("/assets/view/");
         if (parts.length > 1) searchKey = parts[1];
+      } else if (searchKey.includes("Asset Code:")) {
+        const match = searchKey.match(/Asset Code:\s*([^,]+)/i);
+        if (match) searchKey = match[1].trim();
       }
 
       // Query database for asset code or serial number matching the code
