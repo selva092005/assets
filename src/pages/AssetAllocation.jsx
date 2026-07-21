@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useSelector, useDispatch } from "react-redux";
+import { useEffect, useState } from "react";
+import { useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
@@ -33,9 +33,10 @@ import TablePagination from "../components/common/TablePagination";
 import PremiumCard from "../components/common/PremiumCard";
 import StatCard from "../components/common/StatCard";
 import ErrorState from "../components/common/ErrorState";
+import PremiumDataGrid from "../components/common/PremiumDataGrid";
 import SkeletonLoader from "../components/common/SkeletonLoader";
-import { COLORS, outlinedBtnSx, primaryBtnSx, selectSx, inputSx, premiumDialogPaperSx, premiumDialogTitleSx, premiumFormGroupSx, denseCellSx, searchFieldSx, resetBtnSx, dateFieldSx } from "../theme/tokens";
-import { required, isValidDate, isDateAfter, extractFieldErrors } from "../utils/validate";
+import { COLORS, outlinedBtnSx, primaryBtnSx, selectSx, inputSx, premiumDialogPaperSx, premiumDialogTitleSx, searchFieldSx, resetBtnSx, dateFieldSx } from "../theme/tokens";
+import { isDateAfter, extractFieldErrors } from "../utils/validate";
 import StatusBadge from "../components/common/StatusBadge";
 import EmptyState from "../components/common/EmptyState";
 import InfoRow from "../components/common/InfoRow";
@@ -44,13 +45,14 @@ import InfoRow from "../components/common/InfoRow";
 function DonutChart({ segments, total }) {
   const SIZE = 110, CX = 55, CY = 55, R = 40, STROKE = 14;
   const CIRC = 2 * Math.PI * R;
-  let offset = 0;
-  const arcs = segments.map((seg) => {
+  let currentOffset = 0;
+  const arcs = [];
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
     const dash = total > 0 ? (seg.value / total) * CIRC : 0;
-    const arc = { ...seg, dash, gap: CIRC - dash, offset };
-    offset += dash;
-    return arc;
-  });
+    arcs.push({ ...seg, dash, gap: CIRC - dash, offset: currentOffset });
+    currentOffset += dash;
+  }
   return (
     <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
       <circle cx={CX} cy={CY} r={R} fill="none" stroke="#f0f0f0" strokeWidth={STROKE} />
@@ -279,7 +281,6 @@ function useDebounce(value, delay) {
 
 export default function AssetAllocationPage() {
   const { userRole, userName } = useSelector((s) => s.auth);
-  const dispatch = useDispatch();
   const [searchParams, setSearchParams] = useSearchParams();
   const canWrite = userRole === "admin" || userRole === "manager";
   const queryClient = useQueryClient();
@@ -387,9 +388,8 @@ export default function AssetAllocationPage() {
   });
 
   const allUsers = usersData.allUsers;
-  const adminUsers = usersData.adminUsers;
 
-  const { control, handleSubmit, reset, setValue, setError, watch } = useForm({
+  const { control, handleSubmit, reset, setError, watch } = useForm({
     defaultValues: {
       assetId: "",
       assetIds: [],
@@ -403,8 +403,6 @@ export default function AssetAllocationPage() {
 
   const formAssignedDate = watch("assignedDate");
 
-  const [userSearch, setUserSearch] = useState("");
-  const [anchorEl, setAnchorEl] = useState(null);
   const [assignedToSearch, setAssignedToSearch] = useState("");
   const [assignedToAnchor, setAssignedToAnchor] = useState(null);
   const [assetSearch, setAssetSearch] = useState("");
@@ -476,7 +474,7 @@ export default function AssetAllocationPage() {
       expectedReturnDate: "",
       remarks: "",
     });
-    setUserSearch(""); setAssignedToSearch(""); setAssetSearch("");
+    setAssignedToSearch(""); setAssetSearch("");
     setAllocateOpen(true);
   };
 
@@ -486,6 +484,7 @@ export default function AssetAllocationPage() {
       openAllocate(Number(assetIdParam));
       setSearchParams({});
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, canWrite]);
 
   const handleAllocate = async (data) => {
@@ -603,9 +602,180 @@ export default function AssetAllocationPage() {
       setBulkReturning(false);
     }
   };
+  const columns = [
+    {
+      field: "index",
+      headerName: "#",
+      fontFamily: "monospace",
+      color: COLORS.textFaint,
+      fontWeight: 700,
+      fontSize: 10,
+      renderCell: (row, i) => page * showCount + i + 1,
+    },
+    {
+      field: "assetName",
+      headerName: "Asset",
+      sortable: true,
+      fontWeight: 600,
+      color: "#1e1b4b",
+      fontSize: 11,
+      renderCell: (row) => {
+        const overdue = isOverdue(row);
+        return (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+            {overdue && (
+              <Tooltip title="Overdue">
+                <span>
+                  <FaExclamationTriangle size={11} color="#b45309" />
+                </span>
+              </Tooltip>
+            )}
+            {row.assetName}
+          </Box>
+        );
+      },
+    },
+    {
+      field: "assetCode",
+      headerName: "Code",
+      sortable: true,
+      renderCell: (row) => (
+        <Chip
+          label={row.assetCode || "—"}
+          size="small"
+          sx={{
+            fontSize: 9.5,
+            height: 18,
+            background: "#eff6ff",
+            color: "#1d4ed8",
+            borderRadius: "5px",
+            "& .MuiChip-label": { px: "6px" },
+          }}
+        />
+      ),
+    },
+    {
+      field: "assignedTo",
+      headerName: "Assigned To",
+      sortable: true,
+      fontSize: 11,
+    },
+    {
+      field: "assignedBy",
+      headerName: "Assigned By",
+      sortable: true,
+      color: COLORS.textMuted,
+      fontSize: 11,
+    },
+    {
+      field: "assignedDate",
+      headerName: "Date",
+      sortable: true,
+      fontSize: 11,
+      renderCell: (row) => fmt(row.assignedDate),
+    },
+    {
+      field: "expectedReturnDate",
+      headerName: "Expected Return",
+      sortable: true,
+      renderCell: (row) => {
+        const overdue = isOverdue(row);
+        return (
+          <Typography
+            sx={{
+              fontSize: 11,
+              color: overdue ? "#b45309" : COLORS.textMuted,
+              fontWeight: overdue ? 700 : 400,
+            }}
+          >
+            {row.expectedReturnDate ? fmt(row.expectedReturnDate) : "—"}
+          </Typography>
+        );
+      },
+    },
+    {
+      field: "returnDate",
+      headerName: "Return Date",
+      sortable: true,
+      color: COLORS.textMuted,
+      fontSize: 11,
+      renderCell: (row) => (row.returnDate ? fmt(row.returnDate) : "—"),
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      sortable: true,
+      renderCell: (row) => <StatusBadge status={row.status} />,
+    },
+    {
+      field: "remarks",
+      headerName: "Remarks",
+      sortable: true,
+      renderCell: (row) => (
+        <Tooltip title={row.remarks || ""}>
+          <span
+            style={{
+              textOverflow: "ellipsis",
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+              display: "block",
+              maxWidth: 120,
+              fontSize: 11,
+              color: COLORS.textMuted,
+            }}
+          >
+            {row.remarks || "—"}
+          </span>
+        </Tooltip>
+      ),
+    },
+    {
+      field: "actions",
+      headerName: "Actions",
+      renderCell: (row) => (
+        <Box sx={{ display: "flex", gap: 0.5 }}>
+          <ActionBtn
+            title="View Details"
+            color="#3b82f6"
+            hoverBg="rgba(59, 130, 246, 0.08)"
+            onClick={() => openView(row.allocationId)}
+            sx={{ border: "none", background: "transparent" }}
+          >
+            <FaEye size={11} />
+          </ActionBtn>
+          {canWrite && row.status === "ACTIVE" && (
+            <ActionBtn
+              title="Mark as Returned"
+              color="#10b981"
+              hoverBg="rgba(16, 185, 129, 0.08)"
+              onClick={() => handleReturnClick(row)}
+              sx={{ border: "none", background: "transparent" }}
+            >
+              <FaUndo size={11} />
+            </ActionBtn>
+          )}
+        </Box>
+      ),
+    },
+  ];
 
+  const getRowStyle = (row, i) => {
+    const overdue = isOverdue(row);
+    return {
+      rowStyle: {
+        borderLeft: overdue ? "3px solid #b45309" : "3px solid transparent",
+        "&:hover": {
+          borderLeft: "3px solid #3b82f6",
+          "& td": { background: overdue ? "#fff7ed" : "#f0f7ff !important" },
+        },
+        "& td": {
+          background: overdue ? "#fffbeb !important" : i % 2 === 0 ? "#fff" : "#f8faff",
+          borderBottom: "1px solid #f1f5f9",
+        },
+      },
+    };
+  };
 
-  // ─────────────────────────────────────────────────────────────────────────
   if (loading) {
     return <SkeletonLoader variant="list" statCount={5} columnCount={11} />;
   }
@@ -786,124 +956,22 @@ export default function AssetAllocationPage() {
       <TableCard>
         {isError ? (
           <ErrorState message={error?.message || error?.response?.data?.message} onRetry={refetch} />
-        ) : allocations.length === 0 ? (
-          <EmptyState icon={FaBoxOpen} label="No allocation records found." />
         ) : (
           <Box sx={{ overflowX: "auto" }}>
-            <Table size="small" sx={{ minWidth: 860, tableLayout: "auto", borderCollapse: "collapse" }}>
-              <TableHead>
-                <TableRow>
-                  {canWrite && (
-                    <TableCell sx={{
-                      width: 40,
-                      background: "#f8fafc",
-                      borderBottom: "2px solid #e2e8f0",
-                      px: 1
-                    }}>
-                      <Checkbox
-                        size="small"
-                        checked={allocations.filter(row => row.status === "ACTIVE").length > 0 && selectedIds.length === allocations.filter(row => row.status === "ACTIVE").length}
-                        indeterminate={selectedIds.length > 0 && selectedIds.length < allocations.filter(row => row.status === "ACTIVE").length}
-                        onChange={(e) => {
-                          const active = allocations.filter(row => row.status === "ACTIVE");
-                          if (e.target.checked) {
-                            setSelectedIds(active.map(a => a.allocationId));
-                          } else {
-                            setSelectedIds([]);
-                          }
-                        }}
-                        sx={{ p: 0.5 }}
-                      />
-                    </TableCell>
-                  )}
-                  {["#", "Asset", "Code", "Assigned To", "Assigned By", "Date", "Expected Return", "Return Date", "Status", "Remarks", "Actions"].map((h) => (
-                    <TableCell key={h} sx={{
-                      fontWeight: 700,
-                      color: "#64748b",
-                      whiteSpace: "nowrap",
-                      background: "#f8fafc",
-                      borderBottom: "2px solid #e2e8f0",
-                      letterSpacing: "0.05em",
-                      textTransform: "uppercase",
-                      fontSize: 11
-                    }}>{h}</TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {allocations.map((row, i) => {
-                  const overdue = isOverdue(row);
-                  const isRowSelected = selectedIds.includes(row.allocationId);
-                  return (
-                    <TableRow key={row.allocationId} sx={{ borderLeft: "3px solid transparent", transition: "all 180ms ease", "&:last-child td": { border: 0 }, "&:hover": { borderLeft: "3px solid #3b82f6", "& td": { background: overdue ? "#fff7ed" : "#f0f7ff" } }, "& td": { background: overdue ? "#fffbeb" : i % 2 === 0 ? "#fff" : "#f8faff", borderBottom: "1px solid #f1f5f9" } }}>
-                      {canWrite && (
-                        <TableCell sx={{ verticalAlign: "middle", px: 1 }}>
-                          {row.status === "ACTIVE" ? (
-                            <Checkbox
-                              size="small"
-                              checked={isRowSelected}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setSelectedIds([...selectedIds, row.allocationId]);
-                                } else {
-                                  setSelectedIds(selectedIds.filter(id => id !== row.allocationId));
-                                }
-                              }}
-                              sx={{ p: 0.5 }}
-                            />
-                          ) : (
-                            <Checkbox size="small" disabled sx={{ p: 0.5, opacity: 0.3 }} />
-                          )}
-                        </TableCell>
-                      )}
-                      <TableCell sx={{ verticalAlign: "middle", color: COLORS.textFaint }}>{page * showCount + i + 1}</TableCell>
-                      <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8", fontWeight: 600, color: "#1e1b4b" }}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                          {overdue && <Tooltip title="Overdue"><span><FaExclamationTriangle size={11} color="#b45309" /></span></Tooltip>}
-                          {row.assetName}
-                        </Box>
-                      </TableCell>
-                      <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>
-                        <Chip label={row.assetCode || "—"} size="small" sx={{ fontSize: 9.5, height: 18, background: "#eff6ff", color: "#1d4ed8", borderRadius: "5px", "& .MuiChip-label": { px: "6px" } }} />
-                      </TableCell>
-                      <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>{row.assignedTo}</TableCell>
-                      <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8", color: COLORS.textMuted }}>{row.assignedBy}</TableCell>
-                      <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>{fmt(row.assignedDate)}</TableCell>
-                      <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8", color: overdue ? "#b45309" : COLORS.textMuted, fontWeight: overdue ? 700 : 400 }}>{row.expectedReturnDate ? fmt(row.expectedReturnDate) : "—"}</TableCell>
-                      <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8", color: COLORS.textMuted }}>{row.returnDate ? fmt(row.returnDate) : "—"}</TableCell>
-                      <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}><StatusBadge status={row.status} /></TableCell>
-                      <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8", color: COLORS.textMuted, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        <Tooltip title={row.remarks || ""}><span>{row.remarks || "—"}</span></Tooltip>
-                      </TableCell>
-                      <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>
-                        <Box sx={{ display: "flex", gap: 0.5 }}>
-                          <ActionBtn
-                            title="View Details"
-                            color="#3b82f6"
-                            hoverBg="rgba(59, 130, 246, 0.08)"
-                            onClick={() => openView(row.allocationId)}
-                            sx={{ border: "none", background: "transparent" }}
-                          >
-                            <FaEye size={11} />
-                          </ActionBtn>
-                          {canWrite && row.status === "ACTIVE" && (
-                            <ActionBtn
-                              title="Mark as Returned"
-                              color="#10b981"
-                              hoverBg="rgba(16, 185, 129, 0.08)"
-                              onClick={() => handleReturnClick(row)}
-                              sx={{ border: "none", background: "transparent" }}
-                            >
-                              <FaUndo size={11} />
-                            </ActionBtn>
-                          )}
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <PremiumDataGrid
+              columns={columns}
+              rows={allocations}
+              loading={false}
+              rowIdField="allocationId"
+              checkboxSelection={canWrite}
+              selectedRowIds={selectedIds}
+              onSelectionChange={setSelectedIds}
+              isRowSelectable={(row) => row.status === "ACTIVE"}
+              getRowStyle={getRowStyle}
+              page={page}
+              pageSize={showCount}
+              emptyMessage={<EmptyState icon={FaBoxOpen} label="No allocation records found." />}
+            />
 
             <TablePagination page={page} totalPages={totalPages} onPageChange={(pg) => setPage(pg)} />
           </Box>

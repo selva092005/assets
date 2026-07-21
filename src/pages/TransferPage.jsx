@@ -18,13 +18,14 @@ import TableCard from "../components/common/TableCard";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import StatCard from "../components/common/StatCard";
 import TablePagination from "../components/common/TablePagination";
+import PremiumDataGrid from "../components/common/PremiumDataGrid";
 import StatusBadge from "../components/common/StatusBadge";
 import EmptyState from "../components/common/EmptyState";
 import ActionBtn from "../components/common/ActionBtn";
 import ErrorState from "../components/common/ErrorState";
 import SkeletonLoader from "../components/common/SkeletonLoader";
-import { COLORS, primaryBtnSx, outlinedBtnSx, inputSx, selectSx, chipSx, tabSx, premiumDialogPaperSx, premiumDialogTitleSx, premiumFormGroupSx, denseCellSx, searchFieldSx, resetBtnSx, dateFieldSx } from "../theme/tokens";
-import { required, extractFieldErrors, isNotFutureDate } from "../utils/validate";
+import { COLORS, primaryBtnSx, outlinedBtnSx, inputSx, selectSx, tabSx, premiumDialogPaperSx, premiumDialogTitleSx, searchFieldSx, resetBtnSx, dateFieldSx } from "../theme/tokens";
+import { extractFieldErrors, isNotFutureDate } from "../utils/validate";
 import {
   requestTransfer, approveTransfer, rejectTransfer, receiveTransfer,
   getAllTransfers, getTransferOverview, getAllLocations,
@@ -150,7 +151,7 @@ export default function TransferPage() {
       setExportLoading(true);
       await exportTransfersToExcel();
       toast.success("Transfer history exported successfully!");
-    } catch (err) {
+    } catch {
       toast.error("Failed to export transfer history.");
     } finally {
       setExportLoading(false);
@@ -180,21 +181,6 @@ export default function TransferPage() {
       return isAdmin && row.status === "PENDING";
     } else {
       return (isAdmin || userRole === "manager") && row.status === "IN_TRANSIT";
-    }
-  };
-
-  const handleSelectOne = (id) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  };
-
-  const handleSelectAll = (checked) => {
-    if (checked) {
-      const checkableIds = transfers.filter(isCheckable).map((t) => t.transferId);
-      setSelectedIds(checkableIds);
-    } else {
-      setSelectedIds([]);
     }
   };
 
@@ -411,7 +397,6 @@ export default function TransferPage() {
   // ── Self-cancellation States & Handlers ────────────────────────────────
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [cancelTransferItem, setCancelTransferItem] = useState(null);
-  const [cancelSaving, setCancelSaving] = useState(false);
 
   const openCancel = (transfer) => {
     setCancelTransferItem(transfer);
@@ -421,7 +406,6 @@ export default function TransferPage() {
   const confirmCancel = async () => {
     if (!cancelTransferItem) return;
     setCancelConfirmOpen(false);
-    setCancelSaving(true);
     try {
       await cancelTransfer(cancelTransferItem.transferId, {
         resolvedBy: userName,
@@ -433,8 +417,6 @@ export default function TransferPage() {
       queryClient.invalidateQueries({ queryKey: ["assets"] });
     } catch (e) {
       toast.error(e.response?.data?.message || "Failed to cancel transfer");
-    } finally {
-      setCancelSaving(false);
     }
   };
 
@@ -445,7 +427,7 @@ export default function TransferPage() {
     try {
       const res = await getTransferById(row.transferId);
       setViewData(res?.data || res);
-    } catch (err) {
+    } catch {
       toast.error("Failed to load transfer details");
       setViewOpen(false);
     } finally {
@@ -517,9 +499,292 @@ export default function TransferPage() {
     return { label: "", state: "disabled" };
   };
 
-  const checkableTransfers = transfers.filter(isCheckable);
-  const allCheckedOnPage = checkableTransfers.length > 0 && checkableTransfers.every(t => selectedIds.includes(t.transferId));
-  const partialChecked = checkableTransfers.length > 0 && checkableTransfers.some(t => selectedIds.includes(t.transferId)) && !allCheckedOnPage;
+
+
+
+  const columns = [
+    ...((isAdmin || userRole === "manager")
+      ? [
+          {
+            field: "expand",
+            headerName: "",
+            width: 40,
+            align: "center",
+            renderCell: (row) => {
+              const isExpanded = expandedId === row.transferId;
+              return (
+                <IconButton
+                  size="small"
+                  onClick={() => setExpandedId(isExpanded ? null : row.transferId)}
+                  sx={{ color: COLORS.textMuted }}
+                >
+                  {isExpanded ? <FaChevronUp size={11} /> : <FaChevronDown size={11} />}
+                </IconButton>
+              );
+            },
+          },
+        ]
+      : []),
+    {
+      field: "index",
+      headerName: "#",
+      fontFamily: "monospace",
+      color: COLORS.textFaint,
+      fontWeight: 700,
+      fontSize: 10,
+      renderCell: (row, i) => page * 10 + i + 1,
+    },
+    {
+      field: "assetName",
+      headerName: "Asset",
+      sortable: true,
+      fontWeight: 600,
+      color: "#1e1b4b",
+      fontSize: 11,
+    },
+    {
+      field: "assetCode",
+      headerName: "Code",
+      sortable: true,
+      renderCell: (row) => (
+        <Chip
+          label={row.assetCode || "—"}
+          size="small"
+          sx={{
+            fontSize: 9.5,
+            height: 18,
+            background: "#dbeafe",
+            color: "#1e40af",
+            borderRadius: "5px",
+            "& .MuiChip-label": { px: "6px" },
+          }}
+        />
+      ),
+    },
+    {
+      field: "fromLocation",
+      headerName: "From → To",
+      sortable: true,
+      renderCell: (row) => (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, whiteSpace: "nowrap" }}>
+          <Typography sx={{ fontSize: 11, color: "#374151" }}>{row.fromLocation}</Typography>
+          <Typography sx={{ fontSize: 14, color: "#2563eb", fontWeight: 700 }}>→</Typography>
+          <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#2563eb" }}>{row.toLocation}</Typography>
+        </Box>
+      ),
+    },
+    {
+      field: "priority",
+      headerName: "Priority",
+      sortable: true,
+      renderCell: (row) => (
+        <Chip
+          label={row.priority || "MEDIUM"}
+          size="small"
+          sx={{
+            fontSize: 9.5,
+            height: 18,
+            fontWeight: 700,
+            background: row.priority === "HIGH" ? "rgba(239, 68, 68, 0.08)" : row.priority === "LOW" ? "rgba(100, 116, 139, 0.08)" : "rgba(245, 158, 11, 0.08)",
+            color: row.priority === "HIGH" ? "#ef4444" : row.priority === "LOW" ? "#64748b" : "#f59e0b",
+            border: `1px solid ${row.priority === "HIGH" ? "rgba(239, 68, 68, 0.2)" : row.priority === "LOW" ? "rgba(100, 116, 139, 0.2)" : "rgba(245, 158, 11, 0.2)"}`,
+            borderRadius: "5px",
+            textTransform: "uppercase",
+            "& .MuiChip-label": { px: "6px" },
+          }}
+        />
+      ),
+    },
+    {
+      field: "expectedDate",
+      headerName: "Expected Date",
+      sortable: true,
+      fontSize: 11,
+      renderCell: (row) => (row.expectedDate ? fmt(row.expectedDate) : "—"),
+    },
+    {
+      field: "reason",
+      headerName: "Reason",
+      sortable: true,
+      renderCell: (row) => (
+        <Tooltip title={row.reason || ""} arrow placement="top">
+          <span
+            style={{
+              fontSize: 11,
+              color: COLORS.textMuted,
+              maxWidth: 160,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              display: "block",
+            }}
+          >
+            {row.reason}
+          </span>
+        </Tooltip>
+      ),
+    },
+    {
+      field: "requestedBy",
+      headerName: "Requested By",
+      sortable: true,
+      color: COLORS.textMuted,
+      fontSize: 11,
+    },
+    {
+      field: "requestedAt",
+      headerName: "Date",
+      sortable: true,
+      fontSize: 11,
+      renderCell: (row) => fmt(row.requestedAt),
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      sortable: true,
+      renderCell: (row) => <StatusBadge status={row.status} />,
+    },
+    {
+      field: "actions",
+      headerName: "Actions",
+      renderCell: (row) => (
+        <Box sx={{ display: "flex", gap: 0.5 }}>
+          <ActionBtn
+            title="View Details"
+            color="#3b82f6"
+            hoverBg="rgba(59, 130, 246, 0.08)"
+            onClick={() => handleViewDetails(row)}
+            sx={{ border: "none", background: "transparent" }}
+          >
+            <FaEye size={12} />
+          </ActionBtn>
+          {(isAdmin || userRole === "manager") && (
+            <>
+              {row.status === "PENDING" && isAdmin && tab === 0 && (
+                <>
+                  <ActionBtn
+                    title="Approve"
+                    color="#16a34a"
+                    hoverBg="rgba(22, 163, 74, 0.08)"
+                    onClick={() => openAction(row, "APPROVE")}
+                    sx={{ border: "none", background: "transparent" }}
+                  >
+                    <FaCheck size={11} />
+                  </ActionBtn>
+                  <ActionBtn
+                    title="Reject"
+                    color="#dc2626"
+                    hoverBg="rgba(220, 38, 38, 0.08)"
+                    onClick={() => openAction(row, "REJECT")}
+                    sx={{ border: "none", background: "transparent" }}
+                  >
+                    <FaTimes size={11} />
+                  </ActionBtn>
+                </>
+              )}
+              {((row.status === "PENDING" && (row.requestedBy === userName || row.requestedBy === userEmail)) ||
+                (row.status === "IN_TRANSIT" && isAdmin)) && (
+                <ActionBtn
+                  title="Cancel"
+                  color="#e11d48"
+                  hoverBg="rgba(225, 29, 72, 0.08)"
+                  onClick={() => openCancel(row)}
+                  sx={{ border: "none", background: "transparent" }}
+                >
+                  <FaTimes size={11} />
+                </ActionBtn>
+              )}
+              {row.status === "IN_TRANSIT" && (
+                <ActionBtn
+                  title="Confirm Receipt"
+                  color="#2563eb"
+                  hoverBg="rgba(37, 99, 235, 0.08)"
+                  onClick={() => openReceive(row)}
+                  sx={{ border: "none", background: "transparent" }}
+                >
+                  <FaClipboardCheck size={11} />
+                </ActionBtn>
+              )}
+            </>
+          )}
+        </Box>
+      ),
+    },
+  ];
+
+  const renderRowDetails = (row) => {
+    const isExpanded = expandedId === row.transferId;
+    if (!isExpanded) return null;
+    return (
+      <TableRow sx={{ background: "#f8fafc" }}>
+        <TableCell colSpan={(isAdmin || userRole === "manager") ? 13 : 11} sx={{ p: 0, border: 0 }}>
+          <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+            <Box sx={{ p: 3, pl: 6, borderBottom: "1px solid #e2e8f0" }}>
+              <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#475569", mb: 2.5, letterSpacing: "0.05em", textTransform: "uppercase" }}>
+                Transit Progress Tracker
+              </Typography>
+              <Box sx={{ display: "flex", alignItems: "flex-start", width: "100%", overflowX: "auto", py: 1 }}>
+                <Box sx={{ display: "flex", width: "100%", justifyContent: "space-between", position: "relative", px: 2, minWidth: 600 }}>
+                  {[0, 1, 2, 3].map((idx) => {
+                    const stepInfo = getStepStatus(idx, row.status);
+                    const isLast = idx === 3;
+
+                    let bgColor = "#f1f5f9";
+                    let iconColor = "#cbd5e1";
+                    let textColor = "#94a3b8";
+
+                    if (stepInfo.state === "done") {
+                      bgColor = "linear-gradient(135deg, #e2f0fd 0%, #dbeafe 100%)";
+                      iconColor = "#2563eb";
+                      textColor = "#1e40af";
+                    } else if (stepInfo.state === "active") {
+                      bgColor = "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)";
+                      iconColor = "#d97706";
+                      textColor = "#b45309";
+                    }
+
+                    return (
+                      <Box key={idx} sx={{ display: "flex", flexDirection: "column", alignItems: "center", position: "relative", zIndex: 2, flex: 1 }}>
+                        <Box sx={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: "50%",
+                          background: bgColor,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          color: iconColor,
+                          mb: 1,
+                          border: `1.5px solid ${stepInfo.state !== "disabled" ? iconColor : "#e2e8f0"}`,
+                          boxShadow: stepInfo.state === "active" ? "0 0 0 3px rgba(245, 158, 11, 0.15)" : "none"
+                        }}>
+                          {stepInfo.state === "done" ? <FaCheck size={9} /> : <Typography fontSize={10} fontWeight={800}>{idx + 1}</Typography>}
+                        </Box>
+                        <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: textColor, whiteSpace: "nowrap" }}>
+                          {stepInfo.label}
+                        </Typography>
+                        {!isLast && (
+                          <Box sx={{
+                            position: "absolute",
+                            top: 11,
+                            left: "50%",
+                            right: "-50%",
+                            height: 2,
+                            background: stepInfo.state === "done" ? "#2563eb" : "#e2e8f0",
+                            zIndex: -1
+                          }} />
+                        )}
+                      </Box>
+                    );
+                  })}
+                </Box>
+              </Box>
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    );
+  };
 
   if (loading) {
     return <SkeletonLoader variant="list" statCount={5} columnCount={11} hasTabs={true} />;
@@ -756,300 +1021,22 @@ export default function TransferPage() {
       <TableCard>
         {isError ? (
           <ErrorState message={error?.message || error?.response?.data?.message} onRetry={refetch} />
-        ) : transfers.length === 0 ? (
-          <EmptyState icon={FaExchangeAlt} label={tab === 0 ? "No pending requests — all transfers are up to date." : "No transfer records found."} />
         ) : (
           <Box sx={{ overflowX: "auto" }}>
-            <Table size="small" sx={{ minWidth: 750, borderCollapse: "collapse" }}>
-              <TableHead>
-                <TableRow>
-                  {((isAdmin || userRole === "manager")) && (
-                    <TableCell sx={{ p: "4px 8px", width: 40, textAlign: "center", background: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>
-                      <Checkbox
-                        size="small"
-                        icon={<CustomCheckboxIcon />}
-                        checkedIcon={<CustomCheckboxCheckedIcon />}
-                        indeterminateIcon={<CustomCheckboxIndeterminateIcon />}
-                        checked={allCheckedOnPage}
-                        indeterminate={partialChecked}
-                        onChange={(e) => handleSelectAll(e.target.checked)}
-                        disabled={checkableTransfers.length === 0}
-                      />
-                    </TableCell>
-                  )}
-                  {((isAdmin || userRole === "manager")) && (
-                    <TableCell sx={{ width: 40, background: "#f8fafc", borderBottom: "2px solid #e2e8f0" }} />
-                  )}
-                  {["#", "Asset", "Code", "From → To", "Priority", "Expected Date", "Reason", "Requested By", "Date", "Status", "Actions"].map((h) => (
-                    <TableCell key={h} sx={{ fontWeight: 700, color: "#64748b", whiteSpace: "nowrap", background: "#f8fafc", borderBottom: "2px solid #e2e8f0", textTransform: "uppercase", fontSize: 11 }}>{h}</TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {transfers.map((row, i) => {
-                  const isSelected = selectedIds.includes(row.transferId);
-                  const isExpanded = expandedId === row.transferId;
-                  const canSelectRow = isCheckable(row);
-
-                  return (
-                    <tr key={row.transferId} style={{ display: "contents" }}>
-                      <TableRow
-                        sx={{
-                          borderLeft: isSelected ? `3px solid ${COLORS.primary}` : "3px solid transparent",
-                          background: isSelected ? "linear-gradient(90deg, rgba(37, 99, 235, 0.04) 0%, rgba(255, 255, 255, 0) 100%)" : "transparent",
-                          transition: "all 180ms ease",
-                          "&:hover": {
-                            borderLeft: `3px solid ${COLORS.primary}`,
-                            background: isSelected ? "linear-gradient(90deg, rgba(37, 99, 235, 0.08) 0%, rgba(255, 255, 255, 0) 100%)" : "#f0f7ff",
-                          },
-                          "& td": {
-                            borderBottom: "1px solid #f1f5f9",
-                            background: isSelected ? "transparent" : (i % 2 === 0 ? "#fff" : "#f8faff"),
-                          }
-                        }}
-                      >
-                        {((isAdmin || userRole === "manager")) && (
-                          <TableCell sx={{ p: "4px 8px", textAlign: "center", verticalAlign: "middle" }}>
-                            <Checkbox
-                              size="small"
-                              icon={<CustomCheckboxIcon />}
-                              checkedIcon={<CustomCheckboxCheckedIcon />}
-                              indeterminateIcon={<CustomCheckboxIndeterminateIcon />}
-                              disabled={!canSelectRow}
-                              checked={isSelected}
-                              onChange={() => handleSelectOne(row.transferId)}
-                              sx={{ p: 0.5 }}
-                            />
-                          </TableCell>
-                        )}
-                        {((isAdmin || userRole === "manager")) && (
-                          <TableCell sx={{ p: "4px 8px", textAlign: "center", verticalAlign: "middle" }}>
-                            <IconButton
-                              size="small"
-                              onClick={() => setExpandedId(isExpanded ? null : row.transferId)}
-                              sx={{ color: COLORS.textMuted }}
-                            >
-                              {isExpanded ? <FaChevronUp size={11} /> : <FaChevronDown size={11} />}
-                            </IconButton>
-                          </TableCell>
-                        )}
-                        <TableCell sx={{ color: COLORS.textFaint, fontSize: 11 }}>{page * 10 + i + 1}</TableCell>
-                        <TableCell sx={{ fontSize: 11, fontWeight: 600, color: "#1e1b4b" }}>{row.assetName}</TableCell>
-                        <TableCell>
-                          <Chip label={row.assetCode || "—"} size="small"
-                            sx={{ fontSize: 9.5, height: 18, background: "#dbeafe", color: "#1e40af", borderRadius: "5px", "& .MuiChip-label": { px: "6px" } }} />
-                        </TableCell>
-                        <TableCell sx={{ fontSize: 11 }}>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, whiteSpace: "nowrap" }}>
-                            <Typography sx={{ fontSize: 11, color: "#374151" }}>{row.fromLocation}</Typography>
-                            <Typography sx={{ fontSize: 14, color: "#2563eb", fontWeight: 700 }}>→</Typography>
-                            <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#2563eb" }}>{row.toLocation}</Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Chip label={row.priority || "MEDIUM"} size="small"
-                            sx={{
-                              fontSize: 9.5,
-                              height: 18,
-                              fontWeight: 700,
-                              background: row.priority === "HIGH" ? "rgba(239, 68, 68, 0.08)" : row.priority === "LOW" ? "rgba(100, 116, 139, 0.08)" : "rgba(245, 158, 11, 0.08)",
-                              color: row.priority === "HIGH" ? "#ef4444" : row.priority === "LOW" ? "#64748b" : "#f59e0b",
-                              border: `1px solid ${row.priority === "HIGH" ? "rgba(239, 68, 68, 0.2)" : row.priority === "LOW" ? "rgba(100, 116, 139, 0.2)" : "rgba(245, 158, 11, 0.2)"}`,
-                              borderRadius: "5px",
-                              textTransform: "uppercase",
-                              "& .MuiChip-label": { px: "6px" }
-                            }} />
-                        </TableCell>
-                        <TableCell sx={{ fontSize: 11, whiteSpace: "nowrap" }}>{row.expectedDate ? fmt(row.expectedDate) : "—"}</TableCell>
-                        <TableCell sx={{ fontSize: 11, color: COLORS.textMuted, maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          <Tooltip title={row.reason || ""} arrow placement="top">
-                            <span>{row.reason}</span>
-                          </Tooltip>
-                        </TableCell>
-                        <TableCell sx={{ fontSize: 11, color: COLORS.textMuted }}>{row.requestedBy}</TableCell>
-                        <TableCell sx={{ fontSize: 11, whiteSpace: "nowrap" }}>{fmt(row.requestedAt)}</TableCell>
-                        <TableCell><StatusBadge status={row.status} /></TableCell>
-                        <TableCell>
-                          <Box sx={{ display: "flex", gap: 0.5 }}>
-                            <ActionBtn
-                              title="View Details"
-                              color="#3b82f6"
-                              hoverBg="rgba(59, 130, 246, 0.08)"
-                              onClick={() => handleViewDetails(row)}
-                              sx={{ border: "none", background: "transparent" }}
-                            >
-                              <FaEye size={12} />
-                            </ActionBtn>
-                            {((isAdmin || userRole === "manager")) && (
-                              <>
-                                {row.status === "PENDING" && isAdmin && tab === 0 && (
-                                  <>
-                                    <ActionBtn
-                                      title="Approve"
-                                      color="#16a34a"
-                                      hoverBg="rgba(22, 163, 74, 0.08)"
-                                      onClick={() => openAction(row, "APPROVE")}
-                                      sx={{ border: "none", background: "transparent" }}
-                                    >
-                                      <FaCheck size={11} />
-                                    </ActionBtn>
-                                    <ActionBtn
-                                      title="Reject"
-                                      color="#dc2626"
-                                      hoverBg="rgba(220, 38, 38, 0.08)"
-                                      onClick={() => openAction(row, "REJECT")}
-                                      sx={{ border: "none", background: "transparent" }}
-                                    >
-                                      <FaTimes size={11} />
-                                    </ActionBtn>
-                                  </>
-                                )}
-                                {((row.status === "PENDING" && (row.requestedBy === userName || row.requestedBy === userEmail)) ||
-                                  (row.status === "IN_TRANSIT" && isAdmin)) && (
-                                    <ActionBtn
-                                      title="Cancel"
-                                      color="#e11d48"
-                                      hoverBg="rgba(225, 29, 72, 0.08)"
-                                      onClick={() => openCancel(row)}
-                                      sx={{ border: "none", background: "transparent" }}
-                                    >
-                                      <FaTimes size={11} />
-                                    </ActionBtn>
-                                  )}
-                                {row.status === "IN_TRANSIT" && (
-                                  <ActionBtn
-                                    title="Confirm Receipt"
-                                    color="#2563eb"
-                                    hoverBg="rgba(37, 99, 235, 0.08)"
-                                    onClick={() => openReceive(row)}
-                                    sx={{ border: "none", background: "transparent" }}
-                                  >
-                                    <FaClipboardCheck size={11} />
-                                  </ActionBtn>
-                                )}
-                              </>
-                            )}
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-
-                      {isExpanded && (
-                        <TableRow sx={{ background: "#f8fafc" }}>
-                          <TableCell colSpan={(isAdmin || userRole === "manager") ? 13 : 11} sx={{ p: 0, border: 0 }}>
-                            <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                              <Box sx={{ p: 3, pl: 6, borderBottom: "1px solid #e2e8f0" }}>
-                                <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#475569", mb: 2.5, letterSpacing: "0.05em", textTransform: "uppercase" }}>
-                                  Transit Progress Tracker
-                                </Typography>
-                                <Box sx={{ display: "flex", alignItems: "flex-start", width: "100%", overflowX: "auto", py: 1 }}>
-                                  <Box sx={{ display: "flex", width: "100%", justifyContent: "space-between", position: "relative", px: 2, minWidth: 600 }}>
-                                    {[0, 1, 2, 3].map((idx) => {
-                                      const stepInfo = getStepStatus(idx, row.status);
-                                      const isLast = idx === 3;
-
-                                      let bgColor = "#f1f5f9";
-                                      let border = "2px solid #cbd5e1";
-                                      let textColor = "#64748b";
-                                      let icon = <Box sx={{ width: 6, height: 6, borderRadius: "50%", bgcolor: "#94a3b8" }} />;
-
-                                      if (stepInfo.state === "done") {
-                                        bgColor = "#10b981";
-                                        border = "2px solid #10b981";
-                                        textColor = "#0f172a";
-                                        icon = <FaCheck size={9} color="#fff" />;
-                                      } else if (stepInfo.state === "active") {
-                                        bgColor = "#e0f2fe";
-                                        border = "2px solid #0284c7";
-                                        textColor = "#0284c7";
-                                        icon = <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "#0284c7" }} />;
-                                      } else if (stepInfo.state === "error") {
-                                        bgColor = "#ffe4e6";
-                                        border = "2px solid #f43f5e";
-                                        textColor = "#f43f5e";
-                                        icon = <FaTimes size={9} color="#fff" />;
-                                      }
-
-                                      const nextStepInfo = !isLast ? getStepStatus(idx + 1, row.status) : null;
-                                      const connectorColor = (nextStepInfo && (nextStepInfo.state === "done" || nextStepInfo.state === "active")) ? "#2563eb" : "#e2e8f0";
-
-                                      let dateStr = "";
-                                      let actorStr = "";
-                                      let descStr = "";
-                                      if (idx === 0) {
-                                        dateStr = fmt(row.requestedAt);
-                                        actorStr = `By ${row.requestedBy}`;
-                                      } else if (idx === 1) {
-                                        dateStr = row.resolvedAt ? fmt(row.resolvedAt) : "";
-                                        actorStr = row.status === "PENDING" ? "Awaiting admin" : `By ${row.resolvedBy || "Admin"}`;
-                                        descStr = row.remarks && (row.status === "APPROVED" || row.status === "IN_TRANSIT" || row.status === "REJECTED") ? `"${row.remarks}"` : "";
-                                      } else if (idx === 2) {
-                                        dateStr = row.expectedDate ? `Expected: ${fmt(row.expectedDate)}` : "";
-                                        actorStr = row.status === "APPROVED" ? "Delivered" : (row.status === "IN_TRANSIT" ? "On the way" : "");
-                                      } else if (idx === 3) {
-                                        dateStr = (row.status === "APPROVED") ? (row.receivedDate ? fmt(row.receivedDate) : (row.resolvedAt ? fmt(row.resolvedAt) : "")) : "";
-                                        actorStr = row.status === "APPROVED" ? `By ${row.resolvedBy || "Recipient"}` : "";
-                                        descStr = row.status === "APPROVED" && row.remarks ? `"${row.remarks}"` : "";
-                                      }
-
-                                      return (
-                                        <Box key={idx} sx={{ flex: isLast ? "none" : 1, display: "flex", position: "relative" }}>
-                                          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", width: 130, zIndex: 2 }}>
-                                            <Box sx={{
-                                              width: 26,
-                                              height: 26,
-                                              borderRadius: "50%",
-                                              bgcolor: bgColor,
-                                              border: border,
-                                              display: "flex",
-                                              alignItems: "center",
-                                              justifyContent: "center",
-                                              mb: 1,
-                                              boxShadow: stepInfo.state === "active" ? "0 0 0 3px rgba(2, 132, 199, 0.15)" : "none",
-                                            }}>
-                                              {icon}
-                                            </Box>
-                                            <Typography sx={{ fontSize: 11, fontWeight: 700, color: textColor }}>
-                                              {stepInfo.label}
-                                            </Typography>
-                                            <Typography sx={{ fontSize: 9.5, color: "#64748b", mt: 0.5, fontWeight: 500 }}>
-                                              {actorStr}
-                                            </Typography>
-                                            <Typography sx={{ fontSize: 9, color: "#94a3b8", mt: 0.25 }}>
-                                              {dateStr}
-                                            </Typography>
-                                            {descStr && (
-                                              <Typography sx={{ fontSize: 9.5, color: "#475569", mt: 0.75, fontStyle: "italic", maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                                                {descStr}
-                                              </Typography>
-                                            )}
-                                          </Box>
-
-                                          {!isLast && (
-                                            <Box sx={{
-                                              position: "absolute",
-                                              top: 13,
-                                              left: 80,
-                                              right: -50,
-                                              height: 2,
-                                              bgcolor: connectorColor,
-                                              zIndex: 1,
-                                            }} />
-                                          )}
-                                        </Box>
-                                      );
-                                    })}
-                                  </Box>
-                                </Box>
-                              </Box>
-                            </Collapse>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </tr >
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <PremiumDataGrid
+              columns={columns}
+              rows={transfers}
+              loading={false}
+              rowIdField="transferId"
+              checkboxSelection={isAdmin || userRole === "manager"}
+              selectedRowIds={selectedIds}
+              onSelectionChange={setSelectedIds}
+              isRowSelectable={isCheckable}
+              renderRowDetails={renderRowDetails}
+              page={page}
+              pageSize={10}
+              emptyMessage={<EmptyState icon={FaExchangeAlt} label={tab === 0 ? "No pending requests — all transfers are up to date." : "No transfer records found."} />}
+            />
           </Box>
         )}
         <TablePagination page={page} totalPages={totalPages} onPageChange={(pg) => setPage(pg)} />

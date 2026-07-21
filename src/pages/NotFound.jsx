@@ -13,7 +13,10 @@ export default function NotFound() {
 
   // Reset headlight settings on page initialization or reset
   useEffect(() => {
-    setHeadlightMode("normal");
+    const timer = setTimeout(() => {
+      setHeadlightMode("normal");
+    }, 0);
+    return () => clearTimeout(timer);
   }, [animationKey]);
 
   const handleReRun = () => {

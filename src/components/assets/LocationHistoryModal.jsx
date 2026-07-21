@@ -32,7 +32,9 @@ export default function LocationHistoryModal({ open, asset, onClose }) {
 
   useEffect(() => {
     if (!open || !asset?.assetId) return;
-    setLoading(true);
+    const timer = setTimeout(() => {
+      setLoading(true);
+    }, 0);
 
     Promise.all([
       getAssetHistory(asset.assetId),
@@ -46,12 +48,17 @@ export default function LocationHistoryModal({ open, asset, onClose }) {
       })
       .catch(() => toast.error("Failed to load asset history"))
       .finally(() => setLoading(false));
+
+    return () => clearTimeout(timer);
   }, [open, asset?.assetId]);
 
   // Reset tab on close
   useEffect(() => {
     if (!open) {
-      setActiveTab("location");
+      const timer = setTimeout(() => {
+        setActiveTab("location");
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [open]);
 

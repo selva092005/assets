@@ -19,7 +19,6 @@ import {
   outlinedBtnSx,
   primaryBtnSx,
   denseCellSx,
-  lightboxSx,
   imageCardSx
 } from "../theme/tokens";
 
@@ -27,7 +26,7 @@ export default function AssetDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
-  const [historyData, setHistoryData] = useState([]);
+
   const [activityLogs, setActivityLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [imgOpen, setImgOpen] = useState(false);
@@ -48,15 +47,14 @@ export default function AssetDetailPage() {
   useEffect(() => {
     const fetchAssetAndHistory = async () => {
       try {
-        const [assetRes, historyRes, logsRes] = await Promise.all([
+        const [assetRes, , logsRes] = await Promise.all([
           getAssetById(id),
           getAssetHistory(id).catch(() => []),
           getLogsByAsset(id).catch(() => [])
         ]);
         setData(assetRes.data ?? assetRes);
-        setHistoryData(historyRes.data ?? historyRes ?? []);
         setActivityLogs(logsRes ?? []);
-      } catch (e) {
+      } catch {
         toast.error("Failed to load asset details");
         navigate("/home/assets");
       } finally {
@@ -85,6 +83,71 @@ export default function AssetDetailPage() {
   const isDamaged = data.assetCondition === "DAMAGED";
   const isUnderMaintenance = data.status === "UNDER_MAINTENANCE";
 
+  const getWarrantyInfo = () => {
+    if (!data.purchaseDate || !data.warrantyExpiry) return null;
+
+    const purchase = new Date(data.purchaseDate);
+    const expiry = new Date(data.warrantyExpiry);
+    const today = new Date();
+
+    const totalDuration = expiry - purchase;
+    if (totalDuration <= 0) return null;
+
+    const remaining = expiry - today;
+    const daysLeft = Math.ceil(remaining / (1000 * 60 * 60 * 24));
+
+    if (daysLeft <= 0) {
+      return {
+        percent: 0,
+        status: "EXPIRED",
+        daysLeft: 0,
+        color: "#ef4444",
+        bgColor: "rgba(239, 68, 68, 0.1)",
+        text: "Expired"
+      };
+    }
+
+    const percent = Math.max(0, Math.min(100, (remaining / totalDuration) * 100));
+
+    let color = "#10b981";
+    let bgColor = "rgba(16, 185, 129, 0.1)";
+    let text = "Active";
+
+    if (percent < 25) {
+      color = "#ef4444";
+      bgColor = "rgba(239, 68, 68, 0.1)";
+      text = "Expiring Soon";
+    } else if (percent < 50) {
+      color = "#f59e0b";
+      bgColor = "rgba(245, 158, 11, 0.1)";
+      text = "Active (Mid-term)";
+    }
+
+    return {
+      percent,
+      status: text,
+      daysLeft,
+      color,
+      bgColor,
+      text: `${daysLeft} Day${daysLeft !== 1 ? "s" : ""} Left`
+    };
+  };
+
+  const getValueRetentionInfo = () => {
+    if (!data.cost || !data.currentValue) return null;
+    const percent = Math.max(0, Math.min(100, (data.currentValue / data.cost) * 100));
+    const depreciatedValue = Math.max(0, data.cost - data.currentValue);
+    const depreciatedPercent = 100 - percent;
+    return {
+      percent,
+      depreciatedValue,
+      depreciatedPercent,
+      costText: "₹" + data.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      valueText: "₹" + data.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      depreciatedText: "₹" + depreciatedValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    };
+  };
+
   const handleEdit = () => navigate("/home/assets/edit/" + id);
   const handleAllocate = () => navigate("/home/allocation?assetId=" + id);
   const handleDispose = () => navigate("/home/disposal?assetId=" + id);
@@ -105,13 +168,12 @@ export default function AssetDetailPage() {
 
       // Reload page details & history
       setLoading(true);
-      const [assetRes, historyRes, logsRes] = await Promise.all([
+      const [assetRes, , logsRes] = await Promise.all([
         getAssetById(id),
         getAssetHistory(id).catch(() => []),
         getLogsByAsset(id).catch(() => [])
       ]);
       setData(assetRes.data ?? assetRes);
-      setHistoryData(historyRes.data ?? historyRes ?? []);
       setActivityLogs(logsRes ?? []);
     } catch (err) {
       toast.error(err.response?.data?.message || "Transfer failed");
@@ -171,7 +233,8 @@ export default function AssetDetailPage() {
             border: `1px solid ${COLORS.border}`,
             borderRadius: "4px",
             p: 1.5,
-            height: "fit-content",
+            display: "flex",
+            flexDirection: "column",
           }}>
             <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
               {/* Premium Image Card */}
@@ -221,11 +284,11 @@ export default function AssetDetailPage() {
               </Box>
 
               {data.qrCode && (
-                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.75, mb: 1.5 }}>
-                  <Box sx={{ width: 50, height: 50, p: 0.5, border: "1px solid " + COLORS.borderLight, background: "#fff", borderRadius: "3px" }}>
+                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, mb: 2, mt: 0.5 }}>
+                  <Box sx={{ width: 100, height: 100, p: 0.75, border: "1px solid " + COLORS.borderLight, background: "#fff", borderRadius: "6px", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
                     <img src={"data:image/png;base64," + data.qrCode} alt="QR" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                   </Box>
-                  <Button variant="outlined" size="small" startIcon={<FaPrint size={8} />} onClick={handlePrintQR} sx={{ ...outlinedBtnSx, color: COLORS.textMuted, borderColor: COLORS.border }}>Print</Button>
+                  <Button variant="outlined" size="small" startIcon={<FaPrint size={10} />} onClick={handlePrintQR} sx={{ ...outlinedBtnSx, width: 100, height: 28, fontSize: 10, color: COLORS.textMuted, borderColor: COLORS.border }}>Print</Button>
                 </Box>
               )}
             </Box>
@@ -257,6 +320,189 @@ export default function AssetDetailPage() {
                 </Button>
               )}
             </Box>
+
+            <Divider sx={{ my: 1.25, borderColor: COLORS.borderLight }} />
+
+            {/* Warranty Status Section */}
+            <Box sx={{ width: "100%" }}>
+              <Typography sx={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", mb: 1 }}>
+                Warranty Tracker
+              </Typography>
+              {(() => {
+                const w = getWarrantyInfo();
+                if (!w) {
+                  return (
+                    <Box sx={{
+                      p: 1.25,
+                      bgcolor: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "6px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1
+                    }}>
+                      <Box sx={{
+                        width: 22,
+                        height: 22,
+                        borderRadius: "4px",
+                        bgcolor: "rgba(100, 116, 139, 0.1)",
+                        color: "#64748b",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0
+                      }}>
+                        <FaClipboardCheck size={10} />
+                      </Box>
+                      <Box>
+                        <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: COLORS.text }}>
+                          No Warranty Info
+                        </Typography>
+                        <Typography sx={{ fontSize: 8, color: COLORS.textMuted }}>
+                          Acquisition date not set
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                }
+
+                return (
+                  <Box sx={{
+                    p: 1.25,
+                    bgcolor: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "6px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 1
+                  }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                        <Box sx={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: "4px",
+                          bgcolor: w.bgColor,
+                          color: w.color,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0
+                        }}>
+                          <FaClipboardCheck size={9} />
+                        </Box>
+                        <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: COLORS.text }}>
+                          {w.status}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={w.percent.toFixed(0) + "% Left"}
+                        size="small"
+                        sx={{
+                          height: 14,
+                          fontSize: 7.5,
+                          fontWeight: 700,
+                          bgcolor: w.bgColor,
+                          color: w.color,
+                          borderRadius: "3px"
+                        }}
+                      />
+                    </Box>
+
+                    {/* Visual Progress Bar */}
+                    <Box sx={{
+                      width: "100%",
+                      height: 5,
+                      bgcolor: "#e2e8f0",
+                      borderRadius: 3,
+                      overflow: "hidden"
+                    }}>
+                      <Box sx={{
+                        width: `${w.percent}%`,
+                        height: "100%",
+                        bgcolor: w.color,
+                        borderRadius: 3,
+                        transition: "width 0.5s ease-in-out"
+                      }} />
+                    </Box>
+
+                    <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "8.5px", color: COLORS.textMuted, mt: 0.25 }}>
+                      <Typography fontSize="inherit">Remaining:</Typography>
+                      <Typography fontSize="inherit" fontWeight={700} sx={{ color: w.color }}>{w.text}</Typography>
+                    </Box>
+                  </Box>
+                );
+              })()}
+            </Box>
+
+            {/* Value Retention / Depreciation Section */}
+            {(() => {
+              const v = getValueRetentionInfo();
+              if (!v) return null;
+              return (
+                <>
+                  <Divider sx={{ my: 1.25, borderColor: COLORS.borderLight }} />
+                  <Box sx={{ width: "100%" }}>
+                    <Typography sx={{ fontSize: 9, fontWeight: 700, color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: "0.05em", mb: 1 }}>
+                      Value Retention
+                    </Typography>
+                    <Box sx={{ 
+                      p: 1.25, 
+                      bgcolor: "#f8fafc", 
+                      border: "1px solid #e2e8f0", 
+                      borderRadius: "6px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 1
+                    }}>
+                      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: COLORS.text }}>
+                          Retained Value
+                        </Typography>
+                        <Chip 
+                          label={v.percent.toFixed(0) + "% Retained"} 
+                          size="small" 
+                          sx={{ 
+                            height: 14, 
+                            fontSize: 7.5, 
+                            fontWeight: 700, 
+                            bgcolor: "rgba(14, 165, 233, 0.1)", 
+                            color: "#0ea5e9",
+                            borderRadius: "3px" 
+                          }} 
+                        />
+                      </Box>
+                      
+                      {/* Visual Progress Bar */}
+                      <Box sx={{ 
+                        width: "100%", 
+                        height: 5, 
+                        bgcolor: "#e2e8f0", 
+                        borderRadius: 3, 
+                        overflow: "hidden"
+                      }}>
+                        <Box sx={{ 
+                          width: `${v.percent}%`, 
+                          height: "100%", 
+                          bgcolor: "#0ea5e9", 
+                          borderRadius: 3,
+                          transition: "width 0.5s ease-in-out" 
+                        }} />
+                      </Box>
+
+                      <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "8.5px", color: COLORS.textMuted, mt: 0.25 }}>
+                        <Typography fontSize="inherit">Acquisition Cost:</Typography>
+                        <Typography fontSize="inherit" fontWeight={700}>{v.costText}</Typography>
+                      </Box>
+                      <Box sx={{ display: "flex", justifyContent: "space-between", fontSize: "8.5px", color: COLORS.textMuted }}>
+                        <Typography fontSize="inherit">Depreciated Loss:</Typography>
+                        <Typography fontSize="inherit" fontWeight={700} sx={{ color: "#ef4444" }}>-{v.depreciatedPercent.toFixed(0)}% ({v.depreciatedText})</Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                </>
+              );
+            })()}
           </Box>
 
           {/* RIGHT PANEL: Unified Spec Sheet & History */}
@@ -373,104 +619,126 @@ export default function AssetDetailPage() {
             {activityLogs.length === 0 ? (
               <Typography sx={{ fontSize: 10.5, color: COLORS.textMuted, fontStyle: "italic", p: 1.25, border: "1px solid " + COLORS.borderLight, borderRadius: "3px", textAlign: "center" }}>No activity history found.</Typography>
             ) : (
-              <Box sx={{ position: "relative", pl: 3.5, borderLeft: `2px solid ${COLORS.borderLight}`, ml: 1.5, display: "flex", flexDirection: "column", gap: 3, py: 1 }}>
-                {activityLogs.map((item, idx) => {
-                  let icon = <FaHistory size={11} />;
-                  let bg = "#f1f5f9";
-                  let borderClr = "#cbd5e1";
-                  let textClr = "#64748b";
-
-                  if (item.action === "ALLOCATED") {
-                    icon = <FaUser size={11} />;
-                    bg = "rgba(37, 99, 235, 0.1)";
-                    borderClr = "#2563eb";
-                    textClr = "#2563eb";
-                  } else if (item.action === "RETURNED") {
-                    icon = <FaExchangeAlt size={11} />;
-                    bg = "rgba(16, 185, 129, 0.1)";
-                    borderClr = "#10b981";
-                    textClr = "#10b981";
-                  } else if (item.action === "TRANSFERRED") {
-                    icon = <FaMapMarkerAlt size={11} />;
-                    bg = "rgba(139, 92, 246, 0.1)";
-                    borderClr = "#8b5cf6";
-                    textClr = "#8b5cf6";
-                  } else if (item.action === "AUDITED") {
-                    icon = <FaClipboardCheck size={11} />;
-                    bg = "rgba(217, 119, 6, 0.1)";
-                    borderClr = "#d97706";
-                    textClr = "#d97706";
-                  } else if (item.action === "MAINTENANCE" || item.action === "MAINTENANCE_START" || item.action === "MAINTENANCE_END") {
-                    icon = <FaWrench size={11} />;
-                    bg = "rgba(239, 68, 68, 0.1)";
-                    borderClr = "#ef4444";
-                    textClr = "#ef4444";
-                  } else if (item.action === "DISPOSED") {
-                    icon = <FaTrash size={11} />;
-                    bg = "rgba(100, 116, 139, 0.1)";
-                    borderClr = "#64748b";
-                    textClr = "#64748b";
+              <Box sx={{
+                maxHeight: 240,
+                overflowY: "auto",
+                pl: 1,
+                pr: 1.5,
+                mr: -1,
+                "&::-webkit-scrollbar": {
+                  width: "6px",
+                },
+                "&::-webkit-scrollbar-track": {
+                  background: "#f1f5f9",
+                  borderRadius: "3px",
+                },
+                "&::-webkit-scrollbar-thumb": {
+                  background: "#cbd5e1",
+                  borderRadius: "3px",
+                  "&:hover": {
+                    background: "#94a3b8",
                   }
+                }
+              }}>
+                <Box sx={{ position: "relative", pl: 3, borderLeft: `2px solid ${COLORS.borderLight}`, ml: 1.5, display: "flex", flexDirection: "column", gap: 2, py: 1 }}>
+                  {activityLogs.map((item, idx) => {
+                    let icon = <FaHistory size={9} />;
+                    let bg = "#f1f5f9";
+                    let borderClr = "#cbd5e1";
+                    let textClr = "#64748b";
 
-                  return (
-                    <Box key={item.logId || idx} sx={{ position: "relative" }}>
-                      {/* Timeline dot */}
-                      <Box sx={{
-                        position: "absolute",
-                        left: -42,
-                        top: 0,
-                        width: 28,
-                        height: 28,
-                        borderRadius: "50%",
-                        background: bg,
-                        border: `2px solid ${borderClr}`,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        zIndex: 2,
-                        color: textClr,
-                      }}>
-                        {icon}
-                      </Box>
-                      {/* Timeline card/content */}
-                      <Box sx={{
-                        background: idx === 0 ? "#f8faff" : "#fff",
-                        border: `1px solid ${idx === 0 ? "#dbeafe" : COLORS.borderLight}`,
-                        borderRadius: "6px",
-                        p: 1.5,
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.02)"
-                      }}>
-                        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1, mb: 0.75 }}>
-                          <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: idx === 0 ? "#1e40af" : COLORS.text, textTransform: "uppercase" }}>
-                            {item.action?.replace("_", " ")}
-                          </Typography>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: COLORS.textMuted }}>
-                            <FaCalendarAlt size={9} />
-                            <Typography sx={{ fontSize: 9.5, fontWeight: 500 }}>
-                              {item.actionDate ? new Date(item.actionDate).toLocaleString() : "—"}
-                            </Typography>
-                          </Box>
+                    if (item.action === "ALLOCATED") {
+                      icon = <FaUser size={9} />;
+                      bg = "rgba(37, 99, 235, 0.1)";
+                      borderClr = "#2563eb";
+                      textClr = "#2563eb";
+                    } else if (item.action === "RETURNED") {
+                      icon = <FaExchangeAlt size={9} />;
+                      bg = "rgba(16, 185, 129, 0.1)";
+                      borderClr = "#10b981";
+                      textClr = "#10b981";
+                    } else if (item.action === "TRANSFERRED") {
+                      icon = <FaMapMarkerAlt size={9} />;
+                      bg = "rgba(139, 92, 246, 0.1)";
+                      borderClr = "#8b5cf6";
+                      textClr = "#8b5cf6";
+                    } else if (item.action === "AUDITED") {
+                      icon = <FaClipboardCheck size={9} />;
+                      bg = "rgba(217, 119, 6, 0.1)";
+                      borderClr = "#d97706";
+                      textClr = "#d97706";
+                    } else if (item.action === "MAINTENANCE" || item.action === "MAINTENANCE_START" || item.action === "MAINTENANCE_END") {
+                      icon = <FaWrench size={9} />;
+                      bg = "rgba(239, 68, 68, 0.1)";
+                      borderClr = "#ef4444";
+                      textClr = "#ef4444";
+                    } else if (item.action === "DISPOSED") {
+                      icon = <FaTrash size={9} />;
+                      bg = "rgba(100, 116, 139, 0.1)";
+                      borderClr = "#64748b";
+                      textClr = "#64748b";
+                    }
+
+                    return (
+                      <Box key={item.logId || idx} sx={{ position: "relative" }}>
+                        {/* Timeline dot */}
+                        <Box sx={{
+                          position: "absolute",
+                          left: -34,
+                          top: 0,
+                          width: 20,
+                          height: 20,
+                          borderRadius: "50%",
+                          background: bg,
+                          border: `2px solid ${borderClr}`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          zIndex: 2,
+                          color: textClr,
+                        }}>
+                          {icon}
                         </Box>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, bgcolor: "#f1f5f9", px: 0.75, py: 0.25, borderRadius: "4px" }}>
-                            <FaUser size={8} color="#64748b" />
-                            <Typography sx={{ fontSize: 9.5, fontWeight: 600, color: "#475569" }}>
-                              {item.actionBy || "System"}
+                        {/* Timeline card/content */}
+                        <Box sx={{
+                          background: idx === 0 ? "#f8faff" : "#fff",
+                          border: `1px solid ${idx === 0 ? "#dbeafe" : COLORS.borderLight}`,
+                          borderRadius: "4px",
+                          p: 1,
+                          boxShadow: "0 1px 2px rgba(0,0,0,0.02)"
+                        }}>
+                          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1, mb: 0.5 }}>
+                            <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: idx === 0 ? "#1e40af" : COLORS.text, textTransform: "uppercase" }}>
+                              {item.action?.replace("_", " ")}
                             </Typography>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: COLORS.textMuted }}>
+                              <FaCalendarAlt size={8} />
+                              <Typography sx={{ fontSize: 8.5, fontWeight: 500 }}>
+                                {item.actionDate ? new Date(item.actionDate).toLocaleString() : "—"}
+                              </Typography>
+                            </Box>
                           </Box>
-                          {idx === 0 && (
-                            <Chip label="Latest Event" size="small" sx={{ height: 16, fontSize: 8.5, fontWeight: 700, bgcolor: "#dbeafe", color: "#1e40af" }} />
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, mb: 0.5 }}>
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, bgcolor: "#f1f5f9", px: 0.5, py: 0.15, borderRadius: "3px" }}>
+                              <FaUser size={7} color="#64748b" />
+                              <Typography sx={{ fontSize: 8.5, fontWeight: 600, color: "#475569" }}>
+                                {item.actionBy || "System"}
+                              </Typography>
+                            </Box>
+                            {idx === 0 && (
+                              <Chip label="Latest Event" size="small" sx={{ height: 14, fontSize: 8, fontWeight: 700, bgcolor: "#dbeafe", color: "#1e40af" }} />
+                            )}
+                          </Box>
+                          {item.details && (
+                            <Typography sx={{ fontSize: 9.5, color: COLORS.textMuted, borderLeft: "2px solid #cbd5e1", pl: 0.75, py: 0.15 }}>
+                              {item.details}
+                            </Typography>
                           )}
                         </Box>
-                        {item.details && (
-                          <Typography sx={{ fontSize: 10, color: COLORS.textMuted, borderLeft: "2px solid #cbd5e1", pl: 1, py: 0.25 }}>
-                            {item.details}
-                          </Typography>
-                        )}
                       </Box>
-                    </Box>
-                  );
-                })}
+                    );
+                  })}
+                </Box>
               </Box>
             )}
 

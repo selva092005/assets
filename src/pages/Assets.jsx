@@ -21,7 +21,7 @@ import {
   getAssets
 } from "../services/assets_service";
 import { requestBulkTransfer, getAllLocations } from "../services/transfer_service";
-import { COLORS, primaryBtnSx, outlinedBtnSx, selectSx, inputSx, searchFieldSx, resetBtnSx } from "../theme/tokens";
+import { COLORS, primaryBtnSx, outlinedBtnSx, selectSx, searchFieldSx, resetBtnSx } from "../theme/tokens";
 
 import PageHeader from "../components/common/PageHeader";
 import SearchBar from "../components/common/SearchBar";
@@ -85,7 +85,6 @@ export default function AssetsPage() {
   }, [search]);
 
   const [showCount, setShowCount] = useState(10);
-  const [warrantyDays, setWarrantyDays] = useState(null);
   const [qrModal, setQrModal] = useState(false);
   const [qrAsset, setQrAsset] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -193,7 +192,6 @@ export default function AssetsPage() {
   };
 
   const canWrite = userRole === "admin" || userRole === "manager"; // create/edit
-  const canDelete = userRole === "admin";                           // admin only
   const canExport = userRole === "admin" || userRole === "manager"; // admin + manager
   const canBulk = userRole === "admin";                           // admin only
 
@@ -264,7 +262,7 @@ export default function AssetsPage() {
       const res = await getAssetById(item.assetId);
       setQrAsset(res.data ?? res);
       setQrModal(true);
-    } catch (e) {
+    } catch {
       toast.error("Failed to generate QR code");
     }
   };
@@ -276,9 +274,23 @@ export default function AssetsPage() {
   };
 
   const handleSelectAllAssets = (ids) => {
+    if (ids.length === 0) {
+      setSelectedAssetIds([]);
+      return;
+    }
+    const firstAsset = assets.find(a => ids.includes(a.assetId));
+    if (!firstAsset) return;
+    const targetCompany = firstAsset.companyName;
+    const targetLocation = firstAsset.locationName;
+
+    const filteredIds = ids.filter(id => {
+      const asset = assets.find(a => a.assetId === id);
+      return asset && asset.companyName === targetCompany && asset.locationName === targetLocation;
+    });
+
     setSelectedAssetIds((prev) => {
       const otherIds = prev.filter((id) => !assets.map(a => a.assetId).includes(id));
-      return [...otherIds, ...ids];
+      return [...otherIds, ...filteredIds];
     });
   };
 
@@ -314,7 +326,7 @@ export default function AssetsPage() {
       setExportLoading(true);
       await exportAssets();
       toast.success("Export downloaded successfully");
-    } catch (e) {
+    } catch {
       toast.error("Export failed. Please try again.");
     } finally {
       setExportLoading(false);
@@ -324,12 +336,17 @@ export default function AssetsPage() {
   const selectedAssets = assets.filter(a => selectedAssetIds.includes(a.assetId));
   const selectedCompanies = [...new Set(selectedAssets.map(a => a.companyName || a.location?.company?.companyName || "No Company").filter(Boolean))];
   const isCrossCompany = selectedCompanies.length > 1;
-  const commonCompany = selectedCompanies.length === 1 ? selectedCompanies[0] : null;
+
+  const currentLocations = [...new Set(selectedAssets.map(a => a.locationName).filter(Boolean))];
 
   const filteredLocations = locations.filter(loc => {
-    if (commonCompany && commonCompany !== "No Company") {
+    if (currentLocations.includes(loc.locationName)) {
+      return false;
+    }
+    if (selectedCompanies.length > 0) {
+      const targetCompany = selectedCompanies[0];
       const locCompany = loc.companyName || loc.company?.companyName || "";
-      return locCompany.toLowerCase() === commonCompany.toLowerCase();
+      return locCompany.toLowerCase() === targetCompany.toLowerCase();
     }
     return true;
   });

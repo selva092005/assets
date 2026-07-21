@@ -19,6 +19,7 @@ import { getAssets } from "../services/assets_service";
 import PageHeader from "../components/common/PageHeader";
 import TableCard from "../components/common/TableCard";
 import TablePagination from "../components/common/TablePagination";
+import PremiumDataGrid from "../components/common/PremiumDataGrid";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import ActionBtn from "../components/common/ActionBtn";
 import StatCard from "../components/common/StatCard";
@@ -29,19 +30,18 @@ import SkeletonLoader from "../components/common/SkeletonLoader";
 import { FormTextField, FormSelect } from "../components/FormFields";
 
 import { COLORS, outlinedBtnSx, primaryBtnSx, selectSx, premiumDialogPaperSx, premiumDialogTitleSx, searchFieldSx, resetBtnSx } from "../theme/tokens";
-import { required } from "../utils/validate";
 
 const OUTCOMES = ["FIXED", "UNRESOLVED", "REPLACED", "SCRAPPED"];
 
 export default function AssetMaintenancePage() {
-  const { userRole, userName } = useSelector((s) => s.auth);
+  const { userName } = useSelector((s) => s.auth);
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
   const [searchInput, setSearchInput] = useState("");
   const [outcomeFilter, setOutcomeFilter] = useState("");
   const [page, setPage] = useState(0);
-  const [showCount, setShowCount] = useState(10);
+  const [showCount] = useState(10);
 
   const [maintenanceOpen, setMaintenanceOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -55,7 +55,7 @@ export default function AssetMaintenancePage() {
   const formDataRef = useRef(null);
 
   // ── Queries ──────────────────────────────────────────────────────────────
-  const { data: maintenanceLogs = [], isLoading: loading, isError, error, refetch } = useQuery({
+  const { data: maintenanceLogs = [], isLoading: loading, isError, error } = useQuery({
     queryKey: ["maintenance-logs", searchInput, outcomeFilter],
     queryFn: async () => {
       const params = {};
@@ -75,7 +75,7 @@ export default function AssetMaintenancePage() {
   });
 
   // ── Form Setup ───────────────────────────────────────────────────────────
-  const { control, handleSubmit, reset, setValue, watch } = useForm({
+  const { control, handleSubmit, reset, watch } = useForm({
     defaultValues: {
       assetId: "",
       vendorName: "",
@@ -101,6 +101,7 @@ export default function AssetMaintenancePage() {
       openMaintenanceModal(Number(assetIdParam));
       setSearchParams({});
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const openMaintenanceModal = (preselectedId = null) => {
@@ -129,11 +130,14 @@ export default function AssetMaintenancePage() {
     try {
       await logMaintenance({
         assetId: Number(data.assetId),
-        vendorName: data.vendorName,
-        maintenanceDate: data.maintenanceDate,
+        vendor: data.vendorName,
+        startDate: data.maintenanceDate,
         cost: data.cost ? Number(data.cost) : 0,
-        outcome: data.outcome,
-        notes: data.notes,
+        outcome: data.outcome === "FIXED" ? "REPAIRED"
+               : data.outcome === "REPLACED" ? "REPAIRED"
+               : data.outcome === "SCRAPPED" ? "WRITTEN_OFF"
+               : "ONGOING",
+        remarks: data.notes,
       }, userName);
       toast.success("Maintenance log added successfully");
       setMaintenanceOpen(false);
@@ -149,8 +153,82 @@ export default function AssetMaintenancePage() {
   // KPI calculations
   const totalCount = maintenanceLogs.length;
   const totalRepairsCost = maintenanceLogs.reduce((sum, log) => sum + (log.cost || 0), 0);
-  const fixedCount = maintenanceLogs.filter(log => log.outcome === "FIXED").length;
-  const scrapCount = maintenanceLogs.filter(log => log.outcome === "SCRAPPED").length;
+  const fixedCount = maintenanceLogs.filter(log => log.outcome === "REPAIRED").length;
+  const scrapCount = maintenanceLogs.filter(log => log.outcome === "WRITTEN_OFF").length;
+
+  const columns = [
+    {
+      field: "index",
+      headerName: "#",
+      fontFamily: "monospace",
+      color: COLORS.textFaint,
+      fontWeight: 700,
+      fontSize: 10,
+      renderCell: (row, index) => page * showCount + index + 1,
+    },
+    {
+      field: "assetName",
+      headerName: "Asset Name",
+      sortable: true,
+      fontWeight: 600,
+      fontSize: 11.5,
+    },
+    {
+      field: "assetCode",
+      headerName: "Asset Code",
+      sortable: true,
+      renderCell: (row) => (
+        <Chip label={row.assetCode} size="small" sx={{ height: 18, fontSize: 9.5, bgcolor: "#fee2e2", color: "#b91c1c" }} />
+      ),
+    },
+    {
+      field: "vendor",
+      headerName: "Service Vendor",
+      sortable: true,
+      fontSize: 11,
+      renderCell: (row) => row.vendor || "—",
+    },
+    {
+      field: "startDate",
+      headerName: "Service Date",
+      sortable: true,
+      fontSize: 11,
+      renderCell: (row) => row.startDate || "—",
+    },
+    {
+      field: "cost",
+      headerName: "Cost (₹)",
+      sortable: true,
+      fontSize: 11,
+      renderCell: (row) => `₹${row.cost?.toLocaleString("en-IN") || 0}`,
+    },
+    {
+      field: "outcome",
+      headerName: "Outcome",
+      sortable: true,
+      renderCell: (row) => <StatusBadge status={row.outcome} />,
+    },
+    {
+      field: "loggedBy",
+      headerName: "Recorded By",
+      sortable: true,
+      color: COLORS.textMuted,
+      fontSize: 11,
+    },
+    {
+      field: "actions",
+      headerName: "Actions",
+      renderCell: (row) => (
+        <ActionBtn
+          title="View Details"
+          color="#3b82f6"
+          onClick={() => { setViewData(row); setViewOpen(true); }}
+        >
+          <FaEye size={12} />
+        </ActionBtn>
+      ),
+    },
+  ];
 
   if (loading) {
     return <SkeletonLoader variant="list" statCount={4} columnCount={8} />;
@@ -269,46 +347,17 @@ export default function AssetMaintenancePage() {
       <TableCard>
         {isError ? (
           <EmptyState label={error?.message || "Failed to load repair histories"} />
-        ) : maintenanceLogs.length === 0 ? (
-          <EmptyState icon={FaWrench} label="No maintenance history records found." />
         ) : (
           <Box sx={{ overflowX: "auto" }}>
-            <Table size="small" sx={{ minWidth: 800 }}>
-              <TableHead>
-                <TableRow>
-                  {["#", "Asset Name", "Asset Code", "Service Vendor", "Service Date", "Cost (₹)", "Outcome", "Recorded By", "Actions"].map((h) => (
-                    <TableCell key={h} sx={{ fontWeight: 700, fontSize: 11, color: "#64748b", background: "#f8fafc" }}>
-                      {h}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {paginatedLogs.map((row, index) => (
-                  <TableRow key={row.maintenanceId} sx={{ "&:hover": { bgcolor: "#f1f5f9" } }}>
-                    <TableCell sx={{ fontSize: 11 }}>{page * showCount + index + 1}</TableCell>
-                    <TableCell sx={{ fontSize: 11.5, fontWeight: 600 }}>{row.assetName}</TableCell>
-                    <TableCell sx={{ fontSize: 11 }}>
-                      <Chip label={row.assetCode} size="small" sx={{ height: 18, fontSize: 9.5, bgcolor: "#fee2e2", color: "#b91c1c" }} />
-                    </TableCell>
-                    <TableCell sx={{ fontSize: 11 }}>{row.vendorName || "—"}</TableCell>
-                    <TableCell sx={{ fontSize: 11 }}>{row.maintenanceDate}</TableCell>
-                    <TableCell sx={{ fontSize: 11 }}>₹{row.cost?.toLocaleString("en-IN") || 0}</TableCell>
-                    <TableCell sx={{ fontSize: 11 }}><StatusBadge status={row.outcome} /></TableCell>
-                    <TableCell sx={{ fontSize: 11, color: COLORS.textMuted }}>{row.loggedBy}</TableCell>
-                    <TableCell sx={{ py: 0.5 }}>
-                      <ActionBtn
-                        title="View Details"
-                        color="#3b82f6"
-                        onClick={() => { setViewData(row); setViewOpen(true); }}
-                      >
-                        <FaEye size={12} />
-                      </ActionBtn>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <PremiumDataGrid
+              columns={columns}
+              rows={paginatedLogs}
+              loading={false}
+              rowIdField="maintenanceId"
+              page={page}
+              pageSize={showCount}
+              emptyMessage={<EmptyState icon={FaWrench} label="No maintenance history records found." />}
+            />
             <TablePagination
               page={page}
               totalPages={Math.ceil(maintenanceLogs.length / showCount) || 1}
@@ -443,15 +492,15 @@ export default function AssetMaintenancePage() {
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
               <InfoRow label="Asset Name" value={viewData.assetName} />
               <InfoRow label="Asset Code" value={viewData.assetCode} />
-              <InfoRow label="Service Vendor" value={viewData.vendorName} />
-              <InfoRow label="Service Date" value={viewData.maintenanceDate} />
+              <InfoRow label="Service Vendor" value={viewData.vendor} />
+              <InfoRow label="Service Date" value={viewData.startDate} />
               <InfoRow label="Service Cost" value={`₹${viewData.cost?.toLocaleString("en-IN") || 0}`} />
               <InfoRow label="Outcome" value={<StatusBadge status={viewData.outcome} />} />
               <InfoRow label="Logged By" value={viewData.loggedBy} />
-              {viewData.notes && (
+              {viewData.remarks && (
                 <Box sx={{ p: 1.25, border: "1px solid #e2e8f0", borderRadius: "8px", mt: 0.5, background: "#f8fafc" }}>
                   <Typography sx={{ fontSize: 10, color: COLORS.textMuted, mb: 0.25, fontWeight: 700 }}>Repair Description / Notes</Typography>
-                  <Typography sx={{ fontSize: 10.5, color: COLORS.text, whiteSpace: "pre-line" }}>{viewData.notes}</Typography>
+                  <Typography sx={{ fontSize: 10.5, color: COLORS.text, whiteSpace: "pre-line" }}>{viewData.remarks}</Typography>
                 </Box>
               )}
             </Box>

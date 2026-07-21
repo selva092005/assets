@@ -15,11 +15,12 @@ import { FaTimes, FaSearch, FaEye, FaClipboardCheck, FaPlus, FaCheck, FaExclamat
 import toast from "../utils/toast.jsx";
 
 import { createAudit, getAudits, getAuditOverview } from "../services/audit_service";
-import { getAssets, getImageUrl } from "../services/assets_service";
+import { getAssets } from "../services/assets_service";
 import { exportAudits } from "../services/report_service";
 import PageHeader from "../components/common/PageHeader";
 import TableCard from "../components/common/TableCard";
 import TablePagination from "../components/common/TablePagination";
+import PremiumDataGrid from "../components/common/PremiumDataGrid";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import ActionBtn from "../components/common/ActionBtn";
 import StatCard from "../components/common/StatCard";
@@ -30,7 +31,6 @@ import SkeletonLoader from "../components/common/SkeletonLoader";
 import { FormTextField, FormSelect } from "../components/FormFields";
 
 import { COLORS, outlinedBtnSx, primaryBtnSx, selectSx, premiumDialogPaperSx, premiumDialogTitleSx, searchFieldSx, resetBtnSx } from "../theme/tokens";
-import { required } from "../utils/validate";
 
 const AUDIT_STATUSES = ["GOOD", "DAMAGED", "LOST"];
 const ACTION_TAKEN_OPTIONS = ["NONE", "REPAIR", "REPLACE", "DISPOSE"];
@@ -71,14 +71,14 @@ const getChecklistLabels = (typeName) => {
 };
 
 export default function AssetAudit() {
-  const { userRole, userName } = useSelector((s) => s.auth);
+  const { userName } = useSelector((s) => s.auth);
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
   const [searchInput, setSearchInput] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [page, setPage] = useState(0);
-  const [showCount, setShowCount] = useState(10);
+  const [showCount] = useState(10);
 
   const [auditOpen, setAuditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -92,7 +92,7 @@ export default function AssetAudit() {
     try {
       await exportAudits();
       toast.success("Audits report downloaded successfully", { id });
-    } catch (err) {
+    } catch {
       toast.error("Failed to export audits", { id });
     } finally {
       setExporting(false);
@@ -106,7 +106,7 @@ export default function AssetAudit() {
   const formDataRef = useRef(null);
 
   // ── Queries ──────────────────────────────────────────────────────────────
-  const { data: audits = [], isLoading: loading, isError, error, refetch } = useQuery({
+  const { data: audits = [], isLoading: loading, isError, error } = useQuery({
     queryKey: ["audits", searchInput, statusFilter],
     queryFn: async () => {
       const params = {};
@@ -131,7 +131,7 @@ export default function AssetAudit() {
   });
 
   // ── Form Setup ───────────────────────────────────────────────────────────
-  const { control, handleSubmit, reset, setValue, setError, watch } = useForm({
+  const { control, handleSubmit, reset, watch } = useForm({
     defaultValues: {
       assetId: "",
       auditedBy: userName || "",
@@ -165,6 +165,7 @@ export default function AssetAudit() {
       openAuditModal(Number(assetIdParam));
       setSearchParams({});
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const openAuditModal = (preselectedId = null) => {
@@ -218,6 +219,85 @@ export default function AssetAudit() {
       setSaving(false);
     }
   };
+
+  const columns = [
+    {
+      field: "index",
+      headerName: "#",
+      fontFamily: "monospace",
+      color: COLORS.textFaint,
+      fontWeight: 700,
+      fontSize: 10,
+      renderCell: (row, index) => page * showCount + index + 1,
+    },
+    {
+      field: "assetName",
+      headerName: "Asset Name",
+      sortable: true,
+      fontWeight: 600,
+      fontSize: 11.5,
+    },
+    {
+      field: "assetCode",
+      headerName: "Asset Code",
+      sortable: true,
+      renderCell: (row) => (
+        <Chip label={row.assetCode} size="small" sx={{ height: 18, fontSize: 9.5, bgcolor: "#f3e8ff", color: "#6b21a8" }} />
+      ),
+    },
+    {
+      field: "auditDate",
+      headerName: "Audit Date",
+      sortable: true,
+      fontSize: 11,
+    },
+    {
+      field: "auditedBy",
+      headerName: "Audited By",
+      sortable: true,
+      color: COLORS.textMuted,
+      fontSize: 11,
+    },
+    {
+      field: "status",
+      headerName: "Condition Status",
+      sortable: true,
+      renderCell: (row) => <StatusBadge status={row.status} />,
+    },
+    {
+      field: "actionTaken",
+      headerName: "Action Plan",
+      sortable: true,
+      renderCell: (row) => (
+        <Chip label={row.actionTaken || "NONE"} size="small" variant="outlined" sx={{ height: 18, fontSize: 9 }} />
+      ),
+    },
+    {
+      field: "issues",
+      headerName: "Checklist Issues",
+      renderCell: (row) => {
+        const issueCount = [row.screenOk, row.keyboardOk, row.chargerOk, row.batteryOk].filter(ok => ok === false).length;
+        return issueCount > 0 ? (
+          <Chip label={`${issueCount} issues`} color="error" size="small" sx={{ height: 16, fontSize: 9 }} />
+        ) : (
+          <Chip label="All Clear" color="success" size="small" sx={{ height: 16, fontSize: 9 }} />
+        );
+      },
+    },
+    {
+      field: "details",
+      headerName: "Details",
+      renderCell: (row) => (
+        <ActionBtn
+          title="View Details"
+          color="#3b82f6"
+          onClick={() => { setViewData(row); setViewOpen(true); }}
+        >
+          <FaEye size={12} />
+        </ActionBtn>
+      ),
+    },
+  ];
 
   if (loading) {
     return <SkeletonLoader variant="list" statCount={4} columnCount={8} />;
@@ -345,57 +425,17 @@ export default function AssetAudit() {
       <TableCard>
         {isError ? (
           <EmptyState label={error?.message || "Failed to load audit records"} />
-        ) : audits.length === 0 ? (
-          <EmptyState icon={FaClipboardCheck} label="No audit records registered yet." />
         ) : (
           <Box sx={{ overflowX: "auto" }}>
-            <Table size="small" sx={{ minWidth: 800 }}>
-              <TableHead>
-                <TableRow>
-                  {["#", "Asset Name", "Asset Code", "Audit Date", "Audited By", "Condition Status", "Action Plan", "Checklist Issues", "Details"].map((h) => (
-                    <TableCell key={h} sx={{ fontWeight: 700, fontSize: 11, color: "#64748b", background: "#f8fafc", py: 1.2 }}>
-                      {h}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {paginatedAudits.map((row, index) => {
-                  const issueCount = [row.screenOk, row.keyboardOk, row.chargerOk, row.batteryOk].filter(ok => ok === false).length;
-                  return (
-                    <TableRow key={row.auditId} sx={{ "&:hover": { bgcolor: "#f1f5f9" } }}>
-                      <TableCell sx={{ fontSize: 11 }}>{page * showCount + index + 1}</TableCell>
-                      <TableCell sx={{ fontSize: 11.5, fontWeight: 600 }}>{row.assetName}</TableCell>
-                      <TableCell sx={{ fontSize: 11 }}>
-                        <Chip label={row.assetCode} size="small" sx={{ height: 18, fontSize: 9.5, bgcolor: "#f3e8ff", color: "#6b21a8" }} />
-                      </TableCell>
-                      <TableCell sx={{ fontSize: 11 }}>{row.auditDate}</TableCell>
-                      <TableCell sx={{ fontSize: 11, color: COLORS.textMuted }}>{row.auditedBy}</TableCell>
-                      <TableCell sx={{ fontSize: 11 }}><StatusBadge status={row.status} /></TableCell>
-                      <TableCell sx={{ fontSize: 11 }}>
-                        <Chip label={row.actionTaken || "NONE"} size="small" variant="outlined" sx={{ height: 18, fontSize: 9 }} />
-                      </TableCell>
-                      <TableCell sx={{ fontSize: 11 }}>
-                        {issueCount > 0 ? (
-                          <Chip label={`${issueCount} issues`} color="error" size="small" sx={{ height: 16, fontSize: 9 }} />
-                        ) : (
-                          <Chip label="All Clear" color="success" size="small" sx={{ height: 16, fontSize: 9 }} />
-                        )}
-                      </TableCell>
-                      <TableCell sx={{ py: 0.5 }}>
-                        <ActionBtn
-                          title="View Details"
-                          color="#3b82f6"
-                          onClick={() => { setViewData(row); setViewOpen(true); }}
-                        >
-                          <FaEye size={12} />
-                        </ActionBtn>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <PremiumDataGrid
+              columns={columns}
+              rows={paginatedAudits}
+              loading={false}
+              rowIdField="auditId"
+              page={page}
+              pageSize={showCount}
+              emptyMessage={<EmptyState icon={FaClipboardCheck} label="No audit records registered yet." />}
+            />
             <TablePagination
               page={page}
               totalPages={Math.ceil(audits.length / showCount) || 1}

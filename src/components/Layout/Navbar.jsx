@@ -30,7 +30,6 @@ import { logoutUser } from "../../store/slices/authSlice";
 import { NotificationBell } from "./NotificationBell";
 import amsLogo from "../../assets/ams_no_bg.png";
 import { FONT_FAMILIES } from "../../theme/tokens";
-import toast from "../../utils/toast.jsx";
 
 // ── Nav items — role restrictions defined here ─────────────────────────────
 const navItems = [
@@ -57,81 +56,7 @@ const navItems = [
   { label: "Scheduler", path: "/home/cron-management", roles: ["admin"] },
 ];
 
-const getDropdownMeta = (label) => {
-  switch (label) {
-    case "Assets Registry":
-      return {
-        icon: <StorageIcon sx={{ fontSize: 16 }} />,
-        color: "#3b82f6",
-        bg: "rgba(59,130,246,0.04)",
-        subtitle: "Inventory database & status tracking",
-      };
-    case "Allocation":
-      return {
-        icon: <AssignmentIndIcon sx={{ fontSize: 16 }} />,
-        color: "#2563eb",
-        bg: "rgba(37,99,235,0.04)",
-        subtitle: "Assign assets to employees",
-      };
-    case "Transfer":
-      return {
-        icon: <SwapHorizIcon sx={{ fontSize: 16 }} />,
-        color: "#10b981",
-        bg: "rgba(16,185,129,0.04)",
-        subtitle: "Relocate assets between sites",
-      };
-    case "Disposal":
-      return {
-        icon: <DeleteIcon sx={{ fontSize: 16 }} />,
-        color: "#f43f5e",
-        bg: "rgba(244,63,94,0.04)",
-        subtitle: "Retire, sell or scrap assets",
-      };
-    case "Bulk Upload":
-      return {
-        icon: <UploadFileIcon sx={{ fontSize: 16 }} />,
-        color: "#d97706",
-        bg: "rgba(217,119,6,0.04)",
-        subtitle: "Import assets via Excel template",
-      };
-    case "Audit":
-      return {
-        icon: <FactCheckIcon sx={{ fontSize: 16 }} />,
-        color: "#8b5cf6",
-        bg: "rgba(139,92,246,0.04)",
-        subtitle: "Audit condition & verify inventory",
-      };
-    case "Service Requests":
-      return {
-        icon: <SupportAgentIcon sx={{ fontSize: 16 }} />,
-        color: "#ec4899",
-        bg: "rgba(236,72,153,0.04)",
-        subtitle: "Procurement & issue ticketing",
-      };
-    case "Scan Asset":
-      return {
-        icon: <QrCodeScannerIcon sx={{ fontSize: 16 }} />,
-        color: "#14b8a6",
-        bg: "rgba(20,184,166,0.04)",
-        subtitle: "Audit assets using QR scanner",
-      };
-    case "Repairs & Logs":
-    case "Maintenance":
-      return {
-        icon: <SettingsSuggestIcon sx={{ fontSize: 16 }} />,
-        color: "#6366f1",
-        bg: "rgba(99,102,241,0.04)",
-        subtitle: "Track vendors, repairs & costs",
-      };
-    default:
-      return {
-        icon: null,
-        color: "#64748b",
-        bg: "rgba(241,245,249,0.04)",
-        subtitle: "",
-      };
-  }
-};
+
 
 const roleBadgeStyles = {
   manager: {
@@ -148,29 +73,7 @@ const roleBadgeStyles = {
   },
 };
 
-const rolePillTheme = {
-  admin: {
-    bg: "linear-gradient(135deg, rgba(180, 83, 9, 0.04) 0%, rgba(254, 243, 199, 0.4) 100%)",
-    hoverBg: "linear-gradient(135deg, rgba(180, 83, 9, 0.08) 0%, rgba(254, 243, 199, 0.6) 100%)",
-    border: "rgba(180, 83, 9, 0.16)",
-    hoverBorder: "rgba(180, 83, 9, 0.36)",
-    shadow: "0 0 14px rgba(180, 83, 9, 0.10)",
-  },
-  manager: {
-    bg: "linear-gradient(135deg, rgba(3, 105, 161, 0.04) 0%, rgba(224, 242, 254, 0.4) 100%)",
-    hoverBg: "linear-gradient(135deg, rgba(3, 105, 161, 0.08) 0%, rgba(224, 242, 254, 0.6) 100%)",
-    border: "rgba(3, 105, 161, 0.16)",
-    hoverBorder: "rgba(3, 105, 161, 0.36)",
-    shadow: "0 0 14px rgba(3, 105, 161, 0.10)",
-  },
-  user: {
-    bg: "linear-gradient(135deg, rgba(71, 85, 105, 0.04) 0%, rgba(241, 245, 249, 0.5) 100%)",
-    hoverBg: "linear-gradient(135deg, rgba(71, 85, 105, 0.08) 0%, rgba(241, 245, 249, 0.7) 100%)",
-    border: "rgba(71, 85, 105, 0.16)",
-    hoverBorder: "rgba(71, 85, 105, 0.36)",
-    shadow: "0 0 14px rgba(71, 85, 105, 0.10)",
-  }
-};
+
 
 
 
@@ -242,7 +145,6 @@ const Navbar = () => {
   const RoleIcon = isManager || isAdmin ? AdminPanelSettingsIcon : AccountCircleIcon;
   const roleStyle = isManager ? roleBadgeStyles.manager : isAdmin ? roleBadgeStyles.admin : roleBadgeStyles.user;
   const roleLabel = isManager ? "Manager" : isAdmin ? "Admin" : "User";
-  const pillTheme = isAdmin ? rolePillTheme.admin : isManager ? rolePillTheme.manager : rolePillTheme.user;
 
   // Filter nav items by current user role
   const visibleNavItems = navItems.filter((item) =>
@@ -564,7 +466,7 @@ const Navbar = () => {
                         position: "absolute",
                         fontSize: 11,
                         fontWeight: 900,
-                        fontFamily: FONT_FAMILIES.header,
+                        fontFamily: "'Unigeo', sans-serif !important",
                         textTransform: "uppercase",
                         opacity: openProfileMenu ? 0 : 1,
                         transform: openProfileMenu ? "scale(0) rotate(-180deg)" : "scale(1) rotate(0)",
@@ -593,7 +495,7 @@ const Navbar = () => {
                     sx={{
                       fontSize: 10.5,
                       fontWeight: 700,
-                      fontFamily: FONT_FAMILIES.header,
+                      fontFamily: "'Unigeo', sans-serif !important",
                       letterSpacing: "0.2px",
                       whiteSpace: "nowrap",
                       maxWidth: openProfileMenu ? { xs: 0, md: 150 } : 0,
@@ -658,14 +560,14 @@ const Navbar = () => {
                         justifyContent: "center",
                         fontWeight: 800,
                         fontSize: 12,
-                        fontFamily: FONT_FAMILIES.header,
+                        fontFamily: "'Unigeo', sans-serif !important",
                         flexShrink: 0
                       }}
                     >
                       {userName ? userName[0].toUpperCase() : "G"}
                     </Box>
                     <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                      <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#1e293b", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <Typography sx={{ fontFamily: "'Unigeo', sans-serif !important", fontSize: 12, fontWeight: 700, color: "#1e293b", lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {userName || "Guest User"}
                       </Typography>
                       <Typography sx={{ fontSize: 9.5, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", mb: 0.25 }}>

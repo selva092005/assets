@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { useForm } from "react-hook-form";
 import {
   Box, Button, Grid, MenuItem,
@@ -17,8 +17,8 @@ import {
 import { MdOutlineInventory2 } from "react-icons/md";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import toast from "../utils/toast.jsx";
-import { inputSx, selectSx, primaryBtnSx, outlinedBtnSx, COLORS, premiumDialogPaperSx, premiumDialogTitleSx } from "../theme/tokens";
-import { required, isValidDate, isDateAfter, extractFieldErrors } from "../utils/validate";
+import { primaryBtnSx, outlinedBtnSx, COLORS, premiumDialogPaperSx, premiumDialogTitleSx } from "../theme/tokens";
+import { isValidDate, isDateAfter, extractFieldErrors } from "../utils/validate";
 import { getAssetTypes, addAsset, updateAsset, getAssetById, uploadAssetImage, getImageUrl, createAssetType } from "../services/assets_service";
 import { getCompanies } from "../services/Company service";
 import { getAllLocations, getCurrentLocation } from "../services/location_service";
@@ -67,7 +67,6 @@ export default function AssetFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { page, search } = useSelector((s) => s.assets);
   const { userName } = useSelector((s) => s.auth);
   const isEdit = !!id;
 
@@ -145,7 +144,7 @@ export default function AssetFormPage() {
     }
     setTypeDialogLoading(true);
     try {
-      const res = await createAssetType(data.newTypeName.trim());
+      await createAssetType(data.newTypeName.trim());
       toast.success("Asset type created successfully");
       const r = await getAssetTypes();
       const updatedTypes = getAssetTypeList(r);
@@ -300,7 +299,7 @@ export default function AssetFormPage() {
 
           performCityMatch(city, "Detected location via GPS");
 
-        } catch (e) {
+        } catch {
           runIpFallback("could not fetch coordinates address");
         } finally {
           setDetecting(false);

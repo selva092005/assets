@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -24,12 +24,12 @@ import { getCompanies } from "../services/Company service";
 import PageHeader from "../components/common/PageHeader";
 import TableCard from "../components/common/TableCard";
 import TablePagination from "../components/common/TablePagination";
+import PremiumDataGrid from "../components/common/PremiumDataGrid";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import StatCard from "../components/common/StatCard";
 import ErrorState from "../components/common/ErrorState";
 import SkeletonLoader from "../components/common/SkeletonLoader";
-import { COLORS, primaryBtnSx, outlinedBtnSx, inputSx, selectSx, chipSx, premiumDialogPaperSx, premiumDialogTitleSx, searchFieldSx, resetBtnSx, locationIconSx } from "../theme/tokens";
-import { required } from "../utils/validate";
+import { COLORS, primaryBtnSx, outlinedBtnSx, selectSx, premiumDialogPaperSx, premiumDialogTitleSx, searchFieldSx, resetBtnSx, locationIconSx } from "../theme/tokens";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function extractList(res) {
@@ -307,6 +307,155 @@ export default function Locations() {
   const totalLocations = locations.length;
   const uniqueCompanies = new Set(locations.map((l) => l?.companyId).filter((id) => id != null)).size;
 
+  const columns = [
+    {
+      field: "index",
+      headerName: "#",
+      fontFamily: "monospace",
+      color: COLORS.textFaint,
+      fontWeight: 700,
+      fontSize: 10,
+      renderCell: (row, idx) => idx + 1,
+    },
+    {
+      field: "locationName",
+      headerName: "Location Name",
+      sortable: true,
+      renderCell: (row) => (
+        <Box>
+          <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#1e1b4b" }}>{row.locationName}</Typography>
+          {row.address && (
+            <Typography sx={{ fontSize: 9.5, color: COLORS.textMuted, fontWeight: 500, mt: 0.25, display: "flex", alignItems: "center", gap: 0.5 }}>
+              <FaHome size={10.5} style={{ color: "#64748b" }} /> {row.address}
+            </Typography>
+          )}
+          {row.latitude != null && row.longitude != null && (
+            <Typography sx={{ fontSize: 9, fontWeight: 400, mt: 0.25 }}>
+              <a
+                href={`https://www.google.com/maps/search/?api=1&query=${row.latitude},${row.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  color: "#3b82f6",
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "3px",
+                  cursor: "pointer",
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                onMouseOut={(e) => (e.currentTarget.style.textDecoration = "none")}
+              >
+                <FaMapMarkerAlt size={9.5} style={locationIconSx} /> {Number(row.latitude).toFixed(6)}, {Number(row.longitude).toFixed(6)}
+              </a>
+            </Typography>
+          )}
+        </Box>
+      ),
+    },
+    {
+      field: "locationType",
+      headerName: "Type",
+      sortable: true,
+      renderCell: (row) => {
+        const colors = getTypeChipColors(row.locationType);
+        return (
+          <Chip
+            label={row.locationType || "Office"}
+            size="small"
+            sx={{
+              fontSize: 9,
+              height: 16,
+              fontWeight: 600,
+              background: colors.bg,
+              color: colors.color,
+              border: `1px solid ${colors.border}`,
+              borderRadius: "4px",
+              textTransform: "uppercase",
+              "& .MuiChip-label": { px: "5px" },
+            }}
+          />
+        );
+      },
+    },
+    {
+      field: "locationCode",
+      headerName: "Location Code",
+      sortable: true,
+      renderCell: (row) => (
+        <Chip
+          label={row.locationCode || "—"}
+          size="small"
+          sx={{
+            fontSize: 9,
+            height: 16,
+            background: "#eff6ff",
+            color: "#1d4ed8",
+            border: "1px solid #dbeafe",
+            borderRadius: "4px",
+            "& .MuiChip-label": { px: "5px" },
+          }}
+        />
+      ),
+    },
+    {
+      field: "contactPerson",
+      headerName: "Site Custodian",
+      sortable: true,
+      color: COLORS.textMuted,
+      fontSize: 11,
+      fontWeight: 500,
+      renderCell: (row) => row.contactPerson || "—",
+    },
+    ...(canWrite
+      ? [
+          {
+            field: "actions",
+            headerName: "Actions",
+            renderCell: (row) => (
+              <Box sx={{ display: "flex", gap: 0.5 }}>
+                <Tooltip title="Edit Location" arrow>
+                  <IconButton
+                    size="small"
+                    onClick={() => openEdit(row)}
+                    sx={{
+                      width: 22,
+                      height: 22,
+                      color: "#3b82f6",
+                      borderRadius: "4px",
+                      transition: "all 0.15s ease",
+                      "&:hover": { background: "rgba(59, 130, 246, 0.08)" },
+                    }}
+                  >
+                    <FaEdit size={11} />
+                  </IconButton>
+                </Tooltip>
+
+                {canDelete && (
+                  <Tooltip title="Delete Location" arrow>
+                    <IconButton
+                      size="small"
+                      onClick={() => triggerDelete(row.locationId)}
+                      sx={{
+                        width: 22,
+                        height: 22,
+                        color: "#f43f5e",
+                        borderRadius: "4px",
+                        transition: "all 0.15s ease",
+                        "&:hover": { background: "rgba(244, 63, 94, 0.08)" },
+                      }}
+                    >
+                      <FaTrash size={11} />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
+            ),
+          },
+        ]
+      : []),
+  ];
+
   if (loading) {
     return <SkeletonLoader variant="list" statCount={4} columnCount={6} />;
   }
@@ -337,7 +486,7 @@ export default function Locations() {
         <StatCard label="Total Locations" value={totalLocations} icon={<FaMapMarkerAlt size={15} />} iconBg="#e8eaf6" iconColor="#3949ab" />
         <StatCard label="Active Sites" value={totalLocations} icon={<FaCheckCircle size={15} />} iconBg="#ecfdf5" iconColor="#10b981" />
         <StatCard label="Associated Companies" value={uniqueCompanies || 1} icon={<FaBuilding size={15} />} iconBg="#eff6ff" iconColor="#2563eb" />
-        <StatCard label="IP Geolocation Status" value="Online" icon={<FaCrosshairs size={15} />} iconBg="#fffbeb" iconColor="#d97706" />
+        <StatCard label="IP Geolocation Status" value={<Box component="span" sx={{ fontFamily: "'Amoria', sans-serif !important" }}>Online</Box>} icon={<FaCrosshairs size={15} />} iconBg="#fffbeb" iconColor="#d97706" />
       </Box>
 
       {/* Actions and Filters Bar */}
@@ -493,148 +642,15 @@ export default function Locations() {
                     </AccordionSummary>
                     <AccordionDetails sx={{ p: 0 }}>
                       <Box sx={{ overflowX: "auto" }}>
-                        <Table size="small" sx={{ minWidth: 600, borderCollapse: "collapse" }}>
-                          <TableHead>
-                            <TableRow>
-                              {["#", "Location Name", "Type", "Location Code", "Site Custodian", ...(canWrite ? ["Actions"] : [])].map((h) => (
-                                <TableCell key={h} sx={{
-                                  fontWeight: 700,
-                                  color: "#64748b",
-                                  whiteSpace: "nowrap",
-                                  background: "#f8fafc",
-                                  borderBottom: "1px solid #e2e8f0",
-                                  letterSpacing: "0.05em",
-                                  textTransform: "uppercase",
-                                  fontSize: 10,
-                                  py: 0.75
-                                }}>{h}</TableCell>
-                              ))}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {companyLocs.map((row, idx) => (
-                              <TableRow
-                                key={row.locationId}
-                                sx={{
-                                  borderLeft: "3px solid transparent",
-                                  transition: "all 180ms ease",
-                                  "&:last-child td": { border: 0 },
-                                  "& td": { background: idx % 2 === 0 ? "#fff" : "#f8faff", borderBottom: "1px solid #f1f5f9", py: 0.75 },
-                                  "&:hover": {
-                                    borderLeft: "3px solid #3b82f6",
-                                    "& td": { background: "#f0f7ff" }
-                                  }
-                                }}
-                              >
-                                <TableCell sx={{ color: COLORS.textFaint, fontSize: 10, width: 40 }}>{idx + 1}</TableCell>
-                                <TableCell sx={{ fontSize: 11, fontWeight: 600, color: "#1e1b4b" }}>
-                                  {row.locationName}
-                                  {row.address && (
-                                    <Typography sx={{ fontSize: 9.5, color: COLORS.textMuted, fontWeight: 500, mt: 0.25, display: "flex", alignItems: "center", gap: 0.5 }}>
-                                      <FaHome size={10.5} style={{ color: "#64748b" }} /> {row.address}
-                                    </Typography>
-                                  )}
-                                  {(row.latitude != null && row.longitude != null) && (
-                                    <Typography sx={{ fontSize: 9, fontWeight: 400, mt: 0.25 }}>
-                                      <a
-                                        href={`https://www.google.com/maps/search/?api=1&query=${row.latitude},${row.longitude}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{
-                                          color: "#3b82f6",
-                                          textDecoration: "none",
-                                          display: "inline-flex",
-                                          alignItems: "center",
-                                          gap: "3px",
-                                          cursor: "pointer",
-                                        }}
-                                        onMouseOver={(e) => e.currentTarget.style.textDecoration = "underline"}
-                                        onMouseOut={(e) => e.currentTarget.style.textDecoration = "none"}
-                                      >
-                                        <FaMapMarkerAlt size={9.5} style={locationIconSx} /> {Number(row.latitude).toFixed(6)}, {Number(row.longitude).toFixed(6)}
-                                      </a>
-                                    </Typography>
-                                  )}
-                                </TableCell>
-                                <TableCell sx={{ fontSize: 11 }}>
-                                  {(() => {
-                                    const colors = getTypeChipColors(row.locationType);
-                                    return (
-                                      <Chip
-                                        label={row.locationType || "Office"}
-                                        size="small"
-                                        sx={{
-                                          fontSize: 9,
-                                          height: 16,
-                                          fontWeight: 600,
-                                          background: colors.bg,
-                                          color: colors.color,
-                                          border: `1px solid ${colors.border}`,
-                                          borderRadius: "4px",
-                                          textTransform: "uppercase",
-                                          "& .MuiChip-label": { px: "5px" }
-                                        }}
-                                      />
-                                    );
-                                  })()}
-                                </TableCell>
-                                <TableCell>
-                                  <Chip
-                                    label={row.locationCode || "—"}
-                                    size="small"
-                                    sx={{
-                                      fontSize: 9,
-                                      height: 16,
-                                      background: "#eff6ff",
-                                      color: "#1d4ed8",
-                                      border: "1px solid #dbeafe",
-                                      borderRadius: "4px",
-                                      "& .MuiChip-label": { px: "5px" }
-                                    }}
-                                  />
-                                </TableCell>
-                                <TableCell sx={{ fontSize: 11, fontWeight: 500, color: COLORS.textMuted }}>
-                                  {row.contactPerson || "—"}
-                                </TableCell>
-                                {canWrite && (
-                                  <TableCell sx={{ width: 80 }}>
-                                    <Box sx={{ display: "flex", gap: 0.5 }}>
-                                      <Tooltip title="Edit Location" arrow>
-                                        <IconButton
-                                          size="small"
-                                          onClick={() => openEdit(row)}
-                                          sx={{
-                                            width: 22, height: 22, color: "#3b82f6",
-                                            borderRadius: "4px", transition: "all 0.15s ease",
-                                            "&:hover": { background: "rgba(59, 130, 246, 0.08)" }
-                                          }}
-                                        >
-                                          <FaEdit size={11} />
-                                        </IconButton>
-                                      </Tooltip>
-
-                                      {canDelete && (
-                                        <Tooltip title="Delete Location" arrow>
-                                          <IconButton
-                                            size="small"
-                                            onClick={() => triggerDelete(row.locationId)}
-                                            sx={{
-                                              width: 22, height: 22, color: "#f43f5e",
-                                              borderRadius: "4px", transition: "all 0.15s ease",
-                                              "&:hover": { background: "rgba(244, 63, 94, 0.08)" }
-                                            }}
-                                          >
-                                            <FaTrash size={11} />
-                                          </IconButton>
-                                        </Tooltip>
-                                      )}
-                                    </Box>
-                                  </TableCell>
-                                )}
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                        <PremiumDataGrid
+                          columns={columns}
+                          rows={companyLocs}
+                          loading={false}
+                          rowIdField="locationId"
+                          page={0}
+                          pageSize={companyLocs.length}
+                          emptyMessage="No locations under this organization."
+                        />
                       </Box>
                     </AccordionDetails>
                   </Accordion>

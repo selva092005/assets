@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSelector } from "react-redux";
 import { Navigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,11 +18,12 @@ import {
 } from "../services/cron_service";
 import { 
   COLORS, outlinedBtnSx, primaryBtnSx, premiumDialogPaperSx, 
-  premiumDialogTitleSx, denseCellSx, chipSx
+  premiumDialogTitleSx
 } from "../theme/tokens";
 import PageHeader from "../components/common/PageHeader";
 import TableCard from "../components/common/TableCard";
 import TablePagination from "../components/common/TablePagination";
+import PremiumDataGrid from "../components/common/PremiumDataGrid";
 import StatCard from "../components/common/StatCard";
 import SkeletonLoader from "../components/common/SkeletonLoader";
 import ErrorState from "../components/common/ErrorState";
@@ -55,10 +56,7 @@ export default function CronManagement() {
   const [msgOpen, setMsgOpen] = useState(false);
   const [selectedMsg, setSelectedMsg] = useState("");
 
-  // Redirect if not ADMIN
-  if (userRole !== "admin") {
-    return <Navigate to="/home" replace />;
-  }
+
 
   // ── Queries ──────────────────────────────────────────────────────────
   const { 
@@ -96,6 +94,11 @@ export default function CronManagement() {
 
   const logs = logsData?.content || [];
   const totalPages = logsData?.totalPages || 0;
+
+  // Redirect if not ADMIN
+  if (userRole !== "admin") {
+    return <Navigate to="/home" replace />;
+  }
 
   // ── Handlers ─────────────────────────────────────────────────────────
   const handleToggleActive = async (job, enabled) => {
@@ -181,6 +184,170 @@ export default function CronManagement() {
   const activeCount = jobs.filter(j => j.enabled).length;
   const disabledCount = jobs.filter(j => !j.enabled).length;
 
+  const jobColumns = [
+    {
+      field: "jobName",
+      headerName: "Job Details",
+      sortable: true,
+      renderCell: (row) => (
+        <Box>
+          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "11px" }}>
+            {row.jobName}
+          </Typography>
+          <Typography variant="caption" sx={{ color: "text.secondary", display: "block", fontSize: "9.5px", maxWidth: 300 }}>
+            {row.description}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      field: "cronExpression",
+      headerName: "Schedule",
+      sortable: true,
+      renderCell: (row) => (
+        <code style={{ background: COLORS.bg, padding: "2px 6px", borderRadius: "4px", fontSize: "10px", fontWeight: "bold" }}>
+          {row.cronExpression}
+        </code>
+      ),
+    },
+    {
+      field: "enabled",
+      headerName: "Status",
+      sortable: true,
+      renderCell: (row) => (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <Switch
+            size="small"
+            checked={row.enabled}
+            onChange={(e) => handleToggleActive(row, e.target.checked)}
+          />
+          <span style={{ 
+            fontSize: "10px", 
+            fontWeight: 600, 
+            color: row.enabled ? COLORS.primary : COLORS.textMuted 
+          }}>
+            {row.enabled ? "Active" : "Paused"}
+          </span>
+        </Box>
+      ),
+    },
+    {
+      field: "lastRunTime",
+      headerName: "Last Run",
+      sortable: true,
+      fontSize: 11,
+      renderCell: (row) => formatDate(row.lastRunTime),
+    },
+    {
+      field: "nextRunTime",
+      headerName: "Next Run",
+      sortable: true,
+      fontSize: 11,
+      renderCell: (row) => row.enabled ? formatDate(row.nextRunTime) : <span style={{ color: COLORS.textMuted }}>Paused</span>,
+    },
+    {
+      field: "actions",
+      headerName: "Actions",
+      align: "right",
+      renderCell: (row) => (
+        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 0.5 }}>
+          <Tooltip title="Trigger Immediately">
+            <IconButton 
+              size="small" 
+              onClick={() => handleTriggerNow(row)} 
+              sx={{ color: COLORS.primary }}
+            >
+              <FaPlay size={10} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Edit Schedule">
+            <IconButton 
+              size="small" 
+              onClick={() => handleOpenEdit(row)}
+              sx={{ color: COLORS.textMuted }}
+            >
+              <FaEdit size={10} />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+    },
+  ];
+
+  const logColumns = [
+    {
+      field: "jobName",
+      headerName: "Job Name",
+      sortable: true,
+      fontWeight: 600,
+      fontSize: 11,
+    },
+    {
+      field: "triggeredBy",
+      headerName: "Triggered By",
+      sortable: true,
+      fontSize: 10,
+      fontWeight: 600,
+    },
+    {
+      field: "startTime",
+      headerName: "Start Time",
+      sortable: true,
+      fontSize: 11,
+      renderCell: (row) => formatDate(row.startTime),
+    },
+    {
+      field: "endTime",
+      headerName: "End Time",
+      sortable: true,
+      fontSize: 11,
+      renderCell: (row) => formatDate(row.endTime),
+    },
+    {
+      field: "durationMs",
+      headerName: "Duration",
+      sortable: true,
+      fontSize: 11,
+      renderCell: (row) => row.durationMs !== null ? `${row.durationMs}ms` : "—",
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      sortable: true,
+      renderCell: (row) => (
+        <Box sx={{
+          display: "inline-flex",
+          px: 1,
+          py: 0.25,
+          borderRadius: "12px",
+          fontSize: "9px",
+          fontWeight: 700,
+          backgroundColor: row.status === "SUCCESS" ? "#e8f5e9" : row.status === "RUNNING" ? "#e3f2fd" : "#ffebee",
+          color: row.status === "SUCCESS" ? "#2e7d32" : row.status === "RUNNING" ? "#1565c0" : "#c62828"
+        }}>
+          {row.status}
+        </Box>
+      ),
+    },
+    {
+      field: "message",
+      headerName: "Result/Message",
+      sortable: true,
+      renderCell: (row) => (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, maxWidth: 250 }}>
+          <Typography noWrap variant="caption" sx={{ fontSize: "10px", color: "text.secondary" }}>
+            {row.message || "—"}
+          </Typography>
+          {row.message && row.message.length > 50 && (
+            <IconButton size="small" onClick={() => handleShowMsg(row.message)}>
+              <FaInfoCircle size={10} color={COLORS.primary} />
+            </IconButton>
+          )}
+        </Box>
+      ),
+    },
+  ];
+
   return (
     <Box sx={{ p: 0 }}>
       <PageHeader
@@ -252,90 +419,15 @@ export default function CronManagement() {
           ) : isJobsError ? (
             <ErrorState message={jobsError?.message} onRetry={refetchJobs} />
           ) : (
-            <TableContainer component={Paper} sx={{ boxShadow: "none", borderRadius: 0 }}>
-              <Table size="small">
-                <TableHead sx={{ backgroundColor: COLORS.bg }}>
-                  <TableRow>
-                    <TableCell sx={{ ...denseCellSx, fontWeight: 700 }}>Job Details</TableCell>
-                    <TableCell sx={{ ...denseCellSx, fontWeight: 700 }}>Schedule</TableCell>
-                    <TableCell sx={{ ...denseCellSx, fontWeight: 700 }}>Status</TableCell>
-                    <TableCell sx={{ ...denseCellSx, fontWeight: 700 }}>Last Run</TableCell>
-                    <TableCell sx={{ ...denseCellSx, fontWeight: 700 }}>Next Run</TableCell>
-                    <TableCell align="right" sx={{ ...denseCellSx, fontWeight: 700 }}>Actions</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {jobs.map((job) => (
-                    <TableRow key={job.id} hover>
-                      <TableCell sx={denseCellSx}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "11px" }}>
-                          {job.jobName}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: "text.secondary", display: "block", fontSize: "9.5px", maxWidth: 300 }}>
-                          {job.description}
-                        </Typography>
-                      </TableCell>
-                      <TableCell sx={denseCellSx}>
-                        <code style={{ background: COLORS.bg, padding: "2px 6px", borderRadius: "4px", fontSize: "10px", fontWeight: "bold" }}>
-                          {job.cronExpression}
-                        </code>
-                      </TableCell>
-                      <TableCell sx={denseCellSx}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          <Switch
-                            size="small"
-                            checked={job.enabled}
-                            onChange={(e) => handleToggleActive(job, e.target.checked)}
-                          />
-                          <span style={{ 
-                            fontSize: "10px", 
-                            fontWeight: 600, 
-                            color: job.enabled ? COLORS.primary : COLORS.textMuted 
-                          }}>
-                            {job.enabled ? "Active" : "Paused"}
-                          </span>
-                        </Box>
-                      </TableCell>
-                      <TableCell sx={denseCellSx}>
-                        {formatDate(job.lastRunTime)}
-                      </TableCell>
-                      <TableCell sx={denseCellSx}>
-                        {job.enabled ? formatDate(job.nextRunTime) : <span style={{ color: COLORS.textMuted }}>Paused</span>}
-                      </TableCell>
-                      <TableCell align="right" sx={denseCellSx}>
-                        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 0.5 }}>
-                          <Tooltip title="Trigger Immediately">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleTriggerNow(job)} 
-                              sx={{ color: COLORS.primary }}
-                            >
-                              <FaPlay size={10} />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Edit Schedule">
-                            <IconButton 
-                              size="small" 
-                              onClick={() => handleOpenEdit(job)}
-                              sx={{ color: COLORS.textMuted }}
-                            >
-                              <FaEdit size={10} />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {jobs.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} align="center" sx={{ py: 3, color: "text.secondary" }}>
-                        No cron jobs registered.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <PremiumDataGrid
+              columns={jobColumns}
+              rows={jobs}
+              loading={false}
+              rowIdField="id"
+              page={0}
+              pageSize={jobs.length}
+              emptyMessage="No cron jobs registered."
+            />
           )}
         </TableCard>
       )}
@@ -349,79 +441,15 @@ export default function CronManagement() {
             <ErrorState message={logsError?.message} onRetry={refetchLogs} />
           ) : (
             <>
-              <TableContainer component={Paper} sx={{ boxShadow: "none", borderRadius: 0 }}>
-                <Table size="small">
-                  <TableHead sx={{ backgroundColor: COLORS.bg }}>
-                    <TableRow>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700 }}>Job Name</TableCell>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700 }}>Triggered By</TableCell>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700 }}>Start Time</TableCell>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700 }}>End Time</TableCell>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700 }}>Duration</TableCell>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700 }}>Status</TableCell>
-                      <TableCell sx={{ ...denseCellSx, fontWeight: 700 }}>Result/Message</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {logs.map((log) => (
-                      <TableRow key={log.id} hover>
-                        <TableCell sx={denseCellSx}>
-                          <Typography variant="body2" sx={{ fontWeight: 600, fontSize: "11px" }}>
-                            {log.jobName}
-                          </Typography>
-                        </TableCell>
-                        <TableCell sx={denseCellSx}>
-                          <span style={{ fontSize: "10px", fontWeight: 600 }}>
-                            {log.triggeredBy}
-                          </span>
-                        </TableCell>
-                        <TableCell sx={denseCellSx}>
-                          {formatDate(log.startTime)}
-                        </TableCell>
-                        <TableCell sx={denseCellSx}>
-                          {formatDate(log.endTime)}
-                        </TableCell>
-                        <TableCell sx={denseCellSx}>
-                          {log.durationMs !== null ? `${log.durationMs}ms` : "—"}
-                        </TableCell>
-                        <TableCell sx={denseCellSx}>
-                          <Box sx={{
-                            display: "inline-flex",
-                            px: 1,
-                            py: 0.25,
-                            borderRadius: "12px",
-                            fontSize: "9px",
-                            fontWeight: 700,
-                            backgroundColor: log.status === "SUCCESS" ? "#e8f5e9" : log.status === "RUNNING" ? "#e3f2fd" : "#ffebee",
-                            color: log.status === "SUCCESS" ? "#2e7d32" : log.status === "RUNNING" ? "#1565c0" : "#c62828"
-                          }}>
-                            {log.status}
-                          </Box>
-                        </TableCell>
-                        <TableCell sx={denseCellSx}>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, maxWidth: 250 }}>
-                            <Typography noWrap variant="caption" sx={{ fontSize: "10px", color: "text.secondary" }}>
-                              {log.message || "—"}
-                            </Typography>
-                            {log.message && log.message.length > 50 && (
-                              <IconButton size="small" onClick={() => handleShowMsg(log.message)}>
-                                <FaInfoCircle size={10} color={COLORS.primary} />
-                              </IconButton>
-                            )}
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {logs.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={7} align="center" sx={{ py: 3, color: "text.secondary" }}>
-                          No execution logs found.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+              <PremiumDataGrid
+                columns={logColumns}
+                rows={logs}
+                loading={false}
+                rowIdField="id"
+                page={logPage}
+                pageSize={logSize}
+                emptyMessage="No execution logs found."
+              />
               <TablePagination 
                 page={logPage} 
                 totalPages={totalPages} 

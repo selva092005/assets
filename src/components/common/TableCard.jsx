@@ -19,13 +19,24 @@ export default function TableCard({ title, children }) {
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    checkScroll();
+    const timer = setTimeout(() => {
+      checkScroll();
+    }, 0);
     el.addEventListener("scroll", checkScroll);
     window.addEventListener("resize", checkScroll);
-    return () => { el.removeEventListener("scroll", checkScroll); window.removeEventListener("resize", checkScroll); };
+    return () => {
+      clearTimeout(timer);
+      el.removeEventListener("scroll", checkScroll);
+      window.removeEventListener("resize", checkScroll);
+    };
   }, []);
 
-  useEffect(() => { checkScroll(); }, [children]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      checkScroll();
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [children]);
 
   return (
     <Paper elevation={0} sx={{

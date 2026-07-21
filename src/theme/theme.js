@@ -139,6 +139,32 @@ export const theme = createTheme({
     },
     MuiCssBaseline: {
       styleOverrides: {
+        "@font-face": [
+          {
+            fontFamily: "'DevilCandle'",
+            src: "url('/DevilCandle_PERSONAL_USE_ONLY.otf')",
+            fontStyle: "normal",
+            fontWeight: "normal",
+          },
+          {
+            fontFamily: "'Amoria'",
+            src: "url('/AMORIA.otf')",
+            fontStyle: "normal",
+            fontWeight: "normal",
+          },
+          {
+            fontFamily: "'Game Of Squids'",
+            src: "url('/Game Of Squids.otf')",
+            fontStyle: "normal",
+            fontWeight: "normal",
+          },
+          {
+            fontFamily: "'Unigeo'",
+            src: "url('/Unigeo64-Bold-Italic-trial.ttf')",
+            fontStyle: "normal",
+            fontWeight: "normal",
+          }
+        ],
         body: {
           fontFamily: `${FONT_FAMILIES.content}, 'Segoe UI', 'Roboto', sans-serif !important`,
           fontSize: "11px !important",

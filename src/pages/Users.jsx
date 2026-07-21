@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
@@ -13,7 +13,7 @@ import toast from "../utils/toast.jsx";
 import {
   setUserPage, setUserSearch, setUserFilter, resetUserFilters,
 } from "../store/slices/userSlice";
-import { deleteUser, getUserById, bulkUploadUsers, exportUsers, downloadUserTemplate, getUserSummaryStats, getUsers } from "../services/users_service";
+import { deleteUser, exportUsers, getUserSummaryStats, getUsers } from "../services/users_service";
 import { COLORS, outlinedBtnSx, primaryBtnSx, selectSx, searchFieldSx, resetBtnSx } from "../theme/tokens";
 
 import PageHeader from "../components/common/PageHeader";

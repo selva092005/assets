@@ -541,7 +541,6 @@ export const getThemeConfig = (iconColor, styleMode = "AURORA") => {
 //  Reusable SX Style Presets for Cards
 // ─────────────────────────────────────────────
 export const statCardSx = (iconColor, styleMode = "AURORA") => {
-  const theme = getThemeConfig(iconColor, styleMode);
   const isSolid = styleMode === "SOLID";
   const isGlass = styleMode === "GLASS";
   const isDark = styleMode === "DARK_STEEL";
@@ -661,12 +660,18 @@ export const premiumCardSx = (styleMode = "AURORA") => {
 };
 
 export const premiumDialogPaperSx = {
-  borderRadius: "8px",
+  borderRadius: { xs: "0px", sm: "8px" },
   boxShadow: "0 30px 60px rgba(0, 0, 0, 0.12)",
-  border: "1px solid #e5e5e5",
+  border: { xs: "none", sm: "1px solid #e5e5e5" },
   background: "#ffffff",
   overflow: "hidden",
   position: "relative",
+  margin: { xs: "0px !important", sm: "32px" },
+  width: { xs: "100% !important", sm: "100%" },
+  maxHeight: { xs: "100% !important", sm: "calc(100% - 64px)" },
+  height: { xs: "100% !important", sm: "auto" },
+  display: "flex",
+  flexDirection: "column",
 };
 
 export const lightboxSx = {

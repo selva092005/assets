@@ -17,7 +17,6 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from "recharts";
 import { FaTrash, FaTimes, FaRecycle, FaSearch, FaEye, FaFileExcel, FaDownload, FaCoins, FaExclamationTriangle, FaPlus, FaChartPie, FaChartBar, FaFileExport, FaSyncAlt } from "react-icons/fa";
-import { getUsers } from "../services/users_service";
 import toast from "../utils/toast.jsx";
 
 import { disposeAsset, getAllDisposals, getDisposalById } from "../services/disposal_service";
@@ -26,6 +25,7 @@ import { getAssets, getImageUrl } from "../services/assets_service";
 import PageHeader from "../components/common/PageHeader";
 import TableCard from "../components/common/TableCard";
 import TablePagination from "../components/common/TablePagination";
+import PremiumDataGrid from "../components/common/PremiumDataGrid";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import ActionBtn from "../components/common/ActionBtn";
 import StatCard from "../components/common/StatCard";
@@ -33,8 +33,8 @@ import PremiumCard from "../components/common/PremiumCard";
 import PremiumPieChart from "../components/common/PremiumPieChart";
 import ErrorState from "../components/common/ErrorState";
 import SkeletonLoader from "../components/common/SkeletonLoader";
-import { COLORS, outlinedBtnSx, primaryBtnSx, inputSx, selectSx, premiumDialogPaperSx, premiumDialogTitleSx, denseCellSx, searchFieldSx, resetBtnSx } from "../theme/tokens";
-import { required, isValidDate, isNotFutureDate, extractFieldErrors } from "../utils/validate";
+import { COLORS, outlinedBtnSx, primaryBtnSx, selectSx, premiumDialogPaperSx, premiumDialogTitleSx, searchFieldSx, resetBtnSx } from "../theme/tokens";
+import { isNotFutureDate, extractFieldErrors } from "../utils/validate";
 
 const DISPOSAL_METHODS = ["SOLD", "SCRAPPED", "DONATED", "DAMAGED"];
 
@@ -100,18 +100,9 @@ export default function AssetDisposalPage() {
     enabled: canDispose,
   });
 
-  const { data: allUsers = [] } = useQuery({
-    queryKey: ["users", "simple"],
-    queryFn: async () => {
-      const res = await getUsers({ page: 0, size: 200 });
-      return extractList(res);
-    },
-    enabled: canDispose,
-  });
 
-  const [userSearch, setUserSearch] = useState("");
+
   const [activeMethodIdx, setActiveMethodIdx] = useState(null);
-  const [anchorEl, setAnchorEl] = useState(null);
   const [assetSearch, setAssetSearch] = useState("");
   const [assetAnchor, setAssetAnchor] = useState(null);
 
@@ -152,9 +143,7 @@ export default function AssetDisposalPage() {
     (a) => a.status === "AVAILABLE" || a.status === "DAMAGED" || a.assetId === formAssetId || a.assetId === preselectedAssetId
   );
 
-  const adminUsers = allUsers.filter((u) => u.userRole === "ADMIN" || u.userRole === "MANAGER").length > 0
-    ? allUsers.filter((u) => u.userRole === "ADMIN" || u.userRole === "MANAGER")
-    : allUsers;
+
 
   // ── KPI Calculations ──────────────────────────────────────────────────────
   const totalRecords = disposals.length;
@@ -209,7 +198,6 @@ export default function AssetDisposalPage() {
 
   // ── Open dispose modal ────────────────────────────────────────────────────
   const openDispose = (preselectedAssetId = null) => {
-    setUserSearch("");
     setAssetSearch("");
     reset({
       assetId: preselectedAssetId || "",
@@ -228,6 +216,7 @@ export default function AssetDisposalPage() {
       openDispose(Number(assetIdParam));
       setSearchParams({});
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, canDispose]);
 
   // ── Submit disposal ───────────────────────────────────────────────────────
@@ -313,6 +302,106 @@ export default function AssetDisposalPage() {
     );
   }
 
+
+  const columns = [
+    {
+      field: "index",
+      headerName: "#",
+      fontFamily: "monospace",
+      color: COLORS.textFaint,
+      fontWeight: 700,
+      fontSize: 10,
+      renderCell: (row, i) => page * showCount + i + 1,
+    },
+    {
+      field: "assetName",
+      headerName: "Asset",
+      sortable: true,
+      fontWeight: 600,
+      color: "#1e1b4b",
+      fontSize: 11,
+    },
+    {
+      field: "assetCode",
+      headerName: "Code",
+      sortable: true,
+      renderCell: (row) => (
+        <Chip
+          label={row.assetCode || "—"}
+          size="small"
+          sx={{
+            fontSize: 9.5,
+            height: 18,
+            background: "#ffebee",
+            color: "#c62828",
+            borderRadius: "5px",
+            "& .MuiChip-label": { px: "6px" },
+          }}
+        />
+      ),
+    },
+    {
+      field: "disposalMethod",
+      headerName: "Method",
+      sortable: true,
+      renderCell: (row) => <StatusBadge status={row.disposalMethod} />,
+    },
+    {
+      field: "disposalDate",
+      headerName: "Disposal Date",
+      sortable: true,
+      fontSize: 11,
+      renderCell: (row) => fmt(row.disposalDate),
+    },
+    {
+      field: "disposedBy",
+      headerName: "Disposed By",
+      sortable: true,
+      color: COLORS.textMuted,
+      fontSize: 11,
+    },
+    {
+      field: "reason",
+      headerName: "Reason",
+      sortable: true,
+      renderCell: (row) => (
+        <Typography
+          sx={{
+            fontSize: 11,
+            color: COLORS.textMuted,
+            maxWidth: 180,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {row.reason}
+        </Typography>
+      ),
+    },
+    {
+      field: "disposalValue",
+      headerName: "Value (₹)",
+      sortable: true,
+      fontSize: 11,
+      renderCell: (row) => (row.disposalValue != null ? `₹${row.disposalValue.toLocaleString("en-IN")}` : "—"),
+    },
+    {
+      field: "actions",
+      headerName: "Actions",
+      renderCell: (row) => (
+        <ActionBtn
+          title="View Details"
+          color="#3b82f6"
+          hoverBg="rgba(59, 130, 246, 0.08)"
+          onClick={() => openViewDetails(row.disposalId)}
+          sx={{ border: "none", background: "transparent" }}
+        >
+          <FaEye size={11} />
+        </ActionBtn>
+      ),
+    },
+  ];
 
   if (loading) {
     return <SkeletonLoader variant="list" statCount={4} columnCount={9} />;
@@ -459,65 +548,25 @@ export default function AssetDisposalPage() {
         <TableCard>
           {isError ? (
             <ErrorState message={error?.message || error?.response?.data?.message} onRetry={refetch} />
-          ) : filteredDisposals.length === 0 ? (
-            <EmptyState icon={FaRecycle} label="No disposal records found." />
           ) : (
             <Box sx={{ overflowX: "auto" }}>
-              <Table size="small" sx={{ minWidth: 700, tableLayout: "auto", borderCollapse: "collapse" }}>
-                <TableHead>
-                  <TableRow>
-                    {["#", "Asset", "Code", "Method", "Disposal Date", "Disposed By", "Reason", "Value (₹)", "Actions"].map((h) => (
-                      <TableCell key={h} sx={{
-                        fontWeight: 700,
-                        color: "#64748b",
-                        whiteSpace: "nowrap",
-                        background: "#f8fafc",
-                        borderBottom: "2px solid #e2e8f0",
-                        letterSpacing: "0.05em",
-                        textTransform: "uppercase",
-                        fontSize: 11
-                      }}>{h}</TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {paginatedDisposals.map((row, i) => (
-                    <TableRow key={row.disposalId} sx={{ borderLeft: "3px solid transparent", transition: "all 180ms ease", "&:last-child td": { border: 0 }, "&:hover": { borderLeft: "3px solid #3b82f6", "& td": { background: "#f0f7ff" } }, "& td": { background: i % 2 === 0 ? "#fff" : "#f8faff", borderBottom: "1px solid #f1f5f9" } }}>
-                      <TableCell sx={{ verticalAlign: "middle", color: COLORS.textFaint }}>{page * showCount + i + 1}</TableCell>
-                      <TableCell sx={{ fontSize: 11, fontWeight: 600, color: "#1e1b4b", verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>{row.assetName}</TableCell>
-                      <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>
-                        <Chip label={row.assetCode || "—"} size="small" sx={{ fontSize: 9.5, height: 18, background: "#ffebee", color: "#c62828", borderRadius: "5px", "& .MuiChip-label": { px: "6px" } }} />
-                      </TableCell>
-                      <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}><StatusBadge status={row.disposalMethod} /></TableCell>
-                      <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>{fmt(row.disposalDate)}</TableCell>
-                      <TableCell sx={{ fontSize: 11, color: COLORS.textMuted, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>{row.disposedBy}</TableCell>
-                      <TableCell sx={{ fontSize: 11, color: COLORS.textMuted, maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>{row.reason}</TableCell>
-                      <TableCell sx={{ fontSize: 11, verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>
-                        {row.disposalValue != null ? `₹${row.disposalValue.toLocaleString("en-IN")}` : "—"}
-                      </TableCell>
-                      <TableCell sx={{ verticalAlign: "middle", borderBottom: "1px solid #f0f0f8" }}>
-                        <ActionBtn
-                          title="View Details"
-                          color="#3b82f6"
-                          hoverBg="rgba(59, 130, 246, 0.08)"
-                          onClick={() => openViewDetails(row.disposalId)}
-                          sx={{ border: "none", background: "transparent" }}
-                        >
-                          <FaEye size={11} />
-                        </ActionBtn>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <PremiumDataGrid
+                columns={columns}
+                rows={paginatedDisposals}
+                loading={false}
+                rowIdField="disposalId"
+                page={page}
+                pageSize={showCount}
+                emptyMessage={<EmptyState icon={FaRecycle} label="No disposal records found." />}
+              />
+              {!loading && filteredDisposals.length > 0 && (
+                <TablePagination
+                  page={page}
+                  totalPages={Math.ceil(filteredDisposals.length / showCount) || 1}
+                  onPageChange={(pg) => setPage(pg)}
+                />
+              )}
             </Box>
-          )}
-          {!loading && filteredDisposals.length > 0 && (
-            <TablePagination
-              page={page}
-              totalPages={Math.ceil(filteredDisposals.length / showCount) || 1}
-              onPageChange={(pg) => setPage(pg)}
-            />
           )}
         </TableCard>
       </Box>
@@ -1026,17 +1075,6 @@ function extractList(res) {
   if (res?.data?.content) return res.data.content;
   if (res?.content) return res.content;
   return [];
-}
-
-function defaultForm() {
-  return {
-    assetId: "",
-    disposalMethod: "",
-    reason: "",
-    disposedBy: "",
-    disposalDate: today(),
-    disposalValue: "",
-  };
 }
 
 function calculateDepreciatedValue(cost, purchaseDateStr, disposalDateStr) {

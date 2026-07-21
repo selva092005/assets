@@ -116,7 +116,7 @@ export default function ReportsPage() {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState({});
-  const [isDemoMode, setIsDemoMode] = useState(false);
+
   const [activeTypeIdx, setActiveTypeIdx] = useState(null);
   const [activeCompanyIdx, setActiveCompanyIdx] = useState(null);
   const [activeLocationIdx, setActiveLocationIdx] = useState(null);
@@ -194,14 +194,11 @@ export default function ReportsPage() {
         // If data is completely empty (no assets loaded yet)
         if (!data || (!data.totalAssets && !data.totalAllocations && !data.totalTransfers)) {
           setReport(MOCK_REPORT_DATA);
-          setIsDemoMode(true);
         } else {
           setReport(data);
-          setIsDemoMode(false);
         }
       } catch {
         setReport(MOCK_REPORT_DATA);
-        setIsDemoMode(true);
       } finally {
         setLoading(false);
       }
@@ -214,7 +211,7 @@ export default function ReportsPage() {
     try {
       await exportFn();
       toast.success(`${filename} downloaded successfully!`, { id });
-    } catch (err) {
+    } catch {
       toast.error(`Failed to download ${filename}.`, { id });
     } finally {
       setDownloading(prev => ({ ...prev, [type]: false }));
@@ -493,8 +490,9 @@ export default function ReportsPage() {
           subtitle="Site-wide distribution"
           icon={<FaMapMarkerAlt />}
         >
-          <Box sx={{ display: "flex", flexDirection: "column", height: "100%", justifyContent: "center" }}>
-            <Box sx={{ position: "relative", width: "100%", height: 150 }}>
+          <Box sx={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", height: "100%", mt: 1 }}>
+            {/* Left: Symmetrical Donut */}
+            <Box sx={{ position: "relative", width: "52%", height: 140 }}>
               <PremiumPieChart
                 data={byLocation}
                 colors={CHART_COLORS.slice(4).concat(CHART_COLORS.slice(0, 4))}
@@ -503,18 +501,82 @@ export default function ReportsPage() {
                 outerRadius="80%"
                 paddingAngle={4}
                 cornerRadius={4}
-                centerIcon={<FaMapMarkerAlt size={20} />}
+                centerIcon={<FaMapMarkerAlt size={16} />}
                 activeIndex={activeLocationIdx}
                 setActiveIndex={setActiveLocationIdx}
               />
             </Box>
-            {byLocation.length > 0 ? (
-              <CustomPieLegend data={byLocation} colors={CHART_COLORS.slice(4).concat(CHART_COLORS.slice(0, 4))} />
-            ) : (
-              <Typography sx={{ fontSize: "9px", fontWeight: 700, color: "#cbd5e1", textAlign: "center", mt: 1.5, textTransform: "uppercase", letterSpacing: "0.02em" }}>
-                No Locations Registered
-              </Typography>
-            )}
+            {/* Right: Scrollable Legend Column */}
+            <Box sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 0.5,
+              width: "48%",
+              pr: 0.5,
+              maxHeight: 140,
+              overflowY: "auto",
+              "&::-webkit-scrollbar": {
+                width: "4px"
+              },
+              "&::-webkit-scrollbar-track": {
+                background: "transparent"
+              },
+              "&::-webkit-scrollbar-thumb": {
+                background: "#cbd5e1",
+                borderRadius: "10px"
+              },
+              "&::-webkit-scrollbar-thumb:hover": {
+                background: "#94a3b8"
+              }
+            }}>
+              {byLocation.length > 0 ? (
+                byLocation.map((item, index) => {
+                  const locationColors = CHART_COLORS.slice(4).concat(CHART_COLORS.slice(0, 4));
+                  const total = byLocation.reduce((sum, current) => sum + current.value, 0);
+                  const percent = total > 0 ? Math.round((item.value / total) * 100) : 0;
+                  const isActive = activeLocationIdx === index;
+                  return (
+                    <Box
+                      key={item.name}
+                      onMouseEnter={() => setActiveLocationIdx(index)}
+                      onMouseLeave={() => setActiveLocationIdx(null)}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.75,
+                        p: "4px 8px",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        transition: "all 150ms ease",
+                        bgcolor: isActive ? "rgba(79, 70, 229, 0.06)" : "transparent",
+                        border: isActive ? "1px solid rgba(79, 70, 229, 0.15)" : "1px solid transparent"
+                      }}
+                    >
+                      <Box sx={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: "50%",
+                        bgcolor: locationColors[index % locationColors.length],
+                        boxShadow: isActive ? `0 0 6px ${locationColors[index % locationColors.length]}` : "none",
+                        flexShrink: 0
+                      }} />
+                      <Box sx={{ minWidth: 0, flex: 1, lineHeight: 1.15 }}>
+                        <Typography noWrap sx={{ fontSize: "11px", fontWeight: isActive ? 800 : 700, color: isActive ? "#0f172a" : "#475569" }}>
+                          {item.name}
+                        </Typography>
+                        <Typography sx={{ fontSize: "9px", fontWeight: 600, color: "#94a3b8" }}>
+                          {item.value} ({percent}%)
+                        </Typography>
+                      </Box>
+                    </Box>
+                  );
+                })
+              ) : (
+                <Typography sx={{ fontSize: "9px", fontWeight: 700, color: "#cbd5e1", textAlign: "center", textTransform: "uppercase" }}>
+                  No Locations
+                </Typography>
+              )}
+            </Box>
           </Box>
         </PremiumCard>
       </Box>

@@ -33,7 +33,7 @@ export default function UserDetailPage() {
       try {
         const res = await getUserById(id);
         setData(res.data ?? res);
-      } catch (e) {
+      } catch {
         toast.error("Failed to load user details");
         navigate("/home/users");
       } finally {

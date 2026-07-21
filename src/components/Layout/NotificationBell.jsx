@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import {
@@ -211,7 +211,9 @@ export const NotificationBell = () => {
   useEffect(() => {
     if (!isLoggedIn) return;
 
-    fetchNotifications(true);
+    const timer = setTimeout(() => {
+      fetchNotifications(true);
+    }, 0);
 
     const baseUrl = import.meta.env.VITE_BASE_URL || "http://localhost:8080";
     const wsProto = baseUrl.startsWith("https") ? "wss" : "ws";
@@ -367,12 +369,13 @@ export const NotificationBell = () => {
         ws.onclose = null;
         ws.close();
       }
+      clearTimeout(timer);
       clearTimeout(reconnectTimeout);
       if (fallbackInterval) {
         clearInterval(fallbackInterval);
       }
     };
-  }, [isLoggedIn, userEmail, userName]);
+  }, [isLoggedIn, userEmail, userName, navigate]);
 
   const handleNotifClick = (event) => {
     setNotifAnchorEl(event.currentTarget);

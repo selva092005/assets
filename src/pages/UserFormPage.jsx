@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useSelector } from "react-redux";
 import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -15,8 +14,8 @@ import {
 } from "react-icons/fa";
 import { MdManageAccounts } from "react-icons/md";
 import toast from "../utils/toast.jsx";
-import { inputSx, selectSx, primaryBtnSx, outlinedBtnSx, COLORS } from "../theme/tokens";
-import { required, isValidEmail, isStrongPassword, extractFieldErrors } from "../utils/validate";
+import { primaryBtnSx, outlinedBtnSx, COLORS } from "../theme/tokens";
+import { isValidEmail, isStrongPassword, extractFieldErrors } from "../utils/validate";
 import { addUser, updateUser, getUserById } from "../services/users_service";
 import { FormTextField, FormSelect } from "../components/FormFields";
 
@@ -43,10 +42,7 @@ function Section({ icon, title, index }) {
   );
 }
 
-const anim = (i) => ({
-  animation: `fIn .38s cubic-bezier(.22,1,.36,1) ${60 + i * 40}ms both`,
-  "@keyframes fIn": { from: { opacity: 0, transform: "translateY(10px)" }, to: { opacity: 1, transform: "translateY(0)" } },
-});
+
 
 const adorn = (icon) => (
   <InputAdornment position="start">
@@ -58,7 +54,7 @@ export default function UserFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { page, search } = useSelector((s) => s.users);
+
   const isEdit = !!id;
 
   const [saving, setSaving] = useState(false);

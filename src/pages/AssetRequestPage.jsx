@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { useSelector } from "react-redux";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import {
@@ -14,11 +14,12 @@ import { FaTimes, FaSearch, FaEye, FaPlus, FaCheck, FaBan, FaHourglassHalf, FaWr
 import toast from "../utils/toast.jsx";
 
 import { createRequest, getRequests, updateRequestStatus, getRequestOverview, uploadFile } from "../services/request_service";
-import { getAssets, getAssetTypes } from "../services/assets_service";
+import { getAssetTypes } from "../services/assets_service";
 import { getAllAllocations } from "../services/allocation_service";
 import PageHeader from "../components/common/PageHeader";
 import TableCard from "../components/common/TableCard";
 import TablePagination from "../components/common/TablePagination";
+import PremiumDataGrid from "../components/common/PremiumDataGrid";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import ActionBtn from "../components/common/ActionBtn";
 import StatCard from "../components/common/StatCard";
@@ -29,7 +30,6 @@ import SkeletonLoader from "../components/common/SkeletonLoader";
 import { FormTextField, FormSelect } from "../components/FormFields";
 
 import { COLORS, outlinedBtnSx, primaryBtnSx, selectSx, premiumDialogPaperSx, premiumDialogTitleSx, searchFieldSx, resetBtnSx } from "../theme/tokens";
-import { required } from "../utils/validate";
 
 const REQUEST_TYPES = ["NEW_ASSET", "REPAIR", "REPLACE", "LOST", "RETURN"];
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH"];
@@ -43,7 +43,7 @@ export default function AssetRequestPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [page, setPage] = useState(0);
-  const [showCount, setShowCount] = useState(10);
+  const [showCount] = useState(10);
 
   const [requestOpen, setRequestOpen] = useState(false);
   const [respondOpen, setRespondOpen] = useState(false);
@@ -52,7 +52,6 @@ export default function AssetRequestPage() {
   const [selectedFile, setSelectedFile] = useState(null);
 
   const [assetAnchor, setAssetAnchor] = useState(null);
-  const [assetSearch, setAssetSearch] = useState("");
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null); // 'approve' | 'reject' | 'progress' | 'resolve'
@@ -60,7 +59,7 @@ export default function AssetRequestPage() {
   const actionCostRef = useRef("");
 
   // ── Queries ──────────────────────────────────────────────────────────────
-  const { data: requestPage = { content: [], totalElements: 0 }, isLoading: loading, isError, error, refetch } = useQuery({
+  const { data: requestPage = { content: [], totalElements: 0 }, isLoading: loading } = useQuery({
     queryKey: ["requests", searchInput, statusFilter, typeFilter, page, showCount],
     queryFn: async () => {
       const params = {
@@ -110,7 +109,6 @@ export default function AssetRequestPage() {
   });
 
   const formRequestType = watch("requestType");
-  const formAssetId = watch("assetId");
 
   const openRequestModal = () => {
     reset({
@@ -195,6 +193,91 @@ export default function AssetRequestPage() {
       setSaving(false);
     }
   };
+
+  const columns = [
+    {
+      field: "index",
+      headerName: "#",
+      fontFamily: "monospace",
+      color: COLORS.textFaint,
+      fontWeight: 700,
+      fontSize: 10,
+      renderCell: (row, index) => page * showCount + index + 1,
+    },
+    {
+      field: "requestType",
+      headerName: "Type",
+      sortable: true,
+      fontWeight: 700,
+      color: COLORS.primary,
+      fontSize: 11.5,
+      renderCell: (row) => row.requestType?.replace("_", " "),
+    },
+    {
+      field: "requestedBy",
+      headerName: "Requester",
+      sortable: true,
+      fontSize: 11,
+    },
+    {
+      field: "assetName",
+      headerName: "Asset/Category",
+      sortable: true,
+      renderCell: (row) => {
+        return row.assetName ? (
+          <Box>
+            <Typography sx={{ fontSize: 11, fontWeight: 600 }}>{row.assetName}</Typography>
+            <Typography sx={{ fontSize: 9.5, color: "#64748b" }}>{row.assetCode}</Typography>
+          </Box>
+        ) : (
+          row.typeName || "—"
+        );
+      },
+    },
+    {
+      field: "priority",
+      headerName: "Priority",
+      sortable: true,
+      renderCell: (row) => (
+        <Chip
+          label={row.priority}
+          size="small"
+          sx={{
+            height: 16,
+            fontSize: 9,
+            bgcolor: row.priority === "HIGH" ? "#fee2e2" : row.priority === "MEDIUM" ? "#fef3c7" : "#f1f5f9",
+            color: row.priority === "HIGH" ? "#ef4444" : row.priority === "MEDIUM" ? "#d97706" : "#64748b",
+          }}
+        />
+      ),
+    },
+    {
+      field: "status",
+      headerName: "Status",
+      sortable: true,
+      renderCell: (row) => <StatusBadge status={row.status} />,
+    },
+    {
+      field: "requestDate",
+      headerName: "Request Date",
+      sortable: true,
+      color: COLORS.textMuted,
+      fontSize: 11,
+    },
+    {
+      field: "actions",
+      headerName: "Actions",
+      renderCell: (row) => (
+        <ActionBtn
+          title={isAdminOrManager ? "Review & Respond" : "View Details"}
+          color={isAdminOrManager ? "#4f46e5" : "#3b82f6"}
+          onClick={() => openRespondModal(row)}
+        >
+          <FaEye size={12} />
+        </ActionBtn>
+      ),
+    },
+  ];
 
   if (loading) {
     return <SkeletonLoader variant="list" statCount={4} columnCount={8} />;
@@ -309,72 +392,22 @@ export default function AssetRequestPage() {
 
       {/* Requests Table */}
       <TableCard>
-        {listData.length === 0 ? (
-          <EmptyState icon={FaTools} label="No request records found." />
-        ) : (
-          <Box sx={{ overflowX: "auto" }}>
-            <Table size="small" sx={{ minWidth: 800 }}>
-              <TableHead>
-                <TableRow>
-                  {["#", "Type", "Requester", "Asset/Category", "Priority", "Status", "Request Date", "Actions"].map((h) => (
-                    <TableCell key={h} sx={{ fontWeight: 700, fontSize: 11, color: "#64748b", background: "#f8fafc" }}>
-                      {h}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {listData.map((row, index) => (
-                  <TableRow key={row.requestId} sx={{ "&:hover": { bgcolor: "#f1f5f9" } }}>
-                    <TableCell sx={{ fontSize: 11 }}>{page * showCount + index + 1}</TableCell>
-                    <TableCell sx={{ fontSize: 11.5, fontWeight: 700, color: COLORS.primary }}>
-                      {row.requestType?.replace("_", " ")}
-                    </TableCell>
-                    <TableCell sx={{ fontSize: 11 }}>{row.requestedBy}</TableCell>
-                    <TableCell sx={{ fontSize: 11 }}>
-                      {row.assetName ? (
-                        <Box>
-                          <Typography sx={{ fontSize: 11, fontWeight: 600 }}>{row.assetName}</Typography>
-                          <Typography sx={{ fontSize: 9.5, color: "#64748b" }}>{row.assetCode}</Typography>
-                        </Box>
-                      ) : (
-                        row.typeName || "—"
-                      )}
-                    </TableCell>
-                    <TableCell sx={{ fontSize: 11 }}>
-                      <Chip
-                        label={row.priority}
-                        size="small"
-                        sx={{
-                          height: 16,
-                          fontSize: 9,
-                          bgcolor: row.priority === "HIGH" ? "#fee2e2" : row.priority === "MEDIUM" ? "#fef3c7" : "#f1f5f9",
-                          color: row.priority === "HIGH" ? "#ef4444" : row.priority === "MEDIUM" ? "#d97706" : "#64748b"
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell sx={{ fontSize: 11 }}><StatusBadge status={row.status} /></TableCell>
-                    <TableCell sx={{ fontSize: 11, color: COLORS.textMuted }}>{row.requestDate}</TableCell>
-                    <TableCell sx={{ py: 0.5 }}>
-                      <ActionBtn
-                        title={isAdminOrManager ? "Review & Respond" : "View Details"}
-                        color={isAdminOrManager ? "#4f46e5" : "#3b82f6"}
-                        onClick={() => openRespondModal(row)}
-                      >
-                        <FaEye size={12} />
-                      </ActionBtn>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <TablePagination
-              page={page}
-              totalPages={Math.ceil(totalElements / showCount) || 1}
-              onPageChange={setPage}
-            />
-          </Box>
-        )}
+        <Box sx={{ overflowX: "auto" }}>
+          <PremiumDataGrid
+            columns={columns}
+            rows={listData}
+            loading={false}
+            rowIdField="requestId"
+            page={page}
+            pageSize={showCount}
+            emptyMessage={<EmptyState icon={FaTools} label="No request records found." />}
+          />
+          <TablePagination
+            page={page}
+            totalPages={Math.ceil(totalElements / showCount) || 1}
+            onPageChange={setPage}
+          />
+        </Box>
       </TableCard>
 
       <Dialog
@@ -430,7 +463,7 @@ export default function AssetRequestPage() {
                   <Popover
                     open={Boolean(assetAnchor)}
                     anchorEl={assetAnchor}
-                    onClose={() => { setAssetAnchor(null); setAssetSearch(""); }}
+                    onClose={() => { setAssetAnchor(null); }}
                     anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
                     slotProps={{ paper: { sx: { width: assetAnchor?.offsetWidth, maxHeight: 200 } } }}
                   >

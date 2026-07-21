@@ -201,7 +201,7 @@ export default function Login() {
           }
         }, remainingDelay);
       }
-    } catch (err) {
+    } catch {
       clearTimeout(coldStartTimer);
       setIsWaitingForColdStart(false);
       setIsZooming(false);
@@ -259,7 +259,7 @@ export default function Login() {
           toast.error(errMsg);
         }, remainingDelay);
       }
-    } catch (err) {
+    } catch {
       clearTimeout(coldStartTimer);
       setIsWaitingForColdStart(false);
       setIsZooming(false);
@@ -380,8 +380,8 @@ export default function Login() {
               borderRadius: "16px",
               boxShadow: "0 1px 3px rgba(15, 23, 42, 0.02), 0 10px 20px -5px rgba(15, 23, 42, 0.03), 0 30px 60px -15px rgba(15, 23, 42, 0.06)",
               overflow: "visible",
-              p: 3.5,
-              pt: 5,
+              p: { xs: 2.25, sm: 3.5 },
+              pt: { xs: 4, sm: 5 },
               transition: "all 300ms cubic-bezier(0.34, 1.56, 0.64, 1)",
               "&:hover": {
                 transform: "translateY(-4px)",

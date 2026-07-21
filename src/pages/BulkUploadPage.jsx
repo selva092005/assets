@@ -121,7 +121,7 @@ const USER_SPREADSHEET_COLUMNS = [
 export default function BulkUploadPage({ mode = "assets" }) {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
-  const columns = mode === "users" ? USER_SPREADSHEET_COLUMNS : SPREADSHEET_COLUMNS;
+
 
   const [wizardStep, setWizardStep] = useState(1);
   const [file, setFile] = useState(null);
@@ -133,7 +133,7 @@ export default function BulkUploadPage({ mode = "assets" }) {
   const [dragOver, setDragOver] = useState(false);
   const [filterType, setFilterType] = useState("errors");
   const [errPage, setErrPage] = useState(0);
-  const [showAdvancedMapping, setShowAdvancedMapping] = useState(false);
+
 
   /* ── Upload History States ── */
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -145,7 +145,7 @@ export default function BulkUploadPage({ mode = "assets" }) {
     try {
       const data = await getBulkUploadHistory();
       setUploadHistory(data || []);
-    } catch (e) {
+    } catch {
       toast.error("Failed to load upload history");
     } finally {
       setHistoryLoading(false);
@@ -157,35 +157,7 @@ export default function BulkUploadPage({ mode = "assets" }) {
     fetchHistory();
   };
 
-  /* ── Interactive Mapping States ── */
-  const [columnMapping, setColumnMapping] = useState(() =>
-    mode === "users"
-      ? {
-        userName: "userName*",
-        userEmail: "userEmail*",
-        userPassword: "userPassword*",
-        userRole: "userRole* (ADMIN/MANAGER/USER)",
-        employeeId: "employeeId",
-        department: "department",
-        phoneNumber: "phoneNumber",
-        designation: "designation"
-      }
-      : {
-        name: "assetName*",
-        serial: "serialNumber",
-        brand: "brand",
-        model: "model",
-        purchaseDate: "purchaseDate* (YYYY-MM-DD)",
-        warrantyExpiry: "warrantyExpiry (YYYY-MM-DD)",
-        cost: "cost*",
-        status: "status*",
-        condition: "assetCondition",
-        notes: "notes",
-        typeName: "typeName*",
-        locationName: "locationName*",
-        companyName: "companyName*"
-      }
-  );
+
 
   const handleFile = (f) => {
     if (!f) return;
@@ -215,7 +187,7 @@ export default function BulkUploadPage({ mode = "assets" }) {
               if (val instanceof Date) {
                 try {
                   return val.toISOString().split('T')[0];
-                } catch (ex) {
+                } catch {
                   return String(val);
                 }
               }
@@ -230,7 +202,7 @@ export default function BulkUploadPage({ mode = "assets" }) {
           setParsedRows([]);
         }
         setWizardStep(2);
-      } catch (err) {
+      } catch {
         toast.error("Failed to parse Excel file for preview");
         setFile(null);
       } finally {
@@ -311,7 +283,7 @@ export default function BulkUploadPage({ mode = "assets" }) {
       } else {
         await downloadFailedRowsExcel(file);
       }
-    } catch (err) {
+    } catch {
       toast.error("Failed to download failed rows report.");
     }
   };
