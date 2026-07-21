@@ -324,10 +324,10 @@ export default function AssetMaintenancePage() {
         {/* Right Side: Actions */}
         <Box sx={{
           display: "flex",
-          gap: 1.5,
+          gap: { xs: 0.75, sm: 1.5 },
           alignItems: "center",
-          flexWrap: "wrap",
-          justifyContent: { xs: "flex-end", md: "flex-end" },
+          flexWrap: "nowrap",
+          justifyContent: "flex-end",
           flex: { xs: "1 1 100%", md: "auto" },
           mt: { xs: 0.5, md: 0 },
           order: { xs: 1, md: 2 }
@@ -336,7 +336,12 @@ export default function AssetMaintenancePage() {
             variant="contained"
             startIcon={<FaPlus size={10} />}
             onClick={() => openMaintenanceModal()}
-            sx={primaryBtnSx}
+            sx={{
+              ...primaryBtnSx,
+              fontSize: { xs: 9.5, sm: 11.5 },
+              px: { xs: 0.75, sm: 2 },
+              flexShrink: 0
+            }}
           >
             Log Maintenance
           </Button>

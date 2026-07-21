@@ -890,16 +890,16 @@ export default function AssetAllocationPage() {
         {/* Right Side: Actions */}
         <Box sx={{
           display: "flex",
-          gap: 1.5,
+          gap: { xs: 0.75, sm: 1.5 },
           alignItems: "center",
-          flexWrap: "wrap",
-          justifyContent: { xs: "flex-end", md: "flex-end" },
+          flexWrap: "nowrap",
+          justifyContent: "flex-end",
           flex: { xs: "1 1 100%", md: "auto" },
           mt: { xs: 0.5, md: 0 },
           order: { xs: 1, md: 2 }
         }}>
           {/* Show count */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted, flexShrink: 0 }}>
             Showing
             <Select
               value={showCount}
@@ -913,41 +913,62 @@ export default function AssetAllocationPage() {
             </Select>
           </Box>
 
+          {canWrite && selectedIds.length > 0 && (
+            <Button
+              variant="contained"
+              color="error"
+              startIcon={<FaUndo size={11} />}
+              onClick={() => {
+                setBulkReturnDate(new Date().toISOString().split("T")[0]);
+                setBulkReturnDateError("");
+                setBulkCondition("GOOD");
+                setBulkReturnOpen(true);
+              }}
+              sx={{
+                ...primaryBtnSx,
+                background: "#ef4444",
+                "&:hover": { background: "#dc2626" },
+                fontSize: { xs: 9.5, sm: 11.5 },
+                px: { xs: 0.75, sm: 2 },
+                flexShrink: 0
+              }}
+            >
+              Return Selected ({selectedIds.length})
+            </Button>
+          )}
+
           {canWrite && (
-            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
-              {selectedIds.length > 0 && (
-                <Button
-                  variant="contained"
-                  color="error"
-                  startIcon={<FaUndo size={11} />}
-                  onClick={() => {
-                    setBulkReturnDate(new Date().toISOString().split("T")[0]);
-                    setBulkReturnDateError("");
-                    setBulkCondition("GOOD");
-                    setBulkReturnOpen(true);
-                  }}
-                  sx={{ ...primaryBtnSx, background: "#ef4444", "&:hover": { background: "#dc2626" } }}
-                >
-                  Return Selected ({selectedIds.length})
-                </Button>
-              )}
-              <Button
-                variant="outlined"
-                startIcon={<FaFileExport size={11} />}
-                onClick={handleExportExcel}
-                sx={outlinedBtnSx}
-              >
-                Export
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<FaPlus size={11} />}
-                onClick={() => openAllocate(null)}
-                sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
-              >
-                Allocate Asset
-              </Button>
-            </Box>
+            <Button
+              variant="outlined"
+              startIcon={<FaFileExport size={11} />}
+              onClick={handleExportExcel}
+              sx={{
+                ...outlinedBtnSx,
+                fontSize: { xs: 9.5, sm: 11.5 },
+                px: { xs: 0.75, sm: 1.5 },
+                flexShrink: 0
+              }}
+            >
+              Export
+            </Button>
+          )}
+
+          {canWrite && (
+            <Button
+              variant="contained"
+              startIcon={<FaPlus size={11} />}
+              onClick={() => openAllocate(null)}
+              sx={{
+                ...primaryBtnSx,
+                background: COLORS.primary,
+                "&:hover": { background: COLORS.primaryDark },
+                fontSize: { xs: 9.5, sm: 11.5 },
+                px: { xs: 0.75, sm: 2 },
+                flexShrink: 0
+              }}
+            >
+              Allocate Asset
+            </Button>
           )}
         </Box>
       </Box>

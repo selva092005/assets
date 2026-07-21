@@ -499,16 +499,16 @@ export default function AssetDisposalPage() {
         {/* Right Side: Actions */}
         <Box sx={{
           display: "flex",
-          gap: 1.5,
+          gap: { xs: 0.75, sm: 1.5 },
           alignItems: "center",
-          flexWrap: "wrap",
-          justifyContent: { xs: "flex-end", md: "flex-end" },
+          flexWrap: "nowrap",
+          justifyContent: "flex-end",
           flex: { xs: "1 1 100%", md: "auto" },
           mt: { xs: 0.5, md: 0 },
           order: { xs: 1, md: 2 }
         }}>
           {/* Show count */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted, flexShrink: 0 }}>
             Showing
             <Select
               value={showCount}
@@ -527,7 +527,12 @@ export default function AssetDisposalPage() {
             startIcon={exporting ? <CircularProgress size={11} color="inherit" /> : <FaFileExport size={11} />}
             onClick={handleExportExcel}
             disabled={exporting}
-            sx={outlinedBtnSx}
+            sx={{
+              ...outlinedBtnSx,
+              fontSize: { xs: 9.5, sm: 11.5 },
+              px: { xs: 0.75, sm: 1.5 },
+              flexShrink: 0
+            }}
           >
             Export
           </Button>
@@ -536,7 +541,15 @@ export default function AssetDisposalPage() {
               variant="contained"
               startIcon={<FaTrash size={11} />}
               onClick={openDispose}
-              sx={{ ...primaryBtnSx, background: "#c62828", borderColor: "#b71c1c", "&:hover": { background: "#b71c1c" } }}
+              sx={{
+                ...primaryBtnSx,
+                background: "#c62828",
+                borderColor: "#b71c1c",
+                "&:hover": { background: "#b71c1c" },
+                fontSize: { xs: 9.5, sm: 11.5 },
+                px: { xs: 0.75, sm: 2 },
+                flexShrink: 0
+              }}
             >
               Dispose Asset
             </Button>

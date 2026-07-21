@@ -317,7 +317,7 @@ export default function AssetRequestPage() {
       {/* Actions and Filters bar placed below cards */}
       {!isAdminOrManager && (
         <Box sx={{
-          display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center", justifyContent: { xs: "flex-end", md: "flex-end" },
+          display: "flex", gap: { xs: 0.75, sm: 1 }, flexWrap: "nowrap", alignItems: "center", justifyContent: "flex-end",
           width: "100%", mb: 1,
           animation: "fadeLeft 400ms cubic-bezier(0.16, 1, 0.3, 1) both",
           animationDelay: "50ms",
@@ -330,7 +330,12 @@ export default function AssetRequestPage() {
             variant="contained"
             startIcon={<FaPlus size={10} />}
             onClick={openRequestModal}
-            sx={primaryBtnSx}
+            sx={{
+              ...primaryBtnSx,
+              fontSize: { xs: 9.5, sm: 11.5 },
+              px: { xs: 0.75, sm: 2 },
+              flexShrink: 0
+            }}
           >
             New Request
           </Button>

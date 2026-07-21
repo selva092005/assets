@@ -391,12 +391,13 @@ export default function AssetAudit() {
         </Box>
 
         {/* Right Side: Actions */}
+        {/* Right Side: Actions */}
         <Box sx={{
           display: "flex",
-          gap: 1.5,
+          gap: { xs: 0.75, sm: 1.5 },
           alignItems: "center",
-          flexWrap: "wrap",
-          justifyContent: { xs: "flex-end", md: "flex-end" },
+          flexWrap: "nowrap",
+          justifyContent: "flex-end",
           flex: { xs: "1 1 100%", md: "auto" },
           mt: { xs: 0.5, md: 0 },
           order: { xs: 1, md: 2 }
@@ -406,7 +407,12 @@ export default function AssetAudit() {
             startIcon={<FaFileExcel size={12} />}
             onClick={handleExportAudits}
             disabled={exporting}
-            sx={outlinedBtnSx}
+            sx={{
+              ...outlinedBtnSx,
+              fontSize: { xs: 9.5, sm: 11.5 },
+              px: { xs: 0.75, sm: 1.5 },
+              flexShrink: 0
+            }}
           >
             Export Excel
           </Button>
@@ -414,7 +420,12 @@ export default function AssetAudit() {
             variant="contained"
             startIcon={<FaClipboardCheck size={12} />}
             onClick={() => openAuditModal()}
-            sx={primaryBtnSx}
+            sx={{
+              ...primaryBtnSx,
+              fontSize: { xs: 9.5, sm: 11.5 },
+              px: { xs: 0.75, sm: 2 },
+              flexShrink: 0
+            }}
           >
             Start Audit
           </Button>

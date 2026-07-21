@@ -490,16 +490,16 @@ export default function AssetsPage() {
         {/* Right Side: Actions */}
         <Box sx={{
           display: "flex",
-          gap: 1.5,
+          gap: { xs: 0.75, sm: 1.5 },
           alignItems: "center",
-          flexWrap: "wrap",
-          justifyContent: { xs: "flex-end", md: "flex-end" },
+          flexWrap: "nowrap",
+          justifyContent: "flex-end",
           flex: { xs: "1 1 100%", md: "auto" },
           mt: { xs: 0.5, md: 0 },
           order: { xs: 1, md: 2 }
         }}>
           {/* Show count */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted, flexShrink: 0 }}>
             Showing
             <Select
               value={showCount}
@@ -522,7 +522,12 @@ export default function AssetsPage() {
                   startIcon={exportLoading ? <CircularProgress size={11} /> : <FaFileExport size={11} />}
                   onClick={handleExport}
                   disabled={exportLoading}
-                  sx={outlinedBtnSx}
+                  sx={{
+                    ...outlinedBtnSx,
+                    fontSize: { xs: 9.5, sm: 11.5 },
+                    px: { xs: 0.75, sm: 1.5 },
+                    flexShrink: 0
+                  }}
                 >
                   Export
                 </Button>
@@ -536,7 +541,12 @@ export default function AssetsPage() {
               variant="outlined"
               startIcon={<FaUpload size={11} />}
               onClick={() => navigate("/home/assets/bulk-upload")}
-              sx={outlinedBtnSx}
+              sx={{
+                ...outlinedBtnSx,
+                fontSize: { xs: 9.5, sm: 11.5 },
+                px: { xs: 0.75, sm: 1.5 },
+                flexShrink: 0
+              }}
             >
               Bulk Upload
             </Button>
@@ -548,7 +558,14 @@ export default function AssetsPage() {
               variant="contained"
               startIcon={<FaPlus size={11} />}
               onClick={() => navigate("/home/assets/new")}
-              sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
+              sx={{
+                ...primaryBtnSx,
+                background: COLORS.primary,
+                "&:hover": { background: COLORS.primaryDark },
+                fontSize: { xs: 9.5, sm: 11.5 },
+                px: { xs: 0.75, sm: 2 },
+                flexShrink: 0
+              }}
             >
               Add New Asset
             </Button>

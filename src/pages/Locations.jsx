@@ -560,16 +560,16 @@ export default function Locations() {
         {/* Right Side: Actions */}
         <Box sx={{
           display: "flex",
-          gap: 1.5,
+          gap: { xs: 0.75, sm: 1.5 },
           alignItems: "center",
-          flexWrap: "wrap",
-          justifyContent: { xs: "flex-end", md: "flex-end" },
+          flexWrap: "nowrap",
+          justifyContent: "flex-end",
           flex: { xs: "1 1 100%", md: "auto" },
           mt: { xs: 0.5, md: 0 },
           order: { xs: 1, md: 2 }
         }}>
           {/* Show count */}
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 11, color: COLORS.textMuted, flexShrink: 0 }}>
             Showing
             <Select
               value={showCount}
@@ -588,7 +588,14 @@ export default function Locations() {
               variant="contained"
               startIcon={<FaPlus size={11} />}
               onClick={openAdd}
-              sx={{ ...primaryBtnSx, background: COLORS.primary, "&:hover": { background: COLORS.primaryDark } }}
+              sx={{
+                ...primaryBtnSx,
+                background: COLORS.primary,
+                "&:hover": { background: COLORS.primaryDark },
+                fontSize: { xs: 9.5, sm: 11.5 },
+                px: { xs: 0.75, sm: 2 },
+                flexShrink: 0
+              }}
             >
               Add Location
             </Button>
