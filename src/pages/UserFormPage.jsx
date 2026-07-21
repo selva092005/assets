@@ -356,21 +356,33 @@ export default function UserFormPage() {
 
           {/* ── Action bar ── */}
           <Box sx={{
-            display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 1.5, mt: 2, pt: 1.5,
+            display: "flex",
+            flexWrap: { xs: "wrap", sm: "nowrap" },
+            justifyContent: "flex-end",
+            alignItems: "center",
+            gap: 1.5,
+            mt: 2,
+            pt: 1.5,
             borderTop: `1px solid ${COLORS.borderLight}`,
             flexShrink: 0,
             animation: "barIn .4s ease .2s both",
             "@keyframes barIn": { from: { opacity: 0, transform: "translateY(10px)" }, to: { opacity: 1, transform: "translateY(0)" } },
           }}>
-            <Typography sx={{ fontSize: 11.5, color: COLORS.textFaint, flex: 1 }}>
+            <Typography sx={{
+              fontSize: 11.5,
+              color: COLORS.textFaint,
+              flex: { xs: "1 1 100%", sm: 1 },
+              mb: { xs: 1, sm: 0 },
+              textAlign: { xs: "center", sm: "left" }
+            }}>
               * Required fields must be filled before saving
             </Typography>
-            <Button variant="outlined" onClick={() => navigate("/home/users")} sx={outlinedBtnSx}>
+            <Button variant="outlined" onClick={() => navigate("/home/users")} sx={{ ...outlinedBtnSx, flex: { xs: 1, sm: "initial" } }}>
               Cancel
             </Button>
             <Button variant="contained" onClick={handleSubmit(onSubmit)} disabled={saving}
               startIcon={saving ? null : (isEdit ? <FaEdit size={12} /> : <FaCheckCircle size={12} />)}
-              sx={{ ...primaryBtnSx, minWidth: 130 }}>
+              sx={{ ...primaryBtnSx, minWidth: { xs: "auto", sm: 130 }, flex: { xs: 1, sm: "initial" } }}>
               {saving ? <CircularProgress size={16} sx={{ color: "#fff" }} /> : (isEdit ? "Update User" : "Save User")}
             </Button>
           </Box>

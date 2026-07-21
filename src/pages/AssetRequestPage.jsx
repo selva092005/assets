@@ -340,7 +340,7 @@ export default function AssetRequestPage() {
       {/* Filters Bar */}
       <Box sx={{
         display: "flex", gap: 1.5, mb: 2.5, flexWrap: "wrap", alignItems: "center",
-        justifyContent: { xs: "flex-end", md: "flex-start" },
+        justifyContent: { xs: "flex-start", md: "flex-start" },
         width: "100%"
       }}>
         <TextField
@@ -355,39 +355,47 @@ export default function AssetRequestPage() {
             minWidth: { xs: "100%", sm: 280 }
           }}
         />
-        <Select
-          size="small"
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
-          displayEmpty
-          sx={{ ...selectSx, minWidth: 150, flex: { xs: 1, sm: "initial" } }}
-        >
-          <MenuItem value="">All Statuses</MenuItem>
-          {["PENDING", "IN_PROGRESS", "APPROVED", "REJECTED", "RESOLVED"].map(s => (
-            <MenuItem key={s} value={s} sx={{ fontSize: 12 }}>{s}</MenuItem>
-          ))}
-        </Select>
-        <Select
-          size="small"
-          value={typeFilter}
-          onChange={(e) => { setTypeFilter(e.target.value); setPage(0); }}
-          displayEmpty
-          sx={{ ...selectSx, minWidth: 150, flex: { xs: 1, sm: "initial" } }}
-        >
-          <MenuItem value="">All Request Types</MenuItem>
-          {REQUEST_TYPES.map(t => (
-            <MenuItem key={t} value={t} sx={{ fontSize: 12 }}>{t.replace("_", " ")}</MenuItem>
-          ))}
-        </Select>
-
-        <Tooltip title="Reset filters">
-          <IconButton
-            onClick={() => { setSearchInput(""); setStatusFilter(""); setTypeFilter(""); setPage(0); }}
-            sx={resetBtnSx}
+        <Box sx={{
+          display: "flex",
+          gap: 1.5,
+          alignItems: "center",
+          flex: { xs: 1, sm: "initial" },
+          width: { xs: "100%", sm: "auto" }
+        }}>
+          <Select
+            size="small"
+            value={statusFilter}
+            onChange={(e) => { setStatusFilter(e.target.value); setPage(0); }}
+            displayEmpty
+            sx={{ ...selectSx, minWidth: { xs: 110, sm: 150 }, flex: 1 }}
           >
-            <FaSyncAlt size={11} />
-          </IconButton>
-        </Tooltip>
+            <MenuItem value="">All Statuses</MenuItem>
+            {["PENDING", "IN_PROGRESS", "APPROVED", "REJECTED", "RESOLVED"].map(s => (
+              <MenuItem key={s} value={s} sx={{ fontSize: 12 }}>{s}</MenuItem>
+            ))}
+          </Select>
+          <Select
+            size="small"
+            value={typeFilter}
+            onChange={(e) => { setTypeFilter(e.target.value); setPage(0); }}
+            displayEmpty
+            sx={{ ...selectSx, minWidth: { xs: 110, sm: 150 }, flex: 1 }}
+          >
+            <MenuItem value="">All Request Types</MenuItem>
+            {REQUEST_TYPES.map(t => (
+              <MenuItem key={t} value={t} sx={{ fontSize: 12 }}>{t.replace("_", " ")}</MenuItem>
+            ))}
+          </Select>
+
+          <Tooltip title="Reset filters">
+            <IconButton
+              onClick={() => { setSearchInput(""); setStatusFilter(""); setTypeFilter(""); setPage(0); }}
+              sx={{ ...resetBtnSx, flexShrink: 0 }}
+            >
+              <FaSyncAlt size={11} />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
 
       {/* Requests Table */}

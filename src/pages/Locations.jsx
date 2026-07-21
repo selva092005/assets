@@ -719,6 +719,7 @@ export default function Locations() {
                   rules={{ required: "Location Type is required" }}
                   label="Location Type *"
                   disabled={saving}
+                  labelSx={{ minHeight: { xs: 34, sm: "auto" } }}
                 >
                   {[
                     { value: "HQ", label: "HQ" },
@@ -738,6 +739,7 @@ export default function Locations() {
                   label="Site Custodian (Contact Person)"
                   placeholder="e.g. John Doe"
                   disabled={saving}
+                  labelSx={{ minHeight: { xs: 34, sm: "auto" } }}
                 />
               </Box>
 
