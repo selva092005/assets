@@ -53,6 +53,11 @@ export default function TablePagination({ page, totalPages, onPageChange }) {
         flexWrap: "wrap",
         gap: 1,
         background: "#ffffff",
+        position: "sticky",
+        left: 0,
+        width: "100%",
+        boxSizing: "border-box",
+        zIndex: 2, // Keep it above the table rows/borders
       }}
     >
       <Typography sx={{ fontSize: 10, fontWeight: 600, color: COLORS.textMuted }}>
