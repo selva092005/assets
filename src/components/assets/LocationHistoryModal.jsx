@@ -2,11 +2,11 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Box, Typography, CircularProgress,
 } from "@mui/material";
-import { FaTimes, FaHistory, FaMapMarkerAlt, FaArrowRight, FaUser } from "react-icons/fa";
+import { FaTimes, FaHistory, FaMapMarkerAlt, FaArrowRight, FaUser, FaCalendarAlt, FaHourglassHalf, FaCommentAlt } from "react-icons/fa";
 import { useEffect, useState } from "react";
 import { getAssetHistory } from "../../services/location_history_service";
 import { getAllocationsByAsset } from "../../services/allocation_service";
-import { COLORS, outlinedBtnSx } from "../../theme/tokens";
+import { COLORS, outlinedBtnSx, premiumDialogPaperSx } from "../../theme/tokens";
 import toast from "../../utils/toast.jsx";
 
 function formatDateTime(dt) {
@@ -69,7 +69,7 @@ export default function LocationHistoryModal({ open, asset, onClose }) {
       maxWidth="sm"
       fullWidth
       disableRestoreFocus
-      slotProps={{ paper: { sx: { borderRadius: "14px", boxShadow: "0 8px 32px rgba(0,0,0,0.10)", overflow: "hidden", p: 0 } } }}
+      slotProps={{ paper: { sx: premiumDialogPaperSx } }}
     >
       {/* Title */}
       <DialogTitle
@@ -101,7 +101,16 @@ export default function LocationHistoryModal({ open, asset, onClose }) {
       </DialogTitle>
 
       {/* Tabs Selector */}
-      <Box sx={{ display: "flex", gap: 1, px: 2.5, py: 1.25, borderBottom: `1px solid ${COLORS.borderLight}`, background: "#f8fafc" }}>
+      <Box sx={{
+        display: "flex",
+        flexDirection: { xs: "column", sm: "row" },
+        alignItems: "stretch",
+        gap: 1,
+        px: 2.5,
+        py: 1.25,
+        borderBottom: `1px solid ${COLORS.borderLight}`,
+        background: "#f8fafc"
+      }}>
         <Button
           size="small"
           variant={activeTab === "location" ? "contained" : "text"}
@@ -113,6 +122,7 @@ export default function LocationHistoryModal({ open, asset, onClose }) {
             borderRadius: "20px",
             px: 2,
             py: 0.5,
+            width: { xs: "100%", sm: "auto" },
             boxShadow: activeTab === "location" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
             bgcolor: activeTab === "location" ? COLORS.primary : "transparent",
             color: activeTab === "location" ? "#fff" : COLORS.textMuted,
@@ -132,6 +142,7 @@ export default function LocationHistoryModal({ open, asset, onClose }) {
             borderRadius: "20px",
             px: 2,
             py: 0.5,
+            width: { xs: "100%", sm: "auto" },
             boxShadow: activeTab === "allocation" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
             bgcolor: activeTab === "allocation" ? COLORS.primary : "transparent",
             color: activeTab === "allocation" ? "#fff" : COLORS.textMuted,
@@ -142,18 +153,18 @@ export default function LocationHistoryModal({ open, asset, onClose }) {
         </Button>
       </Box>
 
-      <DialogContent sx={{ p: 0, background: COLORS.bg, maxHeight: 480, overflowY: "auto" }}>
+      <DialogContent sx={{ p: 0, background: COLORS.bg, maxHeight: { xs: "none", sm: 480 }, overflowY: "auto", flexGrow: 1, display: "flex", flexDirection: "column" }}>
         {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+          <Box sx={{ display: "flex", justifyContent: "center", py: 6, margin: { xs: "auto 0", sm: 0 }, width: "100%" }}>
             <CircularProgress size={28} />
           </Box>
         ) : activeTab === "location" ? (
           history.length === 0 ? (
-            <Box sx={{ textAlign: "center", py: 6, color: COLORS.textFaint, fontSize: 13 }}>
+            <Box sx={{ textAlign: "center", py: 6, color: COLORS.textFaint, fontSize: 13, margin: { xs: "auto 0", sm: 0 }, width: "100%" }}>
               No location history found for this asset.
             </Box>
           ) : (
-            <Box sx={{ px: 2.5, py: 2, display: "flex", flexDirection: "column", gap: 0 }}>
+            <Box sx={{ px: 2.5, py: 2, display: "flex", flexDirection: "column", gap: 0, margin: { xs: "auto 0", sm: 0 }, width: "100%" }}>
               {history.map((h, idx) => (
                 <Box
                   key={h.historyId}
@@ -187,38 +198,42 @@ export default function LocationHistoryModal({ open, asset, onClose }) {
                   <Box sx={{
                     flex: 1, mb: idx < history.length - 1 ? 1.5 : 0,
                     background: COLORS.surface,
-                    border: `1px solid ${idx === 0 ? COLORS.primaryBorder : COLORS.borderLight}`,
-                    borderRadius: "10px",
+                    border: `1px solid ${COLORS.borderLight}`,
+                    borderLeft: idx === 0 ? "4px solid #10b981" : "4px solid #cbd5e1",
+                    borderRadius: "8px",
                     px: 2, py: 1.5,
                   }}>
                     {/* From → To */}
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap", mb: 0.75 }}>
-                      <Typography sx={{ fontSize: 12, color: COLORS.textFaint, fontWeight: 500 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap", mb: 1 }}>
+                      <Box sx={{ display: "inline-block", px: 0.75, py: 0.25, bgcolor: "#f1f5f9", color: "#475569", borderRadius: "4px", fontSize: 10.5, fontWeight: 600 }}>
                         {h.fromLocation || "—"}
-                      </Typography>
+                      </Box>
                       <FaArrowRight size={10} color={COLORS.primary} />
-                      <Typography sx={{ fontSize: 13, fontWeight: 600, color: COLORS.text }}>
+                      <Box sx={{ display: "inline-block", px: 0.75, py: 0.25, bgcolor: idx === 0 ? "#e0f2fe" : "#f1f5f9", color: idx === 0 ? "#0369a1" : "#475569", borderRadius: "4px", fontSize: 10.5, fontWeight: 700 }}>
                         {h.toLocation}
-                      </Typography>
+                      </Box>
                       {idx === 0 && (
-                        <Box sx={{ ml: "auto", px: 1, py: "2px", background: "#e8f5e9", borderRadius: "20px" }}>
-                          <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#2e7d32" }}>Current</Typography>
+                        <Box sx={{ ml: "auto", px: 1, py: "2px", background: "#dcfce7", border: "1px solid #bbf7d0", borderRadius: "20px" }}>
+                          <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: "#15803d" }}>Current</Typography>
                         </Box>
                       )}
                     </Box>
 
                     {/* Meta row */}
                     <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                      <Typography sx={{ fontSize: 11, color: COLORS.textFaint }}>
-                        👤 {h.movedBy || "—"}
-                      </Typography>
-                      <Typography sx={{ fontSize: 11, color: COLORS.textFaint }}>
-                        📅 {formatDateTime(h.movedAt)}
-                      </Typography>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 10.5, color: COLORS.textMuted }}>
+                        <FaUser size={10} color="#94a3b8" />
+                        {h.movedBy || "—"}
+                      </Box>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 10.5, color: COLORS.textMuted }}>
+                        <FaCalendarAlt size={10} color="#94a3b8" />
+                        {formatDateTime(h.movedAt)}
+                      </Box>
                       {h.reason && (
-                        <Typography sx={{ fontSize: 11, color: COLORS.textFaint }}>
-                          📝 {h.reason}
-                        </Typography>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 10.5, color: COLORS.textMuted }}>
+                          <FaCommentAlt size={10} color="#94a3b8" />
+                          {h.reason}
+                        </Box>
                       )}
                     </Box>
                   </Box>
@@ -227,11 +242,11 @@ export default function LocationHistoryModal({ open, asset, onClose }) {
             </Box>
           )
         ) : allocations.length === 0 ? (
-          <Box sx={{ textAlign: "center", py: 6, color: COLORS.textFaint, fontSize: 13 }}>
+          <Box sx={{ textAlign: "center", py: 6, color: COLORS.textFaint, fontSize: 13, margin: { xs: "auto 0", sm: 0 }, width: "100%" }}>
             No allocation history found for this asset.
           </Box>
         ) : (
-          <Box sx={{ px: 2.5, py: 2, display: "flex", flexDirection: "column", gap: 0 }}>
+          <Box sx={{ px: 2.5, py: 2, display: "flex", flexDirection: "column", gap: 0, margin: { xs: "auto 0", sm: 0 }, width: "100%" }}>
             {allocations.map((h, idx) => (
               <Box
                 key={h.allocationId}
@@ -265,51 +280,56 @@ export default function LocationHistoryModal({ open, asset, onClose }) {
                 <Box sx={{
                   flex: 1, mb: idx < allocations.length - 1 ? 1.5 : 0,
                   background: COLORS.surface,
-                  border: `1px solid ${h.status === "ACTIVE" ? COLORS.primaryBorder : COLORS.borderLight}`,
-                  borderRadius: "10px",
+                  border: `1px solid ${COLORS.borderLight}`,
+                  borderLeft: h.status === "ACTIVE" ? "4px solid #10b981" : "4px solid #cbd5e1",
+                  borderRadius: "8px",
                   px: 2, py: 1.5,
                 }}>
                   {/* Assigned to & status badge */}
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap", mb: 0.75 }}>
-                    <Typography sx={{ fontSize: 13, fontWeight: 600, color: COLORS.text }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flexWrap: "wrap", mb: 1 }}>
+                    <Typography sx={{ fontSize: 12.5, fontWeight: 700, color: COLORS.text }}>
                       Assigned to: {h.assignedTo || "—"}
                     </Typography>
                     <Box sx={{
                       ml: "auto", px: 1, py: "2px",
-                      background: h.status === "ACTIVE" ? "#e2f0d9" : "#f1f5f9",
-                      border: `1px solid ${h.status === "ACTIVE" ? "#a9d18e" : "#cbd5e1"}`,
+                      background: h.status === "ACTIVE" ? "#dcfce7" : "#f1f5f9",
+                      border: `1px solid ${h.status === "ACTIVE" ? "#bbf7d0" : "#e2e8f0"}`,
                       borderRadius: "20px"
                     }}>
-                      <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: h.status === "ACTIVE" ? "#385723" : "#475569" }}>
+                      <Typography sx={{ fontSize: 9, fontWeight: 700, color: h.status === "ACTIVE" ? "#15803d" : "#475569" }}>
                         {h.status || "—"}
                       </Typography>
                     </Box>
                   </Box>
 
                   {/* Details info */}
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 0.75 }}>
                     <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                      <Typography sx={{ fontSize: 11, color: COLORS.textFaint }}>
-                        👤 Assigned By: {h.assignedBy || "—"}
-                      </Typography>
-                      <Typography sx={{ fontSize: 11, color: COLORS.textFaint }}>
-                        📅 Allocation Date: {formatOnlyDate(h.assignedDate)}
-                      </Typography>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 10.5, color: COLORS.textMuted }}>
+                        <FaUser size={10} color="#94a3b8" />
+                        Assigned By: {h.assignedBy || "—"}
+                      </Box>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 10.5, color: COLORS.textMuted }}>
+                        <FaCalendarAlt size={10} color="#94a3b8" />
+                        Allocation Date: {formatOnlyDate(h.assignedDate)}
+                      </Box>
                     </Box>
                     <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                      <Typography sx={{ fontSize: 11, color: COLORS.textFaint }}>
-                        ⏳ Expected Return: {formatOnlyDate(h.expectedReturnDate)}
-                      </Typography>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 10.5, color: COLORS.textMuted }}>
+                        <FaHourglassHalf size={10} color="#94a3b8" />
+                        Expected Return: {formatOnlyDate(h.expectedReturnDate)}
+                      </Box>
                       {h.returnDate && (
-                        <Typography sx={{ fontSize: 11, color: "#16a34a", fontWeight: 600 }}>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, fontSize: 10.5, color: "#16a34a", fontWeight: 600 }}>
                           ✓ Returned Date: {formatOnlyDate(h.returnDate)}
-                        </Typography>
+                        </Box>
                       )}
                     </Box>
                     {h.remarks && (
-                      <Typography sx={{ fontSize: 11, color: COLORS.textFaint, mt: 0.5, borderTop: "1px dashed #e2e8f0", pt: 0.5 }}>
-                        📝 {h.remarks}
-                      </Typography>
+                      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 0.5, fontSize: 10.5, color: COLORS.textMuted, mt: 0.5, borderTop: "1px dashed #e2e8f0", pt: 0.5 }}>
+                        <FaCommentAlt size={10} color="#94a3b8" style={{ marginTop: 2 }} />
+                        {h.remarks}
+                      </Box>
                     )}
                   </Box>
                 </Box>

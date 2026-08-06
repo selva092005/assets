@@ -18,7 +18,20 @@ export default function ConfirmDialog({
       open={open}
       onClose={handleCancel}
       disableRestoreFocus
-      slotProps={{ paper: { sx: { ...premiumDialogPaperSx, maxWidth: 380, p: 1 } } }}
+      sx={{
+        "& .MuiDialog-paper": {
+          borderRadius: "12px !important",
+          border: "1px solid #e2e8f0 !important",
+          background: "#ffffff !important",
+          boxShadow: "0 20px 50px rgba(15, 23, 42, 0.12) !important",
+          maxWidth: "380px !important",
+          width: "calc(100% - 32px) !important",
+          margin: "auto !important",
+          height: "auto !important",
+          maxHeight: "calc(100% - 32px) !important",
+          p: 1,
+        }
+      }}
     >
       <DialogTitle sx={{ fontWeight: 700, fontSize: 16, pb: 1 }}>{title}</DialogTitle>
       <DialogContent sx={{ fontSize: 14, color: "#555", pt: "8px !important" }}>

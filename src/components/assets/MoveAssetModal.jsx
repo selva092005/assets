@@ -4,7 +4,7 @@ import {
 } from "@mui/material";
 import { FaTimes, FaMapMarkerAlt } from "react-icons/fa";
 import { useState } from "react";
-import { COLORS, inputSx, outlinedBtnSx } from "../../theme/tokens";
+import { COLORS, inputSx, outlinedBtnSx, premiumDialogPaperSx } from "../../theme/tokens";
 
 export default function MoveAssetModal({ open, asset, locations, onMove, onClose }) {
   const [newLocation, setNewLocation] = useState("");
@@ -43,7 +43,7 @@ export default function MoveAssetModal({ open, asset, locations, onMove, onClose
       maxWidth="xs"
       fullWidth
       disableRestoreFocus
-      slotProps={{ paper: { sx: { borderRadius: "14px", boxShadow: "0 8px 32px rgba(0,0,0,0.10)", overflow: "hidden", p: 0 } } }}
+      slotProps={{ paper: { sx: premiumDialogPaperSx } }}
     >
       {/* Title */}
       <DialogTitle
@@ -74,13 +74,39 @@ export default function MoveAssetModal({ open, asset, locations, onMove, onClose
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ px: 2.5, py: 2.5, background: COLORS.surface, display: "flex", flexDirection: "column", gap: 2 }}>
+      <DialogContent sx={{ 
+        px: 2.5, 
+        py: 2.5, 
+        background: COLORS.surface, 
+        display: "flex", 
+        flexDirection: "column", 
+        gap: 2,
+        flexGrow: 1,
+        justifyContent: { xs: "center", sm: "flex-start" }
+      }}>
 
         {/* Current location */}
         {asset?.locationName && (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1, px: 1.5, py: 1, background: COLORS.bg, borderRadius: "8px", border: `1px solid ${COLORS.borderLight}` }}>
-            <Typography sx={{ fontSize: 12, color: COLORS.textFaint }}>Current location:</Typography>
-            <Typography sx={{ fontSize: 12, fontWeight: 600, color: COLORS.text }}>{asset.locationName}</Typography>
+          <Box sx={{ 
+            display: "flex", 
+            alignItems: "center", 
+            gap: 1.25, 
+            px: 2, 
+            py: 1.25, 
+            background: COLORS.bg, 
+            border: `1px solid ${COLORS.borderLight}`,
+            borderLeft: `4px solid ${COLORS.primary}`,
+            borderRadius: "8px" 
+          }}>
+            <FaMapMarkerAlt size={13} color={COLORS.primary} style={{ flexShrink: 0 }} />
+            <Box>
+              <Typography sx={{ fontSize: 9.5, color: COLORS.textFaint, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", mb: 0.25 }}>
+                Current Location
+              </Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 700, color: COLORS.text }}>
+                {asset.locationName}
+              </Typography>
+            </Box>
           </Box>
         )}
 
@@ -138,15 +164,43 @@ export default function MoveAssetModal({ open, asset, locations, onMove, onClose
         )}
       </DialogContent>
 
-      <DialogActions sx={{ px: 2.5, py: 1.5, borderTop: `1px solid ${COLORS.borderLight}`, background: COLORS.surface, gap: 1 }}>
-        <Button onClick={handleClose} variant="outlined" sx={outlinedBtnSx}>
+      <DialogActions sx={{ 
+        px: 2.5, 
+        py: 1.5, 
+        borderTop: `1px solid ${COLORS.borderLight}`, 
+        background: COLORS.surface, 
+        gap: 1.5,
+        flexDirection: { xs: "column-reverse", sm: "row" },
+        "& > :not(style) ~ :not(style)": {
+          marginLeft: { xs: "0px !important", sm: "8px !important" }
+        }
+      }}>
+        <Button 
+          onClick={handleClose} 
+          variant="outlined" 
+          sx={{ 
+            ...outlinedBtnSx,
+            width: { xs: "100%", sm: "auto" }
+          }}
+        >
           Cancel
         </Button>
         <Button
           onClick={handleSubmit}
           variant="contained"
           disabled={!newLocation.trim() || loading}
-          sx={{ textTransform: "none", fontSize: 13, fontWeight: 600, borderRadius: "8px", py: "7px", px: 2, background: "#2e7d32", boxShadow: "none", "&:hover": { background: "#1b5e20", boxShadow: "none" } }}
+          sx={{ 
+            textTransform: "none", 
+            fontSize: 13, 
+            fontWeight: 600, 
+            borderRadius: "8px", 
+            py: "7px", 
+            px: 2, 
+            background: "#2e7d32", 
+            boxShadow: "none", 
+            "&:hover": { background: "#1b5e20", boxShadow: "none" },
+            width: { xs: "100%", sm: "auto" }
+          }}
         >
           {loading ? "Moving..." : "Confirm Move"}
         </Button>

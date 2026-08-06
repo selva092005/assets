@@ -204,5 +204,59 @@ export const theme = createTheme({
         },
       },
     },
+    MuiDialog: {
+      defaultProps: {
+        disableRestoreFocus: true,
+      },
+      styleOverrides: {
+        paper: {
+          borderRadius: "12px",
+          boxShadow: "0 20px 50px rgba(15, 23, 42, 0.12)",
+          border: "1px solid #e2e8f0",
+          background: "#ffffff",
+          overflow: "hidden",
+          position: "relative",
+          display: "flex",
+          flexDirection: "column",
+          "@media (max-width:600px)": {
+            borderRadius: "0px !important",
+            border: "none !important",
+            margin: "0px !important",
+            width: "100% !important",
+            maxHeight: "100% !important",
+            height: "100% !important",
+          }
+        }
+      }
+    },
+    MuiDialogContent: {
+      styleOverrides: {
+        root: {
+          "@media (max-width:600px)": {
+            display: "flex",
+            flexDirection: "column",
+            "& > *": {
+              margin: "auto 0",
+              width: "100%",
+            }
+          }
+        }
+      }
+    },
+    MuiDialogActions: {
+      styleOverrides: {
+        root: {
+          "@media (max-width:600px)": {
+            flexDirection: "column-reverse",
+            gap: "12px",
+            padding: "16px !important",
+            "& > button, & > a": {
+              width: "100% !important",
+              marginLeft: "0px !important",
+            }
+          }
+        }
+      }
+    }
   },
 });

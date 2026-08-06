@@ -2,7 +2,7 @@ import { useRef } from "react";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typography } from "@mui/material";
 import { QRCodeCanvas } from "qrcode.react";
 import { FaTimes, FaDownload, FaQrcode } from "react-icons/fa";
-import { STATUS_COLORS, CONDITION_COLORS, outlinedBtnSx, primaryBtnSx, FONT_FAMILIES } from "../../theme/tokens";
+import { STATUS_COLORS, CONDITION_COLORS, outlinedBtnSx, primaryBtnSx, FONT_FAMILIES, premiumDialogPaperSx } from "../../theme/tokens";
 
 export default function AssetQR({ open, asset, onClose }) {
   const canvasRef = useRef();
@@ -33,12 +33,7 @@ export default function AssetQR({ open, asset, onClose }) {
       disableRestoreFocus
       slotProps={{
         paper: {
-          sx: {
-            borderRadius: "12px",
-            boxShadow: "0 20px 50px rgba(15, 23, 42, 0.12)",
-            background: "#ffffff",
-            overflow: "hidden",
-          },
+          sx: premiumDialogPaperSx,
         },
       }}
     >
@@ -60,8 +55,22 @@ export default function AssetQR({ open, asset, onClose }) {
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ py: 3, px: 3, background: "#fafbfc" }}>
-        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+      <DialogContent sx={{ 
+        py: { xs: 2, sm: 3 }, 
+        px: { xs: 2, sm: 3 }, 
+        background: "#fafbfc",
+        display: "flex",
+        flexDirection: "column",
+        flexGrow: 1
+      }}>
+        <Box sx={{ 
+          display: "flex", 
+          flexDirection: "column", 
+          alignItems: "center", 
+          gap: 2,
+          margin: { xs: "auto 0", sm: 0 },
+          width: "100%"
+        }}>
           
           <Typography sx={{ fontSize: 10, color: "#64748b", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", width: "100%" }}>
             Asset Passport Label
@@ -95,16 +104,33 @@ export default function AssetQR({ open, asset, onClose }) {
             </Box>
 
             {/* Asset Label Main Grid */}
-            <Box sx={{ p: 2, display: "flex", gap: 2, alignItems: "center" }}>
+            <Box sx={{ 
+              p: { xs: 1.5, sm: 2 }, 
+              display: "flex", 
+              flexDirection: { xs: "column", sm: "row" }, 
+              gap: 2, 
+              alignItems: { xs: "stretch", sm: "center" } 
+            }}>
               {/* Left Column: Asset Info details */}
               <Box sx={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
                 <Box>
                   <Typography sx={{ fontSize: 8, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", mb: 0.25 }}>
                     Asset Code
                   </Typography>
-                  <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: "#0284c7", fontFamily: "monospace" }}>
+                  <Box sx={{ 
+                    display: "inline-block", 
+                    px: 1, 
+                    py: 0.25, 
+                    bgcolor: "#e0f2fe", 
+                    color: "#0369a1", 
+                    border: "1px solid #bae6fd",
+                    borderRadius: "4px", 
+                    fontSize: 11.5,
+                    fontWeight: 800, 
+                    fontFamily: "monospace" 
+                  }}>
                     {asset?.assetCode || "—"}
-                  </Typography>
+                  </Box>
                 </Box>
                 
                 <Box>
@@ -137,7 +163,14 @@ export default function AssetQR({ open, asset, onClose }) {
               </Box>
 
               {/* Right Column: QR Code canvas */}
-              <Box sx={{ flexShrink: 0, p: 0.75, border: "1px solid #e2e8f0", borderRadius: "8px", background: "#ffffff" }}>
+              <Box sx={{ 
+                flexShrink: 0, 
+                p: 0.75, 
+                border: "1px solid #e2e8f0", 
+                borderRadius: "8px", 
+                background: "#ffffff",
+                alignSelf: { xs: "center", sm: "auto" }
+              }}>
                 <Box ref={canvasRef} sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <QRCodeCanvas value={value || " "} size={80} level="H" includeMargin={false} />
                 </Box>
@@ -154,13 +187,22 @@ export default function AssetQR({ open, asset, onClose }) {
               justifyContent: "space-between", 
               alignItems: "center" 
             }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                <Box sx={{ width: 6, height: 6, borderRadius: "50%", background: statusStyle.color }} />
-                <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: statusStyle.color, textTransform: "uppercase" }}>
+              <Box sx={{ 
+                display: "flex", 
+                alignItems: "center", 
+                gap: 0.5, 
+                px: 1, 
+                py: 0.25, 
+                borderRadius: "4px", 
+                background: statusStyle.bg || "#f1f5f9",
+                border: `1px solid ${statusStyle.color}30`
+              }}>
+                <Box sx={{ width: 5, height: 5, borderRadius: "50%", background: statusStyle.color }} />
+                <Typography sx={{ fontSize: 9, fontWeight: 700, color: statusStyle.color, textTransform: "uppercase" }}>
                   {asset?.status}
                 </Typography>
               </Box>
-              <Typography sx={{ fontSize: 9, fontWeight: 700, color: conditionStyle.color, background: conditionStyle.bg, px: 1, py: 0.25, borderRadius: "4px", textTransform: "uppercase" }}>
+              <Typography sx={{ fontSize: 9, fontWeight: 700, color: conditionStyle.color, background: conditionStyle.bg, border: `1px solid ${conditionStyle.color}30`, px: 1, py: 0.25, borderRadius: "4px", textTransform: "uppercase" }}>
                 {asset?.assetCondition}
               </Typography>
             </Box>
@@ -168,7 +210,17 @@ export default function AssetQR({ open, asset, onClose }) {
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ borderTop: "1px solid #e2e8f0", px: 3, py: 1.5, gap: 1, background: "#f8fafc" }}>
+      <DialogActions sx={{ 
+        borderTop: "1px solid #e2e8f0", 
+        px: 3, 
+        py: 1.5, 
+        gap: 1.5, 
+        background: "#f8fafc",
+        flexDirection: { xs: "column-reverse", sm: "row" },
+        "& > :not(style) ~ :not(style)": {
+          marginLeft: { xs: "0px !important", sm: "8px !important" }
+        }
+      }}>
         <Button
           onClick={handleDownload}
           variant="outlined"

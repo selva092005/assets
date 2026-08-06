@@ -686,8 +686,21 @@ const Navbar = () => {
 
       {/* ── Logout confirm ───────────────────────────── */}
       <Dialog open={logoutConfirmOpen} onClose={() => setLogoutConfirmOpen(false)}
+        sx={{
+          "& .MuiDialog-paper": {
+            borderRadius: "10px !important",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.12) !important",
+            maxWidth: "280px !important",
+            width: "calc(100% - 24px) !important",
+            margin: "auto !important",
+            height: "auto !important",
+            maxHeight: "calc(100% - 24px) !important",
+            p: 0,
+            border: "1px solid #e2e8f0 !important",
+            background: "#ffffff !important",
+          }
+        }}
         slotProps={{
-          paper: { sx: { borderRadius: "10px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", maxWidth: 280, width: "calc(100% - 24px)", p: 0 } },
           backdrop: { sx: { backdropFilter: "blur(4px)", bgcolor: "rgba(15, 23, 42, 0.6)" } }
         }}>
         <Box sx={{ p: 2, pb: 1.5 }}>
