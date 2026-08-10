@@ -613,7 +613,10 @@ export default function AssetRequestPage() {
                   <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: "#475569", mb: 0.75 }}>DAMAGE EVIDENCE PHOTO</Typography>
                   <Box sx={{ width: "100%", maxHeight: 200, display: "flex", justifyContent: "center", bgcolor: "#f8fafc", borderRadius: "4px", overflow: "hidden", border: "1px solid #f1f5f9" }}>
                     <img
-                      src={`${import.meta.env.VITE_BASE_URL || "http://localhost:8080"}/api/files/download/${respondData.attachmentPath}`}
+                      src={respondData.attachmentPath.startsWith("http://") || respondData.attachmentPath.startsWith("https://")
+                        ? respondData.attachmentPath
+                        : `${import.meta.env.VITE_BASE_URL || "http://localhost:8080"}/api/files/download/${respondData.attachmentPath}`
+                      }
                       alt="Damage Evidence"
                       style={{ maxWidth: "100%", maxHeight: "200px", objectFit: "contain" }}
                     />

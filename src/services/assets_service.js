@@ -65,6 +65,25 @@ export const getAssetTypes = async () => {
 };
 
 export const uploadAssetImage = async (file) => {
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+  if (cloudName && uploadPreset) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", uploadPreset);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+      method: "POST",
+      body: formData,
+    });
+    const data = await res.json();
+    if (data.secure_url) {
+      return data.secure_url;
+    }
+    throw new Error(data.error?.message || "Cloudinary upload failed");
+  }
+
+  // Fallback to local server upload
   const formData = new FormData();
   formData.append("file", file);
   const res = await API.post("/api/files/upload", formData, {
@@ -73,8 +92,13 @@ export const uploadAssetImage = async (file) => {
   return res.data?.data || res.data;
 };
 
-export const getImageUrl = (imagePath) =>
-  imagePath ? `${import.meta.env.VITE_BASE_URL}/api/files/${imagePath}` : null;
+export const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+    return imagePath;
+  }
+  return `${import.meta.env.VITE_BASE_URL}/api/files/${imagePath}`;
+};
 
 // POST /api/assets/bulk-excel — returns BulkUploadResultDTO inside ApiResponse
 export const bulkUploadExcel = async (file) => {
